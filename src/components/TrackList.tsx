@@ -219,13 +219,22 @@ export function TrackList({
                   />
                 )}
                 <div className="min-w-0">
-                  <p
-                    className="truncate text-sm font-medium"
+                  {/* Der Titel startet ihn.
+                      Der Knopf links tut das auch, zeigt sein Play-Symbol aber
+                      erst beim Überfahren — auf einem Telefon also nie: Dort
+                      stand nur die Nummer, und dass sie tippbar ist, sah
+                      niemand. Den Titel anzutippen ist die Geste, die man
+                      ohnehin versucht. Er steht neben den Künstlerlinks, nicht
+                      um sie herum, sonst läge ein Knopf über einem Link. */}
+                  <button
+                    type="button"
+                    onClick={() => playAt(index)}
+                    className="block w-full truncate text-start text-sm font-medium"
                     style={isCurrent ? { color: "var(--accent)" } : undefined}
                     title={track.title}
                   >
                     {track.title}
-                  </p>
+                  </button>
                   {showArtist && <ArtistLinks track={track} />}
                 </div>
               </div>
