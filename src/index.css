@@ -515,7 +515,8 @@ h4 {
   flex: 0 0 2.25rem;
   transition:
     width 0.16s ease,
-    flex-basis 0.16s ease;
+    flex-basis 0.16s ease,
+    transform 0.12s ease;
 
   &:focus-within,
   &:has(input:not(:placeholder-shown)) {
@@ -544,6 +545,43 @@ h4 {
        Ohne sie stand er mitten im Kreis und lag über der Lupe. */
     &::placeholder {
       color: transparent;
+    }
+  }
+
+  /*
+   * Als Kreis trägt sie dieselbe Taste wie ihre Nachbarn.
+   *
+   * `search-field` ist eine eingelassene Rille — richtig, solange man
+   * hineinschreibt, aber neben vier erhabenen Knöpfen sah der Kreis aus wie
+   * ein Loch in der Reihe. Zusammengefallen ist die Suche kein Feld mehr,
+   * sondern ein Knopf, und sieht auch so aus: Fläche aus `--control`, harte
+   * Kante darunter, zwei Pixel nach oben.
+   *
+   * Die Hebung sitzt am Rahmen, nicht am Feld: Das Zeichen liegt darüber und
+   * bliebe sonst zurück. Beim Drücken fährt die Taste auf ihre Kante herunter,
+   * wie bei `pill-btn` auch.
+   */
+  &:not(:focus-within):not(:has(input:not(:placeholder-shown))) {
+    transform: translateY(-2px);
+
+    &:active {
+      transform: translateY(0);
+
+      > input {
+        box-shadow: 0 0 0 0 transparent;
+      }
+    }
+
+    > input {
+      border-color: transparent;
+      background: var(--control);
+      box-shadow:
+        0 2px 0 0 color-mix(in srgb, var(--control) 72%, #000),
+        0 5px 8px -3px rgba(0, 0, 0, 0.34);
+    }
+
+    > svg {
+      color: var(--text);
     }
   }
 }
