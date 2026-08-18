@@ -122,10 +122,10 @@ export function ArtistDetail() {
             actionsReihe
             actions={
               <>
-                {/* Bearbeiten steht links, Abspielen rechts außen.
-                    `ms-auto` nimmt den freien Platz vor dem Abspielen auf und
-                    schiebt es an die Kante; die übrigen bleiben beieinander
-                    am Anfang. */}
+                {/* Bearbeiten, Zufällig, Abspielen — dicht beieinander, das
+                    Abspielen als letztes. Ohne Lücke davor: Sie schob den
+                    Akzentknopf zwar an die Kante, riss die Reihe dabei aber
+                    auseinander. */}
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
@@ -164,7 +164,7 @@ export function ArtistDetail() {
                   onClick={() => playAll(false)}
                   disabled={!tracks.length}
                   title={t("Abspielen")}
-                  className="pill-btn is-raised is-accent aktionsknopf aktionsknopf-kurz ms-auto"
+                  className="pill-btn is-raised is-accent aktionsknopf aktionsknopf-kurz"
                 >
                   <PlayIcon size={16} />
                   <span className="beschriftung">{t("Abspielen")}</span>
