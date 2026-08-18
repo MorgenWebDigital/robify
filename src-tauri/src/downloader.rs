@@ -1852,7 +1852,15 @@ async fn download_inner<R: Runtime>(
     let mut args: Vec<String> = vec![
         "--newline".into(),
         "--no-playlist".into(),
-        "--no-warnings".into(),
+        // Die Warnungen bleiben an.
+        //
+        // Sie standen früher unter `--no-warnings`, und damit verschwand
+        // ausgerechnet der Hinweis, der einen tagelang unerklärlichen 403
+        // aufklärte: „No supported JavaScript runtime could be found …
+        // YouTube extraction without a JS runtime has been deprecated.“ Der
+        // Fehler nennt nur die Absage, den Grund nennt die Warnung davor.
+        // `explain_failure` sucht ohnehin die ERROR-Zeile und nimmt die
+        // letzte Zeile nur, wenn es keine gibt.
         // Kurzzeitige Sperren (HTTP 403) verschwinden meist von selbst.
         "--retries".into(),
         "5".into(),

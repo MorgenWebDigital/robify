@@ -506,13 +506,21 @@ export function DownloaderPage() {
                 <div className="flex items-center gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{job.label}</p>
-                    <p className="truncate text-xs text-mute">
-                      {job.error
-                        ? job.error
-                        : job.outcome
+                    {job.error ? (
+                      // Der Fehler ist das Wichtigste an einem gescheiterten
+                      // Auftrag und darf nicht in einer Zeile verschwinden:
+                      // Robify erklärt darin, woran es lag und was hilft, und
+                      // hängt die wörtliche Meldung der Quelle an. Abgeschnitten
+                      // blieb davon „Die Quelle hat den Zugriff abgelehnt (403).
+                      // Das k…“ übrig.
+                      <p className="text-xs text-mute">{job.error}</p>
+                    ) : (
+                      <p className="truncate text-xs text-mute">
+                        {job.outcome
                           ? t("Fertig, Metadaten prüfen")
                           : describe(job.progress)}
-                    </p>
+                      </p>
+                    )}
                   </div>
 
                   {job.outcome ? (
