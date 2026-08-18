@@ -64,6 +64,12 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+          # Auch dann ablegen, wenn ein späterer Schritt scheitert. Ab Werk
+          # wirft die Aktion den Zwischenspeicher bei einem Fehlschlag weg;
+          # ein Tippfehler im Signierkennwort machte damit fünfundzwanzig
+          # Minuten Übersetzungsarbeit zunichte, und der nächste Lauf begann
+          # wieder bei null.
+          cache-on-failure: true
 
       # Dieselbe Liste wie im Release-Ablauf: Ohne WebKitGTK lässt sich der
       # Tauri-Teil nicht einmal übersetzen.
