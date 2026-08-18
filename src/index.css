@@ -1,0 +1,1278 @@
+@import "tailwindcss";
+
+/* ── MorgenWeb-Design ──────────────────────────────────────────────────────
+   Übernommen aus dem Comunicate-Projekt: macOS-naher Minimalismus. Grauer
+   Canvas, weiße Karten mit Haarlinien-Rand, klare Tiefenstaffelung
+   bg < surface < sunken, zurückhaltende Schatten.
+
+   Das Layout bleibt, wie es war (Seitenleiste, Inhaltsfläche, Player-Leiste
+   unten), nur die Oberfläche wechselt. Möglich wird das durch die Zuordnung
+   weiter unten: Robifys Farbklassen (`ink-*`, `mute`, `fg`) zeigen auf diese
+   Merkmale, sodass sich das ganze Programm über diesen einen Block dreht.
+
+   Der Akzent bleibt Robifys eigener und ist in den Einstellungen wählbar,
+   er trägt die Wiedergabe-Bedienung und die Fortschrittsbalken. */
+
+:root {
+  /* Drei Stufen, von außen nach innen heller:
+
+       Gehäuse  #e0e0e5   Fensterrahmen, Titelleiste, und die Armaturen
+       Insel    #e9e9ec   Hauptbereich, Seitenleiste, Player, Lyrics
+       Karte    #ffffff   der eigentliche Inhalt
+
+     Der Blick wird damit nach innen gezogen: Was am hellsten steht, ist das,
+     worum es geht. Gehäuse und Bedienteile teilen sich absichtlich einen Ton,
+     beides ist Apparat, nicht Inhalt. */
+  --bg: #e9e9ec;
+  --canvas: #e0e0e5;
+  --surface: #ffffff;
+  /* Knöpfe, Pillen, Auswahlfelder, der laufende Eintrag. Derselbe Ton wie die
+     Rillen darunter: gleiches Material, nur andersherum gewölbt. */
+  --control: #e0e0e5;
+  /* Rillen liegen *in* den Inseln und müssen darum unter deren Ton bleiben,
+     sonst verschwinden Suchfelder und Bildlaufleiste im Untergrund. */
+  --surface-sunken: #dfdfe3;
+  --border: #dcdce0;
+  --border-strong: #c9c9ce;
+
+  --text: #1b1b1d;
+  --text-muted: #656569;
+  --text-faint: #9a9a9f;
+
+  /* Abdunklung hinter Dialogen. Auf hellem Grund genügt ein Hauch. */
+  --scrim: rgba(0, 0, 0, 0.28);
+
+  /* Zustände. Als Merkmale, weil dieselbe Warnung auf weißem und auf
+     schwarzem Grund verschiedene Töne braucht, um lesbar zu bleiben. */
+  --success: #2ba64f;
+  --success-soft: #e4f6ea;
+  --danger: #e5484d;
+  --danger-soft: #fdeaea;
+  --warning: #b8710a;
+  --warning-soft: #fdf1e0;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.1);
+
+  /* Wird aus den Einstellungen überschrieben. */
+  --accent: #a8a8b3;
+  --accent-soft: color-mix(in srgb, var(--accent) 18%, transparent);
+  /* Auf dem hellen Grau trägt ein dunkles Zeichen. */
+  --accent-ink: #16161a;
+
+  color-scheme: light dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+/* Dunkel, wenn das System dunkel steht, außer der Nutzer erzwingt „Hell“. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f0f11;
+    --canvas: #0b0b0d;
+    --surface: #161618;
+    --control: #161618;
+    --surface-sunken: #1f1f22;
+    --border: #242428;
+    --border-strong: #313136;
+
+    --text: #f5f5f7;
+    --text-muted: #9b9ba2;
+    --text-faint: #67676e;
+
+    --scrim: rgba(0, 0, 0, 0.7);
+
+    --success: #30d158;
+    --success-soft: #12301b;
+    --danger: #ff453a;
+    --danger-soft: #331a19;
+    --warning: #ff9f0a;
+    --warning-soft: #33260f;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 16px 40px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* Erzwungenes Dunkel auf hellem Desktop. Werte synchron zum Block darüber. */
+:root[data-theme="dark"] {
+  --bg: #0f0f11;
+  --canvas: #0b0b0d;
+  --surface: #161618;
+  --control: #161618;
+  --surface-sunken: #1f1f22;
+  --border: #242428;
+  --border-strong: #313136;
+
+  --text: #f5f5f7;
+  --text-muted: #9b9ba2;
+  --text-faint: #67676e;
+
+  --scrim: rgba(0, 0, 0, 0.7);
+
+  --success: #30d158;
+  --success-soft: #12301b;
+  --danger: #ff453a;
+  --danger-soft: #331a19;
+  --warning: #ff9f0a;
+  --warning-soft: #33260f;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 16px 40px rgba(0, 0, 0, 0.6);
+}
+
+/* Robifys Farbklassen auf die Merkmale oben legen. `inline` sorgt dafür, dass
+   die Hilfsklassen direkt auf die Merkmale zeigen und dem Themenwechsel
+   folgen, statt den Wert einmalig einzufrieren. */
+@theme inline {
+  /* SF Pro zuerst: Die MorgenWeb-Typografie hängt daran, unter Linux gibt es
+     kein `-apple-system` als Brücke. */
+  --font-sans:
+    "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Inter",
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --color-ink-950: var(--bg);
+  --color-ink-900: var(--surface);
+  --color-ink-850: var(--surface);
+  --color-ink-800: var(--surface-sunken);
+  --color-ink-700: var(--border);
+  --color-ink-600: var(--border-strong);
+  --color-ink-500: var(--text-faint);
+
+  /* Das Gehäuse: Fensterhintergrund, Titelleiste, die Rille der Bildlaufleiste
+     und der Grund hinter der Vollbildansicht. Seitenleiste und Player tragen
+     dagegen den Inselton (`ink-950`), sie liegen auf dem Gehäuse, nicht darin. */
+  --color-frame: var(--canvas);
+
+  --color-mute: var(--text-muted);
+  --color-fg: var(--text);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+
+  --radius-card: 12px;
+}
+
+/* In `base`, nicht schichtenlos: Ungeschichtete Regeln schlagen in Tailwind 4
+   jede Hilfsklasse, egal wie genau sie ist. Stand `min-width: 0` hier frei,
+   wirkte kein einziges `min-w-*` mehr, und Menüs quetschten sich auf
+   Zeichenbreite zusammen. */
+@layer base {
+  * {
+    min-width: 0;
+    box-sizing: border-box;
+  }
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* Der Rahmen des Fensters. Trägt denselben Ton wie Seitenleiste und Player,
+   nur dadurch heben sich die abgerundeten Flächen darin ab.
+
+   Runde Fensterecken gab es hier schon einmal. Sie brauchen ein durchsichtiges
+   Fenster (`transparent: true`), und damit blieb WebKitGTK auf diesem System
+   komplett schwarz, nicht einmal das JavaScript lief an. Deshalb eckig. */
+#root {
+  background: var(--canvas);
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--canvas) 76%, #000);
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 26%, transparent);
+}
+
+button {
+  cursor: pointer;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  letter-spacing: -0.01em;
+}
+
+/* Schlanke Scrollbars, damit Listen ruhiger wirken.
+   Zwei ineinanderliegende Pillen: die dunkle Rille als Spur und der Griff
+   darin. Beide werden über einen durchsichtigen Rand auf ihre Breite
+   gebracht, gefärbt wird nur der Kern (`background-clip: content-box`).
+   Rille 12 px, Griff 6 px, es bleiben also 3 px Rille links und rechts vom
+   Griff sichtbar. */
+::-webkit-scrollbar {
+  width: 18px;
+  height: 18px;
+}
+::-webkit-scrollbar-track {
+  background: var(--canvas);
+  border-radius: 999px;
+  /* Oben und unten 6 px, damit die Rille nicht bis an die Enden der Fläche
+     läuft. Derselbe Wert wie der Rand des Griffs, so beginnen beide auf
+     gleicher Höhe. */
+  border: 6px solid transparent;
+  border-left-width: 3px;
+  border-right-width: 3px;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 6px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Karte: weiße Fläche, Haarlinie, weicher Schatten, das Grundelement des
+   MorgenWeb-Designs. */
+@utility surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-sm);
+}
+
+@utility accent-bg {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+/* Einheitliche Icon-Schaltfläche: quadratisch, zentriert, gleicher Radius,
+   gleiche Polsterung, gleicher Hover, ersetzt die vorher uneinheitlichen
+   `rounded-md/lg p-1/1.5/2 hover:…`-Varianten überall in der App. */
+@utility icon-btn {
+  display: grid;
+  place-items: center;
+  border-radius: 0.5rem;
+  padding: 0.375rem;
+  color: var(--text-muted);
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+  &:hover {
+    background: var(--surface-sunken);
+    color: var(--text);
+  }
+}
+
+/* Neutrale Textschaltfläche. Die betonten und die randlosen Fassungen sind
+   inzwischen Pillen (`pill-btn`); hier blieb die schlichte Form. */
+@utility btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--control);
+  color: var(--text);
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+  &:hover {
+    background: var(--surface-sunken);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+/* Umschaltleiste im Stil der Wrapped-Seite: runde Kapsel mit Haarlinie, die
+   Schalter sitzen darin. */
+/* Schalterreihe. Die *Leiste* trägt das Knopfmaß, nicht der Schalter darin:
+   Sie steht neben gewöhnlichen Knöpfen, und was der Nutzer als ein Bedienteil
+   sieht, ist die Leiste. Gäbe man dem Schalter innen 2.25rem, käme die Leiste
+   mit Rand und Polsterung auf 2.9rem und überragte alles daneben. */
+@utility pill-bar {
+  display: inline-flex;
+  align-items: center;
+  height: 2.25rem;
+  gap: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  /* Nur seitlich; oben und unten zentriert die feste Höhe. */
+  padding: 0 0.25rem;
+}
+
+/* Schalter mit plastischem Aufbau, einfarbig: Die Fläche bleibt ein einziger
+   Ton, die Tiefe kommt allein von einer harten Unterkante (wie bei einer
+   Taste) und dem Schlagschatten darunter. Beim Drücken fährt die Taste auf
+   die Unterkante herunter.
+   Größe kommt von außen (`h-8 w-8` bzw. `h-8 px-3.5`), damit runde Symbol-
+   und breite Textschalter dieselbe Optik teilen.
+   `is-raised` ist für Knöpfe ohne Ein/Aus-Zustand, die stehen immer oben. */
+/*
+ * Reihe von Handlungsknöpfen unter einer Überschrift.
+ *
+ * Wird der Platz knapp, weil die Warteschlange ausfährt oder das Fenster
+ * schmaler wird, sollen die Knöpfe enger werden statt in eine zweite Reihe zu
+ * rutschen: Ein Umbruch verschiebt alles darunter und sieht aus, als wäre die
+ * Seite kaputt.
+ *
+ * `container-type: inline-size` macht die Reihe selbst zum Maßstab. Nicht die
+ * Fensterbreite entscheidet also, sondern der Platz, der hier tatsächlich
+ * übrig ist, und der hängt ebenso an der Seitenleiste wie an der
+ * Warteschlange.
+ */
+@utility aktionsreihe {
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+}
+
+@utility aktionsknopf {
+  height: 2.25rem;
+  padding-inline: 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  /* Drei Stufen, damit der Sprung nicht auf einmal kommt. Die erste greift
+     schon früh: In der Bibliothek stehen fünf Teile in einer Reihe, dort wird
+     es eng, lange bevor eine Knopfreihe unter einer Überschrift eng wird. */
+  @container (max-width: 48rem) {
+    padding-inline: 0.8rem;
+    font-size: 0.8125rem;
+  }
+
+  @container (max-width: 34rem) {
+    padding-inline: 0.6rem;
+    font-size: 0.78rem;
+  }
+
+  @container (max-width: 26rem) {
+    height: 2rem;
+    padding-inline: 0.45rem;
+    font-size: 0.75rem;
+    gap: 0.25rem;
+  }
+
+  /* Das Zeichen behält seine Größe. Schrumpfte es mit, sähe der Knopf beim
+     Engerwerden nicht kleiner aus, sondern verzogen. */
+  & > svg {
+    flex-shrink: 0;
+  }
+}
+
+/*
+ * Darf zusammenschrumpfen, wenn es eng wird, und kürzt dann seine Beschriftung.
+ *
+ * Nur die nachrangigen Knöpfe tragen das. „Abspielen“ und „Zufällig“ behalten
+ * ihre Breite: Sie sind kurz und die eigentliche Handlung der Seite.
+ */
+/*
+ * Suchleiste und Aufklappfeld in einer Aktionsreihe.
+ *
+ * Sie tragen von Haus aus eine Mindestbreite, damit sie nicht auf Briefmarken
+ * schrumpfen. Wird der Platz knapp, ist eine schmale Leiste aber besser als
+ * eine zweite Zeile, darum sinkt die Mindestbreite mit.
+ */
+@utility aktionsfeld {
+  min-width: 14rem;
+
+  @container (max-width: 48rem) {
+    min-width: 10rem;
+  }
+
+  @container (max-width: 34rem) {
+    min-width: 7rem;
+  }
+}
+
+/*
+ * Fällt bei Enge auf sein Zeichen zusammen, als runder Knopf.
+ *
+ * Für Handgriffe, deren Zeichen für sich spricht: ein Ordner steht für
+ * Importieren, ein Pfeil im Kreis für Aktualisieren, das Dreieck für
+ * Abspielen. Beschriftung zu kürzen wäre hier schlechter als sie ganz
+ * wegzulassen, „Aktual…“ sagt weniger als das Zeichen allein.
+ *
+ * Die Breite wird gleich der Höhe gesetzt; die runde Kante bringt `pill-btn`
+ * ohnehin mit, daraus wird also ein Kreis. Damit steht der Knopf auch still:
+ * Vorher wanderte „Von vorn hören“ bei jeder Änderung der Beschriftung ein
+ * Stück zur Seite.
+ *
+ * Der Name für Vorleseprogramme kommt dann aus `title` am Knopf. Ein
+ * `display: none` nimmt die Beschriftung auch aus dem Baum für
+ * Vorleseprogramme, ohne `title` bliebe der Knopf also namenlos.
+ */
+@utility aktionsknopf-kurz {
+  @container (max-width: 48rem) {
+    width: 2.25rem;
+    padding-inline: 0;
+    gap: 0;
+
+    & > .beschriftung {
+      display: none;
+    }
+  }
+
+  @container (max-width: 26rem) {
+    width: 2rem;
+  }
+}
+
+@utility aktionsknopf-weicht {
+  min-width: 0;
+}
+
+@utility pill-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 9999px;
+  color: var(--text-muted);
+  background: transparent;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease;
+
+  &:hover {
+    color: var(--text);
+  }
+
+  &[aria-pressed="true"],
+  &.is-raised {
+    color: var(--text);
+    background: var(--control);
+    box-shadow:
+      0 2px 0 0 color-mix(in srgb, var(--control) 72%, #000),
+      0 5px 8px -3px rgba(0, 0, 0, 0.34);
+    transform: translateY(-2px);
+  }
+
+  /* Ausgewählt in einer Schalterreihe, Erscheinungsbild, Rückblick, Ansicht
+     und Kachelgröße.
+     
+     Die Erhebung allein sagte nur „dieser Knopf steht heraus“, und das tun in
+     der App auch gewöhnliche Knöpfe. Erst die Farbe sagt „dieser gilt“. Damit
+     spricht die Schalterreihe dieselbe Sprache wie die Navigation und die
+     Knöpfe der Player-Leiste: neutrale Fläche, Akzent auf dem Zeichen.
+
+     Steht vor den Fassungen für Akzent und Warnung; die sind genauer und
+     behalten darum ihre eigene Schriftfarbe. */
+  &[aria-pressed="true"] {
+    color: var(--accent);
+  }
+
+  /* Akzentfassung für die Hauptaktion, gleiche Bauweise, Markenfarbe.
+     Die Auswahl ist absichtlich enger als `.pill-btn.is-raised`, sonst
+     gewönne dort die neutrale Fläche. */
+  &.is-accent[aria-pressed="true"],
+  &.is-accent.is-raised {
+    background: var(--accent);
+    color: var(--accent-ink);
+    box-shadow:
+      0 2px 0 0 color-mix(in srgb, var(--accent) 62%, #000),
+      0 5px 8px -3px rgba(0, 0, 0, 0.34);
+  }
+
+  &.is-accent:hover {
+    filter: brightness(1.05);
+  }
+
+  /* Hebt sich erst unter dem Zeiger, statt dauerhaft erhaben zu stehen.
+     Für Knöpfe, die in jeder Zeile einer langen Liste mitlaufen: Dutzende
+     ständig herausstehender Tasten machen die Liste unruhig, und weil sie
+     ohnehin erst beim Überfahren erscheinen, kommt die Erhebung genau dann,
+     wenn man sie treffen will. */
+  &.is-lift:hover,
+  &.is-lift:focus-visible {
+    color: var(--text);
+    background: var(--control);
+    box-shadow:
+      0 2px 0 0 color-mix(in srgb, var(--control) 72%, #000),
+      0 5px 8px -3px rgba(0, 0, 0, 0.34);
+    transform: translateY(-2px);
+  }
+
+  &.is-lift:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 0 0 0 transparent;
+  }
+
+  /* Eingeschaltet: Wiederholen, Zufall, Sleeptimer, Warteschlange, Lyrics.
+     Die Taste bleibt neutral, nur das Zeichen darauf trägt den Akzent, ein
+     ganzes Feld in Akzentfarbe läse sich als Hauptaktion, und davon kann es
+     in einer Leiste nicht sechs geben. */
+  &.is-on {
+    color: var(--accent);
+  }
+
+  /* Warnfassung für Schaltflächen, die etwas unwiderruflich wegnehmen. */
+  &.is-danger[aria-pressed="true"],
+  &.is-danger.is-raised {
+    background: var(--danger);
+    color: #fff;
+    box-shadow:
+      0 2px 0 0 color-mix(in srgb, var(--danger) 62%, #000),
+      0 5px 8px -3px rgba(0, 0, 0, 0.34);
+  }
+
+  &.is-danger:hover {
+    filter: brightness(1.05);
+  }
+
+  /* Gedrückt: Die Taste fährt auf ihre Unterkante herunter. */
+  &:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 0 0 0 transparent;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+/* Auswahlfeld in derselben Bauweise wie `pill-btn`: einfarbige Fläche, harte
+   Unterkante, sinkt beim Drücken darauf ab. Das Systemaussehen ist abgeschaltet
+   (`appearance: none`), der Pfeil kommt als eigenes Zeichen daneben und folgt
+   deshalb der Textfarbe. Rechts ist Platz dafür freigehalten. */
+@utility pill-select {
+  appearance: none;
+  /* Flex, nicht der Vorgabewert: Solange der Knopf ein Zeilenkasten war,
+     rutschte ein Zeichen davor, die Flagge etwa, in eine eigene Zeile und
+     schob die Beschriftung darunter. Ein Flex-Behälter stellt beides
+     nebeneinander und zentriert es senkrecht. */
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.25rem;
+  border-radius: 9999px;
+  border: none;
+  padding: 0 2.25rem 0 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--control);
+  box-shadow:
+    0 2px 0 0 color-mix(in srgb, var(--control) 72%, #000),
+    0 5px 8px -3px rgba(0, 0, 0, 0.34);
+  transform: translateY(-2px);
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 0 0 0 transparent;
+  }
+
+  /* Die aufgeklappte Liste zeichnet das System; sie soll wenigstens die
+     Farben der App tragen. */
+  & option {
+    background: var(--control);
+    color: var(--text);
+    font-weight: 400;
+  }
+}
+
+/* Die Inhaltsfläche liegt im Rahmen wie eine ausgefräste Mulde: Schatten
+   innen an der Oberkante, wo das Licht nicht hinkommt, und eine helle Linie
+   unterhalb, wo es wieder auftrifft. Dieselbe Bauweise wie beim Suchfeld, nur
+   über die ganze Fläche. */
+@utility sunken-panel {
+  box-shadow:
+    /* Vertiefung ringsum, sehr flach gehalten. */
+    inset 0 0 14px rgba(0, 0, 0, 0.16),
+    /* Oben eine Spur mehr, sonst sähe die Mulde flach aus. */ inset 0 2px
+      4px -1px rgba(0, 0, 0, 0.12),
+    /* Kante an allen vier Seiten. Dunkler als der Rahmen, dadurch liest sie
+       sich als Schattenfuge zwischen Rahmen und Fläche. */
+      0 0 0 1px color-mix(in srgb, var(--canvas) 76%, #000);
+}
+
+/* Eintrag in der Seitenleiste. Der gewählte steht plastisch heraus, gleiche
+   Bauweise wie `pill-btn`, nur mit dem weicheren Radius der Leiste: einfarbige
+   Fläche, harte Unterkante, beim Drücken sinkt er darauf ab. */
+@utility nav-item {
+  display: flex;
+  align-items: center;
+  border-radius: 0.5rem;
+  color: var(--text-muted);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease;
+
+  &:hover {
+    color: var(--text);
+  }
+
+  /* Die geöffnete Seite steht erhaben, in der neutralen Tastenfarbe, wie
+     jeder andere Knopf. Nur Schrift und Zeichen tragen den Akzent: Das
+     genügt zum Finden und lässt die Leiste ruhig. Eine ganze Fläche in
+     Akzentfarbe wäre eine Hauptaktion, und davon gibt es hier keine. */
+  &.is-active {
+    color: var(--accent);
+    background: var(--control);
+    box-shadow:
+      0 2px 0 0 color-mix(in srgb, var(--control) 72%, #000),
+      0 5px 8px -3px rgba(0, 0, 0, 0.34);
+    transform: translateY(-2px);
+  }
+
+  &.is-active:hover {
+    color: var(--accent);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* Zeile, die gerade läuft: steht plastisch aus der Liste heraus, gleiche
+   Bauweise wie Knöpfe und Navigationseinträge. */
+@utility raised-row {
+  background: var(--control);
+  box-shadow:
+    0 2px 0 0 color-mix(in srgb, var(--control) 72%, #000),
+    0 5px 8px -3px rgba(0, 0, 0, 0.34);
+  transform: translateY(-2px);
+}
+
+/* Ankreuzkästchen in der Bauweise der Knöpfe.
+ *
+ * Das systemeigene Kästchen zeichnet GTK, und dorthin reicht kein CSS, es
+ * blieb der einzige Bedienteil ohne Tiefe. `appearance: none` nimmt die
+ * Zeichnung an sich; der Haken darunter ist ein gedrehtes Winkelstück aus
+ * zwei Rändern, kein Bild. So folgt er der Schriftfarbe und bleibt bei jeder
+ * Größe scharf.
+ *
+ * Angekreuzt trägt es den Akzent, wie jeder eingeschaltete Zustand der App.
+ * Die Hakenfarbe wird gerechnet (`--accent-ink`), sonst verschwände er auf
+ * Indigo. */
+@utility check-box {
+  appearance: none;
+  flex-shrink: 0;
+  height: 1.15rem;
+  width: 1.15rem;
+  border-radius: 0.4rem;
+  background: var(--control);
+  /* Die Haarlinie zuerst: Ein Kästchen in Tastenfarbe steht meist auf einer
+     weißen Karte, und dort ist der Unterschied zu klein, um es leer überhaupt
+     zu erkennen. Die Kontur macht aus einem Hauch von Grau ein sichtbares
+     Feld, ohne die Erhebung anzutasten, die darunter bleibt. */
+  box-shadow:
+    0 0 0 1px var(--border-strong),
+    0 2px 0 0 color-mix(in srgb, var(--control) 72%, #000),
+    0 4px 7px -3px rgba(0, 0, 0, 0.32);
+  transform: translateY(-2px);
+  display: grid;
+  place-items: center;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.12s ease;
+
+  /* Angekreuzt braucht es die Kontur nicht mehr, die Akzentfläche trägt
+     sich selbst, und eine Linie darum wirkte wie ein zweiter Rand. */
+  &:checked {
+    background: var(--accent);
+    box-shadow:
+      0 2px 0 0 color-mix(in srgb, var(--accent) 62%, #000),
+      0 4px 7px -3px rgba(0, 0, 0, 0.32);
+  }
+
+  &:checked::after {
+    content: "";
+    width: 0.3rem;
+    height: 0.55rem;
+    margin-top: -0.12rem;
+    border: solid var(--accent-ink);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  /* Gedrückt fährt es auf seine Unterkante herunter, wie die Tasten. Die
+     Kontur bleibt, sonst verschwände das leere Feld für einen Moment ganz. */
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 0 0 1px var(--border-strong);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+/* Farbfeld zur Akzentwahl, gebaut wie die Knöpfe: harte Unterkante im eigenen
+   Ton, darunter ein weicher Schlagschatten.
+
+   Die Farbe kommt von außen über `--feld`, statt schlicht als `background`.
+   Nur so kann die Kante mitfärben, sie ist eine abgedunkelte Fassung der
+   Fläche, und `color-mix` braucht dafür einen Wert, den es lesen kann. */
+@utility swatch {
+  border-radius: 9999px;
+  background: var(--feld);
+  box-shadow:
+    0 2px 0 0 color-mix(in srgb, var(--feld) 72%, #000),
+    0 5px 8px -3px rgba(0, 0, 0, 0.34);
+  transform: translateY(-2px);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    outline-color 0.12s ease;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Die gewählte Farbe bekommt Ring *und* Haken. Der Ring allein reichte
+     nicht: Neben dem grauen Pluszeichen, das ebenfalls erhaben steht, war
+     nicht auf einen Blick zu sehen, welches Feld nun gilt. Ein Haken sitzt
+     im Feld selbst und lässt keine Frage offen. Kein Wachsen, das verschöbe
+     die Nachbarn. */
+  &[aria-pressed="true"] {
+    outline: 2px solid var(--text);
+    outline-offset: 3px;
+  }
+
+  & > svg {
+    opacity: 0;
+    transition: opacity 0.12s ease;
+  }
+
+  &[aria-pressed="true"] > svg {
+    opacity: 1;
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* Cover, das aus der Fläche heraussteht. Harte Unterkante im eigenen Ton
+   plus Schlagschatten, wie bei den Knöpfen. */
+@utility raised-cover {
+  box-shadow:
+    0 2px 0 0 rgba(0, 0, 0, 0.45),
+    0 6px 12px -4px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Wie `sunken-panel`, nur tiefer. Für große Flächen, auf denen die flache
+   Fassung kaum auffällt, weil sich der Schatten über die Breite verliert. */
+@utility sunken-deep {
+  box-shadow:
+    inset 0 0 28px rgba(0, 0, 0, 0.38),
+    inset 0 4px 8px -2px rgba(0, 0, 0, 0.3),
+    0 0 0 1px color-mix(in srgb, var(--canvas) 76%, #000);
+}
+
+/* Suchfeld als eingelassene Rille, das Gegenstück zu `pill-btn`: dort steht
+   die Fläche heraus, hier liegt sie darunter. Der Schatten oben innen ist der
+   Rand, der Licht wegnimmt; die helle Linie unterhalb des Feldes ist die
+   Kante, auf die das Licht wieder trifft. Ohne diese zweite Linie wirkt das
+   Feld nur dunkel statt vertieft. */
+@utility search-field {
+  width: 100%;
+  /* Feste Höhe statt einer, die sich aus Polsterung und Schriftmetrik ergibt:
+     Neben dem Feld stehen Knöpfe (`h-9`) und Auswahlfelder, beide genau
+     2.25rem. Vorher lag die Leiste je nach Schriftschnitt ein bis drei Pixel
+     daneben, sichtbar als Versatz in jeder Zeile, in der beides nebeneinander
+     steht. Der senkrechte Anteil der Polsterung entfällt damit. */
+  height: 2.25rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  color: var(--text);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.22),
+    inset 0 1px 1px rgba(0, 0, 0, 0.12),
+    0 1px 0 color-mix(in srgb, var(--surface) 80%, #fff);
+  transition:
+    box-shadow 0.12s ease,
+    border-color 0.12s ease;
+
+  &::placeholder {
+    color: color-mix(in srgb, var(--text-muted) 65%, transparent);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+    box-shadow:
+      inset 0 2px 4px rgba(0, 0, 0, 0.22),
+      0 0 0 3px var(--accent-soft);
+  }
+}
+
+/* Einheitliches Mikro-Label (Versalien-Sektionsüberschriften). */
+@utility eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+input[type="range"] {
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+/* Flach gehalten: Die Leisten sind Anzeigen, keine Körper. Der bereits
+   gehörte Teil in Akzentfarbe, der Rest neutral, keine Schatten. */
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--accent) 0%,
+    var(--accent) var(--fill, 0%),
+    var(--border-strong) var(--fill, 0%),
+    var(--border-strong) 100%
+  );
+}
+
+/* Von rechts nach links füllt sich die Leiste von der anderen Seite.
+ *
+ * Den Regler selbst spiegelt der Browser bei `dir="rtl"`, den Verlauf darunter
+ * nicht: `to right` bleibt `to right`. Ohne diese Zeile stünde der Griff links
+ * und die Akzentfläche rechts, also getrennt voneinander. */
+[dir="rtl"] input[type="range"]::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    to left,
+    var(--accent) 0%,
+    var(--accent) var(--fill, 0%),
+    var(--border-strong) var(--fill, 0%),
+    var(--border-strong) 100%
+  );
+}
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+input[type="range"]:hover::-webkit-slider-thumb,
+input[type="range"]:focus-visible::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+/* ── Lyrics als räumliche Fläche ───────────────────────────────────────────
+   Der Text soll nach hinten wegkippen statt flach auf dem Bildschirm zu
+   liegen: Der Rahmen gibt die Fluchtpunkttiefe vor, die innere Fläche neigt
+   sich um wenige Grad. Oben und unten läuft sie weich aus, damit die Kanten
+   nicht abgeschnitten wirken.
+
+   Die aktive Zeile wird davon ausgenommen, sie kommt nach vorn, damit sie
+   trotz der Neigung gut lesbar bleibt. */
+@utility lyrics-stage {
+  perspective: 900px;
+  perspective-origin: 50% 40%;
+}
+
+@utility lyrics-plane {
+  transform: rotateX(12deg) scale(0.97);
+  transform-origin: 50% 0%;
+  transform-style: preserve-3d;
+  /* Nur ein Hauch an den Enden: Der Verlauf soll das Abschneiden mildern,
+     nicht ganze Zeilen schlucken. Vorher fraß er oben 14 % und unten 22 % der
+     Höhe, also gut zwei Zeilen. */
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #000 5%,
+    #000 94%,
+    transparent 100%
+  );
+}
+
+/* Die gerade gesungene Zeile hebt sich aus der Ebene heraus. */
+@utility lyrics-active {
+  transform: translateZ(46px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lyrics-plane,
+  .lyrics-active {
+    transform: none;
+  }
+  /* Unterkante und Schatten bleiben, nur das Anheben entfällt. */
+  .pill-btn,
+  .pill-btn[aria-pressed="true"],
+  .pill-btn.is-raised {
+    transform: none;
+  }
+}
+
+/* Dialoge, Menüs, Meldungen.
+ *
+ * Deckkraft und Bewegung laufen getrennt und verschieden lang. Liefen sie
+ * gemeinsam, wäre das Fenster erst zu sehen, wenn es fast angekommen ist,
+ * der Rest wirkt dann wie ein Sprung. So ist es früh da und gleitet die
+ * letzte Strecke sichtbar aus.
+ *
+ * Der Hauch Verkleinerung macht das Aufgehen ablesbar: Etwas kommt auf den
+ * Betrachter zu, statt bloß heller zu werden. Weniger als zwei Prozent,
+ * mehr wirkte wie ein Aufpoppen. */
+@keyframes rise-deckkraft {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rise-weg {
+  from {
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.animate-rise {
+  animation:
+    rise-deckkraft 160ms ease-out both,
+    rise-weg 380ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* Die Abdunklung dahinter. Sie schnappte bisher ohne jede Bewegung ein,
+   ein harter Schnitt unmittelbar vor einer weichen Bewegung, und genau der
+   ließ das Ganze plötzlich wirken. */
+@keyframes schleier {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-scrim {
+  animation: schleier 260ms ease-out both;
+}
+
+/* Rückweg: schneller als der Hinweg, wie überall. Was man wegschickt, soll
+   nicht warten lassen. */
+@keyframes verblassen {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.animate-out {
+  animation: verblassen 160ms ease-in both;
+}
+
+/* Der Inhalt eines Dialogs, versetzt zum Fenster selbst.
+ *
+ * Erst kommt die Fläche, dann füllt sie sich. Das trennt zwei Vorgänge, die
+ * sonst gleichzeitig ablaufen und sich gegenseitig verdecken, man sieht, wo
+ * das Fenster aufgeht, bevor man liest, was darin steht.
+ *
+ * `both` ist hier entscheidend: Ohne diese Angabe stünde der Inhalt während
+ * der Wartezeit schon sichtbar da, und der Versatz fiele weg. */
+@keyframes inhalt-deckkraft {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes inhalt-weg {
+  from {
+    transform: translateY(8px);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.animate-content {
+  animation:
+    inhalt-deckkraft 150ms ease-out 120ms both,
+    inhalt-weg 400ms cubic-bezier(0.32, 0.72, 0, 1) 120ms both;
+}
+
+/* Seitenwechsel. Ohne Verkleinerung, anders als bei den Dialogen: Eine Seite
+   kommt nicht auf einen zu, sie löst die vorige ab. Bewegt werden
+   ausschließlich Deckkraft und Verschiebung, alles andere zwänge den Browser,
+   das Bild bei jedem Einzelbild neu zu berechnen, und genau davon kommt das
+   Ruckeln. */
+@keyframes seiten-deckkraft {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes seiten-weg {
+  from {
+    transform: translateY(12px);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.animate-page {
+  animation:
+    seiten-deckkraft 180ms ease-out both,
+    seiten-weg 420ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* Seitenbereiche fahren von rechts ein, statt von unten aufzusteigen: Sie
+   kommen ja auch von dort.
+ *
+ * Mitanimiert wird die Breite, nicht nur die Verschiebung. Ohne das stünde
+ * die Fläche sofort in voller Breite da, der Hauptbereich spränge schmaler,
+ * und nur ihr Inhalt käme nachgeglitten, der Sprung ist genau das, was man
+ * sieht. Breite kostet zwar eine Neuberechnung je Einzelbild, betrifft aber
+ * nur diese eine Fläche. Der Inhalt darin hat eine feste Breite und wird
+ * dabei nicht umgebrochen. */
+/*
+ * Die Warteschlange liegt als eigene Insel im Fensterrahmen, wie der
+ * Seiteninhalt daneben. Ihre Breite umfasst darum nicht nur die 20rem Inhalt,
+ * sondern auch den Rand rechts (0.75rem) und das eine Pixel links, das die
+ * Kante der Insel braucht: Die Hülle beschneidet, was übersteht, sonst liefe
+ * der Inhalt beim Einfahren über den Rand hinaus, und ohne dieses Pixel
+ * schnitte sie die linke Kante gleich mit ab.
+ */
+@keyframes einfahren {
+  from {
+    width: 0;
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    width: calc(20rem + 0.75rem + 1px);
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-slide-in {
+  animation: einfahren 340ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
+/* Die Vollbildansicht mit Cover und Lyrics.
+ *
+ * Sie wird aus der Player-Leiste am unteren Rand geöffnet und kommt darum von
+ * dort, mit deutlich mehr Weg als ein Dialog, weil sie das ganze Fenster
+ * einnimmt. Der Hauch Verkleinerung bleibt klein: Auf voller Fläche fällt ein
+ * Prozent schon auf.
+ *
+ * Deckkraft und Bewegung wieder getrennt, damit man die Fläche früh sieht und
+ * sie danach sichtbar zur Ruhe kommt. */
+@keyframes vollbild-deckkraft {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Ohne Verkleinerung, wie beim Rückweg: Auf voller Fläche mit Cover, Lyrics
+   und Schatten kostet jede Skalierung ein vollständiges Neuzeichnen je
+   Einzelbild. Der Weg allein trägt die Bewegung genauso. */
+@keyframes vollbild-weg {
+  from {
+    transform: translateY(28px);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.animate-stage {
+  animation:
+    vollbild-deckkraft 200ms ease-out both,
+    vollbild-weg 440ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  will-change: transform, opacity;
+}
+
+/* Rückweg: die Fläche fährt vollständig nach unten aus dem Bild.
+ *
+ * Ohne jede Änderung der Deckkraft, das ist der Kern. Eine halbdurchsichtige
+ * Fläche zwingt den Browser, den ganzen Inhalt zunächst abseits zu zeichnen
+ * und dann überblendet aufzutragen. Beim Aufgehen fällt das nicht ins Gewicht,
+ * weil der Inhalt gestaffelt nachkommt und die teuren Teile noch fehlen; beim
+ * Schließen steht alles fertig da, und genau dort wurde es zäh.
+ *
+ * Eine reine Verschiebung schiebt dagegen eine fertig gezeichnete Ebene, ohne
+ * einen einzigen Strich zu erneuern. Damit die Fläche am Ende nicht sichtbar
+ * verschwindet, fährt sie ganz hinaus: Sie gleitet hinter die Player-Leiste
+ * und wird vom Fensterrand abgeschnitten. Beim Aushängen danach ist sie
+ * ohnehin nicht mehr zu sehen, auch der Abbau fällt so nicht mehr auf. */
+@keyframes vollbild-zu {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+.animate-stage-out {
+  animation: vollbild-zu 280ms cubic-bezier(0.4, 0, 1, 1) both;
+  will-change: transform;
+}
+
+/* Zweite Staffel, nach `animate-content`. Für Bereiche, die selbst noch
+   nachladen, die Lyrics etwa, und darum zuletzt erscheinen sollen. */
+.animate-content-late {
+  animation:
+    inhalt-deckkraft 200ms ease-out 230ms both,
+    inhalt-weg 440ms cubic-bezier(0.32, 0.72, 0, 1) 230ms both;
+}
+
+/* Rückweg, kürzer als der Hinweg. */
+@keyframes ausfahren {
+  from {
+    width: calc(20rem + 0.75rem + 1px);
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    width: 0;
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+
+.animate-slide-out {
+  animation: ausfahren 240ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@keyframes bar {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ── Eigene Titelleiste ─────────────────────────────────────────────────────
+   Das native Fensterband ist aus (`decorations: false`); diese flache 30-px-
+   Leiste im App-Design ersetzt es (siehe components/TitleBar.tsx), wie im
+   Comunicate-Projekt. Zugleich Ziehfläche zum Verschieben des Fensters. */
+.titlebar {
+  flex: 0 0 30px;
+  height: 30px;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  background: var(--canvas);
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative;
+  z-index: 1000;
+}
+
+.titlebar-title {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.titlebar-controls {
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.titlebar-btn {
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.titlebar-btn:hover {
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+
+.titlebar-close:hover {
+  background: var(--danger);
+  color: #fff;
+}

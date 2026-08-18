@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!--
+    Robify-Zeichen: zwei Noten unter einem gemeinsamen Balken.
+
+    Anderer Gedanke als die Nebenfassung `robify-logo-a.svg`: Dort schweben
+    drei Zeichen frei, hier hält
+    ein durchgehender Strich sie zusammen und wird zugleich zur Tonspur. Das
+    Zeichen liest sich als ein Körper statt als Gruppe und bleibt dadurch bei
+    kleinen Größen ruhiger.
+  -->
+  <!--
+    Ohne den Wellenausläufer ist die Zeichnung schmaler geworden. Diese
+    Verschiebung rückt ihren neuen Mittelpunkt (204/288) in die Feldmitte und
+    zieht sie um knapp die Hälfte auf. Danach bleiben rings mindestens 60 px
+    Rand, genug für die runde Android-Maske.
+  -->
+  <g fill="#a8a8b3" transform="translate(256 256) scale(1.45) translate(-204 -288)">
+    <!-- Balken über beiden Hälsen, ansteigend. -->
+    <path d="M150 214 L338 166 v52 L150 266 z" />
+
+    <!--
+      Hälse.
+
+      Der rechte beginnt bei 172.64 statt bei 166: Genau dort liegt die
+      Oberkante des ansteigenden Balkens an seiner linken Seite. Setzte er
+      höher an, schaute seine obere linke Ecke über den Balken hinaus und
+      bildete eine kleine Stufe, bei großer Darstellung ein sichtbarer
+      Absatz, bei kleiner ein ausgefranster Rand.
+
+      Die Unterkante bleibt bei 316, die Höhe gleicht das aus.
+    -->
+    <rect x="150" y="214" width="26" height="150" />
+    <rect x="312" y="172.64" width="26" height="143.36" />
+
+    <!-- Notenköpfe, gekippt wie in der Notenschrift. -->
+    <ellipse cx="120" cy="366" rx="52" ry="40" transform="rotate(-20 120 366)" />
+    <ellipse cx="282" cy="318" rx="52" ry="40" transform="rotate(-20 282 318)" />
+  </g>
+</svg>

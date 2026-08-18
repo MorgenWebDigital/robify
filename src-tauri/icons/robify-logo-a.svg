@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!--
+    Robify-Zeichen, Fassung A: drei aufsteigende Noten, ohne Grundfläche.
+
+    Ohne Rahmen trägt allein die Silhouette. Die Köpfe stehen deshalb weit
+    auseinander und in klar verschiedenen Größen, bei 32 px bleiben nur sie
+    übrig, Hälse und Fähnchen verschwinden.
+
+    Alles liegt in der mittleren Fläche (Rand von 64 px), damit die maskierte
+    Android-Fassung nichts abschneidet.
+  -->
+  <g fill="#a8a8b3">
+    <!-- Große Note, unten links: der Anker des Zeichens. -->
+    <ellipse cx="164" cy="368" rx="58" ry="45" transform="rotate(-20 164 368)" />
+    <path d="M213 346 V180 a11 11 0 0 1 9-11 l76-19 v37 l-61 15 V346 z" />
+
+    <!-- Mittlere Note, rechts oben versetzt und leicht gekippt. -->
+    <g transform="rotate(14 344 210)">
+      <ellipse cx="328" cy="226" rx="41" ry="32" transform="rotate(-20 328 226)" />
+      <path d="M363 210 V96 a9 9 0 0 1 7-9 l56-14 v28 l-45 12 V210 z" />
+    </g>
+
+    <!-- Kleine Note, rechts unten: schließt die Diagonale. -->
+    <g transform="rotate(-12 376 396)">
+      <ellipse cx="362" cy="408" rx="30" ry="24" transform="rotate(-20 362 408)" />
+      <path d="M388 396 V316 a7 7 0 0 1 6-7 l41-11 v22 l-34 9 V396 z" />
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,278 @@
+name: Release
+
+# Erzeugt alle Installer. Manuell startbar oder über einen Tag wie v0.1.0.
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  desktop:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # .deb, .rpm, .AppImage
+          - os: ubuntu-22.04
+            label: Linux (deb, rpm, AppImage)
+            args: "--bundles deb,rpm,appimage"
+          # .exe (NSIS) und .msi
+          - os: windows-latest
+            label: Windows (exe, msi)
+            args: "--bundles nsis,msi"
+          # .dmg für Apple Silicon
+          - os: macos-latest
+            label: macOS (Apple Silicon)
+            args: "--target aarch64-apple-darwin --bundles dmg,app"
+          # .dmg für Intel-Macs
+          - os: macos-latest
+            label: macOS (Intel)
+            args: "--target x86_64-apple-darwin --bundles dmg,app"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Rust einrichten
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ contains(matrix.args, 'aarch64-apple-darwin') && 'aarch64-apple-darwin' || contains(matrix.args, 'x86_64-apple-darwin') && 'x86_64-apple-darwin' || '' }}
+
+      - name: Rust-Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Systemabhängigkeiten (Linux)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            libasound2-dev \
+            patchelf \
+            rpm \
+            build-essential \
+            curl wget file libssl-dev libxdo-dev libgtk-3-dev
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Bauen und bündeln
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: ${{ matrix.args }}
+          # Entwurf statt Veröffentlichung: Der Lauf sammelt alle Installer an
+          # einer Release-Seite, gibt sie aber nicht frei. So lässt sich vorher
+          # nachsehen, ob wirklich jedes Format dabei ist, denn bei sechs Systemen
+          # scheitert erfahrungsgemäß irgendwann eines still.
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          releaseName: Robify ${{ github.ref_name }}
+          releaseBody: ${{ github.ref_type == 'tag' && 'Siehe CHANGELOG.md.' || '' }}
+          releaseDraft: true
+          prerelease: false
+
+      - name: Installer hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: robify-${{ matrix.os }}-${{ strategy.job-index }}
+          path: |
+            src-tauri/target/**/release/bundle/**/*.deb
+            src-tauri/target/**/release/bundle/**/*.rpm
+            src-tauri/target/**/release/bundle/**/*.AppImage
+            src-tauri/target/**/release/bundle/**/*.exe
+            src-tauri/target/**/release/bundle/**/*.msi
+            src-tauri/target/**/release/bundle/**/*.dmg
+          if-no-files-found: warn
+
+  arch:
+    name: Arch Linux (pacman)
+    runs-on: ubuntu-latest
+    container: archlinux:base-devel
+    steps:
+      - name: Basispakete
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm git rust nodejs npm webkit2gtk-4.1 gtk3 \
+            alsa-lib openssl pkgconf sudo
+
+      - uses: actions/checkout@v4
+
+      - name: Bauberechtigung einrichten
+        # makepkg verweigert den Lauf als root.
+        run: |
+          useradd -m builder
+          chown -R builder:builder .
+
+      - name: Paket bauen
+        run: sudo -u builder bash -c "cd packaging/arch && makepkg -f --noconfirm"
+
+      - name: Paket hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: robify-arch-pacman
+          path: packaging/arch/*.pkg.tar.zst
+          if-no-files-found: error
+
+  android:
+    name: Android (APK)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Android SDK einrichten
+        uses: android-actions/setup-android@v3
+
+      - name: NDK installieren
+        run: |
+          sdkmanager --install "ndk;27.0.12077973"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
+
+      - name: Rust mit Android-Zielen
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Abhängigkeiten installieren
+        run: npm ci
+
+      - name: Android-Projekt erzeugen
+        run: npx tauri android init --ci
+
+      - name: APK bauen
+        run: npx tauri android build --apk
+
+      # Ohne Unterschrift lässt sich eine APK auf keinem Gerät installieren.
+      # `tauri android build` liefert sie unsigniert; Gradle dafür einzurichten
+      # brächte nichts, weil das Projekt unter `gen/` bei jedem Lauf neu
+      # entsteht. `apksigner` arbeitet auf der fertigen Datei.
+      - name: APK unterschreiben
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "::error::Das Geheimnis ANDROID_KEYSTORE fehlt. Siehe README, Abschnitt „Testgerät“."
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/robify.keystore"
+          werkzeuge="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          roh="$(find src-tauri/gen/android -name '*-release-unsigned.apk' | head -1)"
+          "$werkzeuge/zipalign" -p -f 4 "$roh" Robify_${{ github.ref_name }}.apk
+          "$werkzeuge/apksigner" sign \
+            --ks "$RUNNER_TEMP/robify.keystore" \
+            --ks-pass "env:KEYSTORE_PASSWORD" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --key-pass "env:KEYSTORE_PASSWORD" \
+            Robify_${{ github.ref_name }}.apk
+          "$werkzeuge/apksigner" verify --print-certs Robify_${{ github.ref_name }}.apk
+          rm -f "$RUNNER_TEMP/robify.keystore"
+
+      - name: APK hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: robify-android-apk
+          path: Robify_*.apk
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------- Signatur
+  #
+  # Eigener Lauf am Ende statt in jedem Bau: Die Installer entstehen auf sechs
+  # Systemen, und der private Schlüssel soll nur an einer Stelle liegen, nicht
+  # auf jedem davon. Der Entwurf des Releases trägt zu diesem Zeitpunkt bereits
+  # alle Dateien; sie werden geholt, unterschrieben und die Unterschriften
+  # danebengelegt.
+  signieren:
+    name: Installer signieren
+    needs: [desktop, arch, android]
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Schlüssel einspielen
+        env:
+          PGP_PRIVATE_KEY: ${{ secrets.PGP_PRIVATE_KEY }}
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+        run: |
+          if [ -z "$PGP_PRIVATE_KEY" ]; then
+            echo "::error::Das Geheimnis PGP_PRIVATE_KEY fehlt."
+            exit 1
+          fi
+          printf '%s' "$PGP_PRIVATE_KEY" | gpg --batch --import
+          # Der Schlüssel stammt von uns selbst; ohne dieses Vertrauen fragt
+          # gpg beim Signieren nach und bliebe im Ablauf ohne Antwort stehen.
+          gpg --list-secret-keys --with-colons \
+            | awk -F: '/^fpr:/{print $10":6:"}' \
+            | gpg --batch --import-ownertrust
+
+      - name: Dateien des Entwurfs holen
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p signatur && cd signatur
+          gh release download "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --pattern '*' --clobber
+          ls -la
+
+      - name: Unterschreiben
+        env:
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+        run: |
+          cd signatur
+          # Eine Prüfsummendatei für alles, dazu je Datei eine Unterschrift:
+          # Die Summendatei zeigt auf einen Blick, was zum Release gehört, die
+          # einzelnen Unterschriften erlauben es, nur eine Datei zu prüfen.
+          sha256sum -- * > SHA256SUMS
+
+          signieren() {
+            if [ -n "$PGP_PASSPHRASE" ]; then
+              gpg --batch --yes --pinentry-mode loopback \
+                  --passphrase "$PGP_PASSPHRASE" \
+                  --armor --detach-sign "$1"
+            else
+              gpg --batch --yes --armor --detach-sign "$1"
+            fi
+          }
+
+          for datei in *; do
+            case "$datei" in
+              *.asc|SHA256SUMS) continue ;;
+            esac
+            signieren "$datei"
+          done
+          signieren SHA256SUMS
+
+          ls -la *.asc
+
+      - name: Unterschriften anhängen
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd signatur
+          gh release upload "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            SHA256SUMS *.asc --clobber
+

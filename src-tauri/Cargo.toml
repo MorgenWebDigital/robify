@@ -1,0 +1,61 @@
+[package]
+name = "robify"
+version = "0.1.0"
+description = "Robify: Musikplayer, Bibliothek, Statistiken und Downloader"
+authors = ["MorgenWebDigital - Rettungsreifen <info@morgenwebdigital.de>"]
+license = "MIT"
+repository = "https://github.com/MorgenWebDigital/robify"
+homepage = "https://github.com/MorgenWebDigital/robify"
+edition = "2021"
+rust-version = "1.82"
+
+[lib]
+name = "robify_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+rusqlite = { version = "0.40", features = ["bundled"] }
+rodio = { version = "0.22", features = ["symphonia-all"] }
+lofty = "0.25"
+
+reqwest = { version = "0.13", default-features = false, features = [
+  "json",
+  "rustls",
+  "webpki-roots",
+  "charset",
+  "http2",
+] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "io-util", "time", "sync"] }
+
+anyhow = "1"
+base64 = "0.22"
+chrono = "0.4"
+walkdir = "2"
+parking_lot = "0.12"
+urlencoding = "2"
+rand = "0.9"
+which = "8"
+
+[dev-dependencies]
+tauri = { version = "2", features = ["test"] }
+
+[features]
+# Wird von `tauri dev` gesetzt und deaktiviert die produktive CSP.
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

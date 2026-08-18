@@ -1,0 +1,20 @@
+node_modules/
+dist/
+# Wird bei jedem Bau aus den Abhängigkeiten erzeugt (npm run lizenzen).
+public/lizenzen.json
+dist-ssr/
+*.local
+.DS_Store
+.vscode/
+.idea/
+
+# Rust / Tauri
+src-tauri/target/
+src-tauri/gen/
+src-tauri/WixTools/
+
+# Android
+src-tauri/gen/android/
+src-tauri/gen/apple/
+*.keystore
+key.properties

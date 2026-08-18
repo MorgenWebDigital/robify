@@ -1,0 +1,118 @@
+# Baut bei jedem Push auf `main` eine APK für das Testgerät.
+#
+# Getrennt vom Release-Ablauf: Der baut sechs Systeme und läuft nur bei einem
+# Tag. Hier geht es um einen einzigen Stand für ein einziges Gerät, und der
+# soll ohne Zutun dort ankommen.
+#
+# Die APK landet als Anhang einer Vorabversion mit festem Tag `testgeraet`,
+# nicht als Artefakt: Artefakte lassen sich nur über den Browser und nur
+# eingeloggt laden, Anhänge einer Veröffentlichung dagegen über eine feste
+# Adresse, die ein Aktualisierungsprogramm auf dem Gerät abfragen kann.
+name: Testgerät
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: testgeraet
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    name: APK bauen und bereitstellen
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Android SDK einrichten
+        uses: android-actions/setup-android@v3
+
+      - name: NDK installieren
+        run: sdkmanager --install "ndk;27.0.12077973"
+
+      - name: Rust mit Android-Zielen
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Rust-Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Android-Projekt erzeugen
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
+        run: npx tauri android init --ci
+
+      - name: APK bauen
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
+        run: npx tauri android build --apk
+
+      # Unterschrieben wird nach dem Bauen, nicht durch Gradle: Das
+      # Android-Projekt unter `gen/` wird bei jedem Lauf neu erzeugt, eine dort
+      # eingetragene Signierregel wäre also jedes Mal wieder fort. `apksigner`
+      # arbeitet auf der fertigen Datei und ist davon unberührt.
+      - name: APK unterschreiben
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          if [ -z "$KEYSTORE" ]; then
+            echo "::error::Das Geheimnis ANDROID_KEYSTORE fehlt. Siehe README, Abschnitt „Testgerät“."
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/robify.keystore"
+
+          werkzeuge="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          roh="$(find src-tauri/gen/android -name '*-release-unsigned.apk' | head -1)"
+          if [ -z "$roh" ]; then
+            echo "::error::Keine unsignierte APK gefunden."
+            exit 1
+          fi
+
+          "$werkzeuge/zipalign" -p -f 4 "$roh" robify.apk
+          "$werkzeuge/apksigner" sign \
+            --ks "$RUNNER_TEMP/robify.keystore" \
+            --ks-pass "env:KEYSTORE_PASSWORD" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --key-pass "env:KEYSTORE_PASSWORD" \
+            robify.apk
+          "$werkzeuge/apksigner" verify --print-certs robify.apk
+
+          rm -f "$RUNNER_TEMP/robify.keystore"
+
+      # Ein fester Tag statt einer neuen Veröffentlichung je Push: Das
+      # Aktualisierungsprogramm auf dem Gerät fragt immer dieselbe Adresse ab,
+      # und die Liste der Veröffentlichungen bleibt übersichtlich.
+      - name: Vorabversion aktualisieren
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          kurz="$(git rev-parse --short HEAD)"
+          gh release delete testgeraet --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create testgeraet robify.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Testgerät ($kurz)" \
+            --notes "Automatisch gebaut aus $kurz. Nicht für den allgemeinen Gebrauch gedacht." \
+            --prerelease \
+            --target "$GITHUB_SHA"

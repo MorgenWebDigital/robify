@@ -1,0 +1,99 @@
+# Prüft jeden Push und jeden Pull Request.
+#
+# Getrennt vom Release-Ablauf und bewusst schmal: Er läuft bei jeder Änderung
+# und muss darum schnell sein. Gebaut wird nur, was zum Prüfen nötig ist, und
+# auf einem einzigen System; die sechs Installer entstehen erst beim Release.
+name: Prüfen
+
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+# Ein neuer Push auf denselben Zweig bricht den vorigen Lauf ab. Ohne das
+# stauen sich bei mehreren Commits hintereinander Läufe, deren Ergebnis
+# niemanden mehr interessiert.
+concurrency:
+  group: pruefen-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Oberfläche
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typen prüfen
+        run: npx tsc --noEmit
+
+      - name: Formatierung prüfen
+        run: npx prettier --check src/ scripts/
+
+      # Darunter liegen die Wachen über die Übersetzung: Sie lesen sowohl die
+      # Oberfläche als auch die Rust-Quellen und schlagen an, sobald irgendwo
+      # deutscher Text ohne Fassung steht.
+      - name: Tests
+        run: npm test
+
+      - name: Kein ungehüllter deutscher Text
+        run: node scripts/deutsch-finden.mjs
+
+  backend:
+    name: Rust
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust einrichten
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Rust-Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      # Dieselbe Liste wie im Release-Ablauf: Ohne WebKitGTK lässt sich der
+      # Tauri-Teil nicht einmal übersetzen.
+      - name: Systemabhängigkeiten
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            libasound2-dev \
+            patchelf \
+            build-essential \
+            curl wget file libssl-dev libxdo-dev libgtk-3-dev
+
+      # Der Bau braucht die Oberfläche als fertige Dateien; erzeugt werden sie
+      # hier nicht, also legen wir einen leeren Platzhalter an.
+      - name: Platzhalter für die Oberfläche
+        run: mkdir -p dist && echo '<!doctype html><title>ci</title>' > dist/index.html
+
+      # `cargo fmt --check` läuft hier bewusst nicht: Der Rust-Teil ist von
+      # Hand gesetzt und weicht an 165 Stellen von rustfmt ab, bei jeder
+      # Zeilenbreite. Ihn einmal durchzuformatieren wäre möglich, ist aber ein
+      # eigener Entschluss und keine Nebenwirkung dieses Ablaufs.
+
+      - name: Clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets
+
+      # Die Tests, die ein Netz brauchen, tragen `#[ignore]` und bleiben hier
+      # außen vor: Ein Ausfall bei YouTube oder Spotify ist kein Fehler in
+      # diesem Projekt.
+      - name: Tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml

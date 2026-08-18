@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Robify
+GenericName=Musikplayer
+Comment=Musikplayer mit Bibliothek, Statistiken und Downloader
+Exec=robify %U
+Icon=robify
+Terminal=false
+Categories=AudioVideo;Audio;Player;Music;
+Keywords=Musik;Player;Audio;Playlist;Lyrics;
+StartupWMClass=Robify

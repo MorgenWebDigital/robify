@@ -1,0 +1,55 @@
+# Maintainer: MorgenWebDigital - Rettungsreifen
+#
+# Tauri kann kein Arch-Paket erzeugen, deshalb bauen wir das
+# .pkg.tar.zst hier selbst aus dem Quellbaum.
+#
+# Verwendung (aus diesem Verzeichnis):
+#   makepkg -f
+# Ergebnis: robify-<version>-<rel>-<arch>.pkg.tar.zst
+# Installation: sudo pacman -U robify-*.pkg.tar.zst
+
+pkgname=robify
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Musikplayer mit Bibliothek, Statistiken und Downloader"
+arch=('x86_64' 'aarch64')
+url="https://github.com/MorgenWebDigital/robify"
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3' 'alsa-lib' 'openssl')
+optdepends=(
+  'yt-dlp: Titel über den Downloader laden'
+  'ffmpeg: Audioformate umwandeln und Cover einbetten'
+)
+makedepends=('rust' 'cargo' 'nodejs' 'npm' 'pkgconf' 'git')
+options=('!lto' '!strip')
+
+# Quellbaum liegt zwei Ebenen über diesem PKGBUILD.
+_projectdir="$(realpath "${startdir}/../..")"
+
+build() {
+  cd "$_projectdir"
+  npm ci
+  npm run build
+
+  cd "$_projectdir/src-tauri"
+  cargo build --release --locked
+}
+
+package() {
+  cd "$_projectdir"
+
+  install -Dm755 "src-tauri/target/release/robify" \
+    "$pkgdir/usr/bin/robify"
+  install -Dm644 "packaging/linux/robify.desktop" \
+    "$pkgdir/usr/share/applications/robify.desktop"
+  install -Dm644 "LICENSE" \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+  for size in 32 128 256; do
+    src="src-tauri/icons/${size}x${size}.png"
+    [ "$size" = "256" ] && src="src-tauri/icons/128x128@2x.png"
+    [ -f "$src" ] || continue
+    install -Dm644 "$src" \
+      "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/robify.png"
+  done
+}

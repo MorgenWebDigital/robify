@@ -1,0 +1,106 @@
+use crate::downloader::DownloadRegistry;
+use crate::player::PlayerHandle;
+use parking_lot::Mutex;
+use rusqlite::Connection;
+use std::path::PathBuf;
+use std::sync::Arc;
+
+pub struct AppState {
+    pub db: Mutex<Connection>,
+    pub db_path: PathBuf,
+    /// Arbeitsverzeichnis für laufende Downloads.
+    pub work_dir: PathBuf,
+    /// Musikordner des Systems. Rückfallebene für die Bibliothek.
+    pub default_library_dir: PathBuf,
+    pub player: PlayerHandle,
+    pub downloads: Arc<DownloadRegistry>,
+}
+
+impl AppState {
+    /// Ablage für selbst beschaffte Hilfsprogramme (yt-dlp).
+    pub fn tools_dir(&self) -> PathBuf {
+        self.db_path
+            .parent()
+            .map(|p| p.join("werkzeuge"))
+            .unwrap_or_else(|| PathBuf::from("werkzeuge"))
+    }
+
+    /// Ablage für entfernte Dateien. Wird beim ersten Bedarf angelegt.
+    ///
+    /// Liegt neben der Datenbank, nicht im Musikordner: Der Abgleich soll die
+    /// Dateien dort nicht als verwaist wieder einsammeln.
+    pub fn trash_dir(&self) -> PathBuf {
+        self.db_path
+            .parent()
+            .map(|p| p.join("papierkorb"))
+            .unwrap_or_else(|| PathBuf::from("papierkorb"))
+    }
+
+    /// Zielordner der Bibliothek. Einstellung, sonst der Musikordner.
+    pub fn library_dir(&self) -> PathBuf {
+        let configured = {
+            let conn = self.db.lock();
+            crate::db::get_setting(&conn, "library_dir").ok().flatten()
+        };
+        match configured.filter(|p| !p.trim().is_empty()) {
+            Some(p) => PathBuf::from(p),
+            None => self.default_library_dir.clone(),
+        }
+    }
+}
+
+/// Fehlerbrücke zwischen `anyhow` und den Tauri-Commands.
+#[derive(Debug)]
+pub struct Error(pub String);
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl serde::Serialize for Error {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.0)
+    }
+}
+
+impl From<anyhow::Error> for Error {
+    fn from(err: anyhow::Error) -> Self {
+        Error(format!("{err:#}"))
+    }
+}
+
+impl From<rusqlite::Error> for Error {
+    fn from(err: rusqlite::Error) -> Self {
+        Error(err.to_string())
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Self {
+        Error(err.to_string())
+    }
+}
+
+impl From<tauri::Error> for Error {
+    fn from(err: tauri::Error) -> Self {
+        Error(err.to_string())
+    }
+}
+
+impl From<base64::DecodeError> for Error {
+    fn from(err: base64::DecodeError) -> Self {
+        Error(err.to_string())
+    }
+}
+
+impl From<String> for Error {
+    fn from(err: String) -> Self {
+        Error(err)
+    }
+}
+
+pub type CmdResult<T> = Result<T, Error>;
