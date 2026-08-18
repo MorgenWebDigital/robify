@@ -1276,6 +1276,12 @@ pub struct DownloaderStatus {
     pub ffmpeg_available: bool,
     /// Für YouTube nötig; ohne sie kommt es zu 403-Fehlern.
     pub js_runtime: Option<String>,
+    /// Lässt sich an dieser fehlenden Laufzeit überhaupt etwas ändern?
+    ///
+    /// Auf Android nicht: Dort gibt es weder Node noch Deno, und installieren
+    /// kann man sie auch nicht. Eine Warnung, der niemand abhelfen kann, ist
+    /// keine Warnung, sondern Lärm.
+    pub js_runtime_relevant: bool,
     pub active_jobs: Vec<String>,
 }
 
@@ -1286,23 +1292,37 @@ pub async fn downloader_status(state: State<'_, AppState>) -> CmdResult<Download
         db::get_setting(&conn, "ytdlp_path").ok().flatten()
     };
 
-    let path = downloader::find_ytdlp(configured.as_deref(), &state.tools_dir());
-    let version = match &path {
-        Some(p) => tokio::process::Command::new(p)
-            .arg("--version")
-            .output()
+    // Auf Android gibt es keine Datei zu finden: yt-dlp liegt als Bibliothek
+    // bei. Die Fassung erfragen wir über dieselbe Brücke, die auch die Suche
+    // benutzt, damit die Anzeige nicht behauptet, es fehle etwas.
+    let (path, version) = if cfg!(target_os = "android") {
+        let fassung = crate::ytdlp::einmal(Path::new(""), &["--version".to_string()])
             .await
             .ok()
-            .filter(|o| o.status.success())
-            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string()),
-        None => None,
+            .filter(|a| a.erfolg)
+            .map(|a| a.stdout.trim().to_string());
+        (Some("eingebaut".to_string()), fassung)
+    } else {
+        let gefunden = downloader::find_ytdlp(configured.as_deref(), &state.tools_dir());
+        let fassung = match &gefunden {
+            Some(p) => tokio::process::Command::new(p)
+                .arg("--version")
+                .output()
+                .await
+                .ok()
+                .filter(|o| o.status.success())
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string()),
+            None => None,
+        };
+        (gefunden.map(|p| p.to_string_lossy().to_string()), fassung)
     };
 
     Ok(DownloaderStatus {
-        ytdlp_path: path.map(|p| p.to_string_lossy().to_string()),
+        ytdlp_path: path,
         ytdlp_version: version,
         ffmpeg_available: downloader::ffmpeg_available(),
         js_runtime: downloader::js_runtime().map(str::to_string),
+        js_runtime_relevant: !cfg!(target_os = "android"),
         active_jobs: state.downloads.active(),
     })
 }

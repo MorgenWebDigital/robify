@@ -621,6 +621,12 @@ pub async fn ensure_ytdlp(configured: Option<&str>, tools_dir: &Path) -> Result<
 }
 
 pub fn ffmpeg_available() -> bool {
+    // Auf Android liegt ffmpeg als Bibliothek bei und wird beim Start
+    // eingerichtet; im Suchpfad steht es dort nie. Ohne diese Ausnahme
+    // meldete die Oberfläche „ffmpeg fehlt“, obwohl es zur Verfügung steht.
+    if cfg!(target_os = "android") {
+        return true;
+    }
     which::which("ffmpeg").is_ok()
 }
 
@@ -629,6 +635,12 @@ pub fn ffmpeg_available() -> bool {
 /// „403 Forbidden“ abgelehnt werden. Deno ist die Vorgabe von yt-dlp; Node
 /// bringt dieses Projekt ohnehin mit.
 pub fn js_runtime() -> Option<&'static str> {
+    // Android bringt keine dieser Laufzeiten mit, und installieren lässt sich
+    // dort auch keine. Die Warnung bliebe also für immer stehen, ohne dass
+    // jemand etwas tun könnte; yt-dlp weicht dann auf seinen älteren Weg aus.
+    if cfg!(target_os = "android") {
+        return None;
+    }
     ["deno", "node", "bun", "qjs"]
         .into_iter()
         .find(|runtime| which::which(runtime).is_ok())
@@ -642,12 +654,8 @@ async fn supports_js_runtimes(ytdlp: &Path) -> bool {
         return *known;
     }
 
-    let mut cmd = Command::new(ytdlp);
-    cmd.arg("--help").stdout(Stdio::piped()).stderr(Stdio::null());
-    configure(&mut cmd);
-
-    let supported = match cmd.output().await {
-        Ok(output) => String::from_utf8_lossy(&output.stdout).contains("--js-runtimes"),
+    let supported = match crate::ytdlp::einmal(ytdlp, &["--help".into()]).await {
+        Ok(ausgabe) => ausgabe.stdout.contains("--js-runtimes"),
         Err(_) => false,
     };
     *SUPPORTED.get_or_init(|| supported)
@@ -718,14 +726,9 @@ async fn supports_thumbnail_embedding(ytdlp: &Path) -> bool {
 
     // Ohne Adresse bricht yt-dlp sofort ab, die Diagnosezeilen stehen aber
     // schon vorher auf der Fehlerausgabe. Kein Netzzugriff, rund 0,5 s.
-    let mut cmd = Command::new(ytdlp);
-    cmd.args(["--verbose", ""])
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped());
-    configure(&mut cmd);
-
-    let supported = match cmd.output().await {
-        Ok(output) => String::from_utf8_lossy(&output.stderr)
+    let supported = match crate::ytdlp::einmal(ytdlp, &["--verbose".into(), String::new()]).await {
+        Ok(ausgabe) => ausgabe
+            .stderr
             .lines()
             .find(|line| line.contains("Optional libraries"))
             .is_some_and(|line| line.contains("mutagen")),
@@ -736,10 +739,18 @@ async fn supports_thumbnail_embedding(ytdlp: &Path) -> bool {
 
 /// Ergänzt die Laufzeitumgebung, sofern vorhanden und unterstützt.
 async fn add_js_runtime(cmd: &mut Command, ytdlp: &Path) {
-    if let Some(runtime) = js_runtime() {
-        if supports_js_runtimes(ytdlp).await {
-            cmd.arg("--js-runtimes").arg(runtime);
+    for wert in js_runtime_args(ytdlp).await {
+        cmd.arg(wert);
+    }
+}
+
+/// Dieselbe Angabe als Argumentliste, für den Weg über die Java-Brücke.
+async fn js_runtime_args(ytdlp: &Path) -> Vec<String> {
+    match js_runtime() {
+        Some(runtime) if supports_js_runtimes(ytdlp).await => {
+            vec!["--js-runtimes".into(), runtime.to_string()]
         }
+        _ => Vec::new(),
     }
 }
 
@@ -873,7 +884,7 @@ async fn acquire_slot(source: &'static str) -> tokio::sync::SemaphorePermit<'sta
 }
 
 /// Versteckt das Konsolenfenster unter Windows.
-fn configure(cmd: &mut Command) {
+pub(crate) fn configure(cmd: &mut Command) {
     #[cfg(windows)]
     {
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -920,8 +931,7 @@ async fn search_once(
         _ => {}
     }
 
-    let mut cmd = Command::new(ytdlp);
-    cmd.args([
+    let mut args: Vec<String> = [
         "--dump-json",
         "--no-warnings",
         "--ignore-errors",
@@ -931,38 +941,36 @@ async fn search_once(
         "3",
         "--retry-sleep",
         "2",
-    ]);
+    ]
+    .iter()
+    .map(|s| s.to_string())
+    .collect();
 
     if source.needs_full_extraction() {
         // Die Trefferseite ist selbst eine Liste, sie darf nicht als
         // einzelner Titel behandelt werden.
-        cmd.arg("--playlist-items").arg(format!("1-{limit}"));
+        args.push("--playlist-items".into());
+        args.push(format!("1-{limit}"));
     } else {
-        cmd.arg("--flat-playlist");
+        args.push("--flat-playlist".into());
         // Sammlungen nur aufklappen, wenn die Adresse wirklich auf eine zeigt.
         if source != SearchSource::Url || !is_collection_url(query) {
-            cmd.arg("--no-playlist");
+            args.push("--no-playlist".into());
         }
     }
-    add_js_runtime(&mut cmd, ytdlp).await;
-    cmd.arg(source.query_for(query, limit))
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    configure(&mut cmd);
+    args.extend(js_runtime_args(ytdlp).await);
+    args.push(source.query_for(query, limit));
 
     let _slot = acquire_slot(source.label()).await;
-    let output = tokio::time::timeout(SEARCH_TIMEOUT, cmd.output())
+    let ausgabe = tokio::time::timeout(SEARCH_TIMEOUT, crate::ytdlp::einmal(ytdlp, &args))
         .await
         .map_err(|_| anyhow!(fehler!("Die Suche bei {0} antwortet nicht.", source.label())))??;
-    if !output.status.success() && output.stdout.is_empty() {
-        bail!(
-            "Suche fehlgeschlagen: {}",
-            explain_failure(&String::from_utf8_lossy(&output.stderr))
-        );
+    if !ausgabe.erfolg && ausgabe.stdout.is_empty() {
+        bail!("Suche fehlgeschlagen: {}", explain_failure(&ausgabe.stderr));
     }
 
     let mut results = Vec::new();
-    for line in String::from_utf8_lossy(&output.stdout).lines() {
+    for line in ausgabe.stdout.lines() {
         let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else {
             continue;
         };

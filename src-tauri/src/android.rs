@@ -21,6 +21,7 @@ use jni::sys::{jint, JNI_VERSION_1_6};
 use jni::JavaVM;
 use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::OnceLock;
 
 /// Ist der Griff schon weitergereicht?
 ///
@@ -29,6 +30,19 @@ use std::sync::atomic::{AtomicBool, Ordering};
 /// erneut laufen, wenn der Prozess überlebt hat, die Bibliothek aber neu
 /// geladen wird.
 static EINGERICHTET: AtomicBool = AtomicBool::new(false);
+
+/// Die Brückenklasse zu yt-dlp, hier vorgemerkt.
+///
+/// `find_class` sucht aus einem nachträglich angehängten Faden über den
+/// Systemlader, und der kennt die Klassen der App nicht. `JNI_OnLoad` läuft
+/// dagegen auf einem Faden, der sie sieht. Also einmal hier nachschlagen und
+/// als globale Referenz behalten, statt später ins Leere zu greifen.
+static YTDLP_KLASSE: OnceLock<GlobalRef> = OnceLock::new();
+
+/// Die vorgemerkte Brückenklasse, sofern die Einrichtung durchlief.
+pub fn ytdlp_klasse() -> Option<&'static GlobalRef> {
+    YTDLP_KLASSE.get()
+}
 
 /// Wird von Android beim Laden von `librobify_lib.so` gerufen.
 ///
@@ -92,6 +106,10 @@ fn umgebung_weiterreichen(vm: &JavaVM) -> Result<(), Box<dyn std::error::Error>>
     }
 
     rustls_platform_verifier::android::init_with_env(&mut env, anwendung)?;
+
+    // Siehe `YTDLP_KLASSE`: Von hier aus ist sie zu finden, später nicht mehr.
+    let bruecke = env.find_class("de/robify/player/Ytdlp")?;
+    let _ = YTDLP_KLASSE.set(env.new_global_ref(&bruecke)?);
 
     // Landet im Systemprotokoll und ist beim Suchen nach Tonproblemen die
     // erste Zeile, nach der man schaut.

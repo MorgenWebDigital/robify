@@ -329,7 +329,7 @@ export function DownloaderPage() {
         </div>
       )}
 
-      {status && !status.jsRuntime && (
+      {status && !status.jsRuntime && status.jsRuntimeRelevant && (
         <div className="mb-6 rounded-xl border border-warning/40 bg-warning-soft px-5 py-4 text-sm text-fg/80">
           {t(
             "Es wurde keine JavaScript-Laufzeit gefunden. YouTube lehnt Downloads dann häufig mit „403“ ab. Abhilfe: Node.js, Deno oder Bun installieren.",

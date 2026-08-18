@@ -13,6 +13,7 @@ pub mod spotify;
 pub mod state;
 pub mod stats;
 pub mod tags;
+pub mod ytdlp;
 
 use state::AppState;
 use std::path::Path;

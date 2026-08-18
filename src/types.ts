@@ -299,6 +299,13 @@ export interface DownloaderStatus {
   ffmpegAvailable: boolean;
   /** Für YouTube nötig, sonst 403-Fehler. */
   jsRuntime: string | null;
+  /**
+   * Lässt sich an einer fehlenden Laufzeit überhaupt etwas ändern?
+   *
+   * Auf Android nicht: Dort gibt es weder Node noch Deno, und installieren
+   * kann man sie auch nicht. Die Warnung entfällt dort.
+   */
+  jsRuntimeRelevant: boolean;
   activeJobs: string[];
 }
 
