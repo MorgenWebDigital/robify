@@ -41,6 +41,10 @@
 
   /* Abdunklung hinter Dialogen. Auf hellem Grund genügt ein Hauch. */
   --scrim: rgba(0, 0, 0, 0.28);
+  /* Höhe der Navigation am unteren Rand. Steht hier, weil drei Regeln sie
+     brauchen: die Leiste selbst, das Blatt darüber und der Rahmen, der ihr
+     Platz freihält. */
+  --unterleiste-hoehe: 3.25rem;
 
   /* Zustände. Als Merkmale, weil dieselbe Warnung auf weißem und auf
      schwarzem Grund verschiedene Töne braucht, um lesbar zu bleiben. */
@@ -165,6 +169,49 @@
   * {
     min-width: 0;
     box-sizing: border-box;
+  }
+}
+
+/*
+ * Auf Berührungsgeräten gibt es kein Überfahren.
+ *
+ * In der App erscheinen mehrere Bedienelemente erst, wenn der Zeiger auf ihrer
+ * Zeile steht: die drei Punkte an einem Titel, das Papierkorbzeichen in der
+ * Warteschlange, das Abspieldreieck auf einem Cover. Mit dem Finger sind die
+ * schlicht nicht erreichbar, sie blieben unsichtbar und unantastbar.
+ *
+ * Angesprochen wird hier die von Tailwind erzeugte Klasse selbst, statt an
+ * einem Dutzend Stellen im Quelltext eine zweite Schreibweise zu ergänzen.
+ * `hover: none` trifft genau die Geräte, um die es geht, und lässt Mausbetrieb
+ * unberührt, auch am Telefon mit angestecktem Zeigegerät.
+ */
+@media (hover: none) {
+  .group-hover\:opacity-100 {
+    opacity: 1;
+  }
+}
+
+/*
+ * Was dem System gehört, bleibt frei.
+ *
+ * Oben die Statusleiste, unten die Gestenleiste; `viewport-fit=cover` in der
+ * `index.html` lässt die App bis unter beide reichen, und ohne diese
+ * Polsterung stünde die Uhr des Systems in unserer Titelzeile. Am unteren Rand
+ * kommt die Navigation dazu, die fest am Fenster hängt und deshalb keinen
+ * Platz im Fluss beansprucht.
+ *
+ * Ab der Breite eines Fensters am Rechner entfällt beides: Dort gibt es weder
+ * Kerbe noch Gestenleiste noch eine Leiste unten.
+ */
+.app-rahmen {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: calc(var(--unterleiste-hoehe) + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 48rem) {
+  .app-rahmen {
+    padding-top: 0;
+    padding-bottom: 0;
   }
 }
 
@@ -618,6 +665,65 @@ h4 {
 /* Eintrag in der Seitenleiste. Der gewählte steht plastisch heraus, gleiche
    Bauweise wie `pill-btn`, nur mit dem weicheren Radius der Leiste: einfarbige
    Fläche, harte Unterkante, beim Drücken sinkt er darauf ab. */
+/*
+ * Navigation am unteren Rand, nur am Telefon.
+ *
+ * Sie liegt fest am Fenster und trägt den sicheren Bereich als Polsterung:
+ * Auf Geräten mit Gestenleiste säßen die Ziele sonst genau darunter, und
+ * jeder zweite Griff wäre ein Wisch nach Hause statt ein Seitenwechsel.
+ */
+@utility unterleiste {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  background: var(--canvas);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility unterleiste-ziel {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  /* Elf Millimeter Höhe: Unter etwa vierundvierzig Punkten trifft ein Daumen
+     nicht mehr zuverlässig, und daneben zu greifen heißt hier, auf einer
+     anderen Seite zu landen. */
+  min-height: var(--unterleiste-hoehe);
+  padding: 0.4rem 0.25rem;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  transition: color 0.12s ease;
+
+  &.is-active {
+    color: var(--accent);
+  }
+}
+
+/*
+ * Das Blatt hinter „Mehr“.
+ *
+ * Steigt vom unteren Rand auf, also von dort, wo der Knopf steht, und endet
+ * über der Leiste statt am Bildschirmrand: Die Leiste bleibt sichtbar, damit
+ * erkennbar ist, woraus das Blatt gekommen ist.
+ */
+@utility unterleiste-blatt {
+  position: fixed;
+  inset-inline: 0;
+  bottom: calc(var(--unterleiste-hoehe) + env(safe-area-inset-bottom));
+  z-index: 40;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-start-start-radius: 1rem;
+  border-start-end-radius: 1rem;
+  box-shadow: 0 -12px 32px -12px rgb(0 0 0 / 0.5);
+}
+
 @utility nav-item {
   display: flex;
   align-items: center;

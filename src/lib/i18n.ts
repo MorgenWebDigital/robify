@@ -4067,6 +4067,15 @@ const TEXTE: Record<string, Fassungen> = {
       ar: "رفض المصدر الوصول (403). لا توجد بيئة تشغيل JavaScript مثبَّتة، وبدونها لا يستطيع yt-dlp تكوين عناوين الطلب إلى YouTube بشكل صحيح. ثبّت Node.js أو Deno أو Bun ليعمل الأمر بشكل دائم.",
       zh: "来源拒绝了访问（403）。系统未安装 JavaScript 运行时，没有它 yt-dlp 无法正确构造 YouTube 的请求地址。安装 Node.js、Deno 或 Bun 后即可长期正常工作。",
     },
+
+  Mehr: {
+    en: "More",
+    es: "Más",
+    fr: "Plus",
+    ru: "Ещё",
+    ar: "المزيد",
+    zh: "更多",
+  },
 };
 
 /**

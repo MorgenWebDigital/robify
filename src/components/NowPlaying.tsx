@@ -5,7 +5,7 @@ import { formatTime, releaseLabel } from "../lib/format";
 import { usePlayer } from "../store/player";
 import { useUi } from "../store/ui";
 import { Cover } from "./Cover";
-import { ChevronDownIcon } from "./Icons";
+import { ChevronDownIcon, QueueIcon } from "./Icons";
 import { LyricsPanel } from "./LyricsPanel";
 import { useAusblenden } from "../lib/ausblenden";
 
@@ -17,7 +17,7 @@ export function NowPlaying() {
   const currentTrack = usePlayer((s) => s.currentTrack);
   const positionMs = usePlayer((s) => s.positionMs);
   const durationMs = usePlayer((s) => s.durationMs);
-  const { nowPlayingOpen, setNowPlayingOpen } = useUi();
+  const { nowPlayingOpen, setNowPlayingOpen, setQueueOpen } = useUi();
   const { sichtbar, schliesst } = useAusblenden(nowPlayingOpen, ZU_MS);
 
   if (!sichtbar) return null;
@@ -34,7 +34,19 @@ export function NowPlaying() {
           Player-Pille unten, Cover und Lyrics liegen gemeinsam darauf. */}
       <div className="sunken-deep flex min-h-0 flex-1 flex-col rounded-3xl bg-ink-950">
         {/* Ohne Beschriftung, dass gerade gespielt wird, sieht man. */}
-        <div className="flex items-center justify-end px-6 py-4">
+        <div className="flex items-center justify-end gap-2 px-6 py-4">
+          {/* Nur am Telefon: Dort ist der kompakte Player unten auf das
+              Nötigste beschränkt, und ohne diesen Knopf käme man an die
+              Warteschlange gar nicht mehr heran. Am Rechner steht sie in der
+              Leiste unten, ein zweiter Knopf wäre dort doppelt. */}
+          <button
+            type="button"
+            onClick={() => setQueueOpen(true)}
+            aria-label={t("Warteschlange")}
+            className="pill-btn is-raised h-9 w-9 md:hidden"
+          >
+            <QueueIcon size={18} />
+          </button>
           <button
             type="button"
             onClick={() => setNowPlayingOpen(false)}

@@ -9,6 +9,7 @@ import { PlayerBar } from "./components/PlayerBar";
 import { QueuePanel } from "./components/QueuePanel";
 import { Sidebar } from "./components/Sidebar";
 import { TitleBar } from "./components/TitleBar";
+import { Unterleiste } from "./components/Unterleiste";
 import { Toasts } from "./components/Toasts";
 import { AlbumDetail } from "./pages/AlbumDetail";
 import { ArtistDetail } from "./pages/ArtistDetail";
@@ -62,8 +63,13 @@ export function App() {
   }, [initPlayer, initLibrary, initDownloader]);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <TitleBar />
+    <div className="app-rahmen flex h-full flex-col overflow-hidden">
+      {/* Am Telefon gibt es keine Fensterknöpfe zu bedienen, und die Leiste
+          läge unter der Statusleiste des Systems. Der sichere Bereich oben
+          wird stattdessen vom Rahmen selbst freigehalten. */}
+      <div className="hidden md:block">
+        <TitleBar />
+      </div>
       <div className="relative flex min-h-0 flex-1">
         <Sidebar />
 
@@ -77,9 +83,9 @@ export function App() {
             Fläche und Blätterbereich sind getrennt, damit die Rundung beim
             Blättern nicht mitwandert. Die Bildlaufleiste steht innen auf der
             Fläche. */}
-        <div className="relative mt-2 me-3 mb-3 ms-3 min-w-0 flex-1">
+        <div className="relative min-w-0 flex-1 md:mt-2 md:me-3 md:mb-3 md:ms-3">
           <div
-            className="sunken-panel absolute inset-0 rounded-xl bg-ink-950"
+            className="sunken-panel absolute inset-0 bg-ink-950 md:rounded-xl"
             aria-hidden="true"
           />
           <main
@@ -92,7 +98,7 @@ export function App() {
                 abgeräumt. */}
             <div
               key={location.pathname}
-              className="animate-page mx-auto max-w-6xl px-6 py-6 pb-10"
+              className="animate-page mx-auto max-w-6xl px-4 py-4 pb-6 md:px-6 md:py-6 md:pb-10"
             >
               {/* Das Netz sitzt um den Seiteninhalt, nicht um die ganze App:
                   Stolpert eine Seite, bleiben Seitenleiste und Player
@@ -131,6 +137,7 @@ export function App() {
       </div>
 
       <PlayerBar />
+      <Unterleiste />
 
       <Toasts />
       <AddToPlaylistDialog />

@@ -3,71 +3,9 @@ import { PlaylistMosaic } from "./Cards";
 import { playlistCover } from "../lib/cover";
 import { plural } from "../lib/format";
 import { t } from "../lib/i18n";
+import { NAV, istHier } from "../lib/navigation";
 import { useLibrary } from "../store/library";
-import {
-  ArtistIcon,
-  DownloadIcon,
-  HeartIcon,
-  HomeIcon,
-  LibraryIcon,
-  NotesMark,
-  PlaylistIcon,
-  SettingsIcon,
-  SparkIcon,
-} from "./Icons";
-
-/**
- * Die Navigationspunkte.
- *
- * `schluessel` und nicht `label`: Was hier steht, ist der Nachschlagebegriff
- * für die Texttabelle, nicht die fertige Beschriftung. Übersetzt wird erst
- * beim Zeichnen, denn eine Liste auf Modulebene entsteht einmal beim Laden
- * und bliebe nach einem Sprachwechsel in der Anfangssprache stehen.
- */
-const NAV = [
-  { to: "/", schluessel: "Start", icon: HomeIcon, auch: ["/mix"] },
-  {
-    to: "/library",
-    schluessel: "Bibliothek",
-    icon: LibraryIcon,
-    auch: ["/album"],
-  },
-  {
-    to: "/artists",
-    schluessel: "Künstler",
-    icon: ArtistIcon,
-    auch: ["/artist"],
-  },
-  {
-    to: "/playlists",
-    schluessel: "Playlists",
-    icon: PlaylistIcon,
-    auch: ["/playlist"],
-  },
-  { to: "/favorites", schluessel: "Favoriten", icon: HeartIcon, auch: [] },
-  { to: "/wrapped", schluessel: "Wrapped", icon: SparkIcon, auch: [] },
-  { to: "/downloader", schluessel: "Downloader", icon: DownloadIcon, auch: [] },
-];
-
-/**
- * Gehört die geöffnete Seite zu diesem Navigationspunkt?
- *
- * `NavLink` vergleicht nur seine eigene Adresse, und die Detailseiten heißen
- * anders als ihr Abschnitt: Ein Künstler steht unter `/artist/7`, der
- * Abschnitt unter `/artists`. Wer von einem Titel aus zum Künstler ging, sah
- * darum eine Seitenleiste ohne jede Markierung, obwohl er mitten in einem
- * Abschnitt stand. Die Zweitadressen stehen in `auch`.
- *
- * Der Schrägstrich beim Vergleich ist wichtig: Ohne ihn hielte `/playlist`
- * auch `/playlists` für seine eigene Seite.
- */
-function istHier(pfad: string, eintrag: (typeof NAV)[number]): boolean {
-  if (pfad === eintrag.to) return true;
-  if (eintrag.to !== "/" && pfad.startsWith(`${eintrag.to}/`)) return true;
-  return eintrag.auch.some(
-    (zweit) => pfad === zweit || pfad.startsWith(`${zweit}/`),
-  );
-}
+import { NotesMark, SettingsIcon } from "./Icons";
 
 export function Sidebar() {
   const playlists = useLibrary((s) => s.playlists);
@@ -83,7 +21,7 @@ export function Sidebar() {
   const { pathname: pfad } = useLocation();
 
   return (
-    <nav className="sunken-panel mt-2 me-0 mb-3 ms-3 flex w-60 shrink-0 flex-col gap-4 rounded-xl bg-ink-950 p-3">
+    <nav className="sunken-panel mt-2 me-0 mb-3 ms-3 hidden w-60 shrink-0 flex-col gap-4 rounded-xl bg-ink-950 p-3 md:flex">
       <button
         type="button"
         onClick={() => navigate("/")}

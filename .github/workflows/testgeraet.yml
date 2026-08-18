@@ -97,7 +97,10 @@ jobs:
       - name: Android-Projekt erzeugen
         env:
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
-        run: npx tauri android init --ci
+        run: |
+          npx tauri android init --ci
+          # Was Tauri nicht anbietet, tragen wir nach; siehe das Skript.
+          node scripts/android-nachruesten.mjs
 
       - name: APK bauen
         env:

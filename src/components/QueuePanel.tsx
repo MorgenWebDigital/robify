@@ -54,16 +54,19 @@ export function QueuePanel() {
     <aside
       className={`shrink-0 overflow-hidden ${
         schliesst ? "animate-slide-out" : "animate-slide-in"
-      }`}
+      } max-md:absolute max-md:inset-0 max-md:z-40 max-md:!w-auto`}
     >
       {/* Abstände liegen innerhalb der Hülle, nicht an ihr: Sie beschneidet,
           und ein äußerer Rand bliebe beim Einfahren als Lücke stehen. */}
-      <div className="h-full pt-2 pe-3 pb-3 ps-px">
+      <div className="h-full pt-2 pe-3 pb-3 ps-px max-md:p-0">
         {/* Dieselbe Bauweise wie der Seiteninhalt daneben: eine abgerundete
             Insel im Rahmen, vertieft und im Inselton. Vorher war es eine
             flache Fläche mit einer Linie links, die neben den abgerundeten
             Nachbarn wie ein Fremdkörper wirkte. */}
-        <div className="sunken-panel flex h-full w-80 flex-col overflow-hidden rounded-xl bg-ink-950">
+        {/* Am Telefon nimmt die Warteschlange das ganze Fenster ein: Eine
+            Spalte von zwanzig Zeichen Breite neben einem Inhalt von zehn
+            wäre für beides zu wenig. */}
+        <div className="sunken-panel flex h-full w-80 flex-col overflow-hidden rounded-xl bg-ink-950 max-md:w-full max-md:rounded-none">
           <header className="flex items-center justify-between border-b border-ink-700 px-4 py-3">
             <div>
               <h2 className="text-sm font-semibold">{t("Warteschlange")}</h2>

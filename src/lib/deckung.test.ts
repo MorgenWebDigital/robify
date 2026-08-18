@@ -47,6 +47,7 @@ const FERTIG = [
   "components/SleepTimerMenu.tsx",
   "components/TitleBar.tsx",
   "components/Toasts.tsx",
+  "components/Unterleiste.tsx",
   "components/TrackList.tsx",
   "pages/AlbumDetail.tsx",
   "pages/ArtistDetail.tsx",
