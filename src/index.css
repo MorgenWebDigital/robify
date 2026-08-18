@@ -586,6 +586,31 @@ h4 {
   }
 }
 
+/*
+ * „Mehr anzeigen“ am Ende der letzten sichtbaren Zeile.
+ *
+ * Vorher stand es in einer eigenen Zeile darunter. Auf dem Telefon kostete
+ * das eine von wenigen: Von der Beschreibung blieben vier Zeilen Text und
+ * eine Zeile Knopf. Jetzt sitzt es dort, wo der Text abbricht, direkt hinter
+ * den Auslassungspunkten — sichtbar sind gut zweieinhalb Zeilen.
+ *
+ * Der Verlauf davor lässt den Text darunter verschwinden, statt ihn hart
+ * abzuschneiden. Er läuft in die Seitenfarbe, nicht in eine Fläche: Die
+ * Beschreibung steht frei auf der Seite.
+ */
+@utility mehr-anzeigen {
+  position: absolute;
+  inset-inline-end: 0;
+  bottom: 0;
+  padding-inline-start: 2.5rem;
+  background: linear-gradient(to right, transparent, var(--bg) 2rem);
+}
+
+/* Verläufe kennen keine Leserichtung, der Text darunter schon. */
+[dir="rtl"] .mehr-anzeigen {
+  background: linear-gradient(to left, transparent, var(--bg) 2rem);
+}
+
 @utility aktionsknopf-weicht {
   min-width: 0;
 }

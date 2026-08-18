@@ -269,11 +269,11 @@ function Beschreibung({ text }: { text: string }) {
   }, [text]);
 
   return (
-    <div className="mb-8 max-w-3xl">
+    <div className="relative mb-8 max-w-3xl">
       <p
         ref={absatz}
         className={`text-sm leading-relaxed whitespace-pre-line text-mute ${
-          offen ? "" : "line-clamp-4"
+          offen ? "" : "line-clamp-3"
         }`}
       >
         {text}
@@ -282,7 +282,11 @@ function Beschreibung({ text }: { text: string }) {
         <button
           type="button"
           onClick={() => setOffen((wert) => !wert)}
-          className="mt-1.5 text-sm font-medium text-fg underline-offset-2 hover:underline"
+          className={`text-sm font-medium text-fg underline-offset-2 hover:underline ${
+            // Aufgeklappt gibt es keine abgeschnittene Zeile mehr, an deren
+            // Ende der Knopf sitzen könnte; dann steht er wieder darunter.
+            offen ? "mt-1.5" : "mehr-anzeigen"
+          }`}
         >
           {offen ? t("Weniger anzeigen") : t("Mehr anzeigen")}
         </button>
