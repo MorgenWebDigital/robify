@@ -179,6 +179,11 @@ jobs:
             exit 1
           fi
           printf '%s' "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/robify.keystore"
+          if ! keytool -list -keystore "$RUNNER_TEMP/robify.keystore" \
+                       -storepass "$KEYSTORE_PASSWORD" > /dev/null 2>&1; then
+            echo "::error::Der Keystore ließ sich nicht öffnen. Meist stimmt ANDROID_KEYSTORE_PASSWORD nicht."
+            exit 1
+          fi
           werkzeuge="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
           roh="$(find src-tauri/gen/android -name '*-release-unsigned.apk' | head -1)"
           "$werkzeuge/zipalign" -p -f 4 "$roh" Robify_${{ github.ref_name }}.apk

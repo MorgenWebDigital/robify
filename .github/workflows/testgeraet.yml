@@ -29,15 +29,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
+
+      # Ganz vorn, noch vor SDK, NDK und dem Bau: Ein falsches Kennwort fiel
+      # vorher erst beim Unterschreiben auf, also nach fünfundzwanzig Minuten
+      # Bauzeit. Hier braucht die Erkenntnis fünf Sekunden.
+      - name: Schlüssel prüfen
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          for name in KEYSTORE KEYSTORE_PASSWORD KEY_ALIAS; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Das Geheimnis ANDROID_$name fehlt. Siehe README, Abschnitt „Testgerät“."
+              exit 1
+            fi
+          done
+
+          printf '%s' "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/robify.keystore"
+          if ! keytool -list -keystore "$RUNNER_TEMP/robify.keystore" \
+                       -storepass "$KEYSTORE_PASSWORD" > "$RUNNER_TEMP/schluessel.txt" 2>&1; then
+            echo "::error::Der Keystore ließ sich nicht öffnen. Meist stimmt ANDROID_KEYSTORE_PASSWORD nicht. Prüfe es mit: keytool -list -keystore robify-release.keystore"
+            grep -v 'password' "$RUNNER_TEMP/schluessel.txt" | head -3
+            exit 1
+          fi
+
+          if ! grep -qi "^$KEY_ALIAS," "$RUNNER_TEMP/schluessel.txt"; then
+            echo "::error::Im Keystore gibt es keinen Eintrag namens „$KEY_ALIAS“. Vorhanden:"
+            grep -i 'PrivateKeyEntry' "$RUNNER_TEMP/schluessel.txt" | cut -d, -f1
+            exit 1
+          fi
+          echo "Schlüssel „$KEY_ALIAS“ gefunden, Kennwort passt."
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
 
       - name: Android SDK einrichten
         uses: android-actions/setup-android@v3
@@ -77,12 +108,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
-          if [ -z "$KEYSTORE" ]; then
-            echo "::error::Das Geheimnis ANDROID_KEYSTORE fehlt. Siehe README, Abschnitt „Testgerät“."
-            exit 1
-          fi
-          printf '%s' "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/robify.keystore"
-
+          # Der Keystore liegt schon entpackt da, siehe „Schlüssel prüfen“.
           werkzeuge="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
           roh="$(find src-tauri/gen/android -name '*-release-unsigned.apk' | head -1)"
           if [ -z "$roh" ]; then
