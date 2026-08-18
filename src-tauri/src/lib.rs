@@ -4,6 +4,7 @@ pub mod commands;
 pub mod db;
 pub mod downloader;
 pub mod library;
+pub mod medien;
 pub mod meldung;
 pub mod models;
 pub mod online;

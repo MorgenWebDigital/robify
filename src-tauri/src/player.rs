@@ -11,7 +11,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter};
 use crate::fehler;
@@ -154,6 +154,34 @@ impl PlayerHandle {
     }
 }
 
+/// Der laufende Player, für Befehle von außerhalb der App.
+///
+/// Der Systemplayer auf dem Sperrbildschirm kommt nicht über einen
+/// Tauri-Befehl herein — er ruft aus der Java-Laufzeit direkt in die
+/// Bibliothek, ohne Zustand der Oberfläche und ohne `AppHandle`. Damit er
+/// überhaupt jemanden erreicht, wird der Griff hier einmal hinterlegt.
+static GRIFF: OnceLock<PlayerHandle> = OnceLock::new();
+
+/// Nimmt entgegen, was am Systemplayer gedrückt wurde.
+///
+/// Unbekannte Namen bleiben still: Der Aufruf kommt von der Java-Seite, und
+/// ein Absturz im Ton-Faden wäre dort nicht zu retten.
+pub fn fernbefehl(name: &str, wert: u64) {
+    let Some(griff) = GRIFF.get() else {
+        return;
+    };
+    let befehl = match name {
+        "resume" => Cmd::Resume,
+        "pause" => Cmd::Pause,
+        "toggle" => Cmd::TogglePlay,
+        "next" => Cmd::Next,
+        "prev" => Cmd::Prev,
+        "seek" => Cmd::Seek(wert),
+        _ => return,
+    };
+    let _ = griff.send(befehl);
+}
+
 pub fn spawn(app: AppHandle, db_path: PathBuf) -> Result<PlayerHandle> {
     let (tx, rx) = std::sync::mpsc::channel();
     let state = Arc::new(Mutex::new(PlayerState::default()));
@@ -161,6 +189,7 @@ pub fn spawn(app: AppHandle, db_path: PathBuf) -> Result<PlayerHandle> {
         tx,
         state: state.clone(),
     };
+    let _ = GRIFF.set(handle.clone());
 
     std::thread::Builder::new()
         .name("robify-audio".into())
@@ -202,6 +231,11 @@ struct Engine {
     /// gesendet, sonst liefe im Leerlauf viermal je Sekunde eine Meldung
     /// über die Brücke und löste im Frontend ein Neuzeichnen aus.
     letzter_takt: Option<(bool, u64, u64, Option<u64>)>,
+    /// Welcher Titel dem System zuletzt gemeldet wurde.
+    ///
+    /// Nur beim Wechsel wird das Cover mitgeschickt; sonst ginge es bei jedem
+    /// Druck auf Pause erneut durch die Java-Brücke.
+    gemeldeter_titel: Option<i64>,
 
     sleep_mode: Option<SleepTimerMode>,
     sleep_total_ms: u64,
@@ -244,6 +278,7 @@ fn run(
         last_tick: Instant::now(),
         last_remembered: Instant::now(),
         letzter_takt: None,
+        gemeldeter_titel: None,
         sleep_mode: None,
         sleep_total_ms: 0,
         sleep_remaining_ms: 0,
@@ -835,9 +870,64 @@ impl Engine {
                 snapshot.sleep_timer.as_ref().map(|s| s.remaining_ms),
             ));
             let _ = self.app.emit("player:state", &snapshot);
+            self.dem_system_melden(&snapshot);
         } else {
             self.publish_tick();
         }
+    }
+
+    /// Sagt dem System, was läuft, damit es seinen eigenen Player zeigt.
+    ///
+    /// Nur beim vollen Stand, nicht im Takt: Die Meldung trägt neben der
+    /// Position auch die Geschwindigkeit, und damit rechnet Android die Zeit
+    /// selbst weiter. Vier Meldungen je Sekunde wären dieselbe Anzeige zum
+    /// vierfachen Preis, jede davon mit einem Sprung in die Java-Laufzeit.
+    fn dem_system_melden(&mut self, snapshot: &PlayerState) {
+        let Some(track_id) = snapshot.track_id else {
+            crate::medien::beenden();
+            return;
+        };
+
+        let angaben: rusqlite::Result<(String, Option<String>, Option<String>, Option<i64>)> =
+            self.conn.query_row(
+                "SELECT t.title,
+                        (SELECT name FROM artists WHERE id = t.artist_id),
+                        (SELECT title FROM albums WHERE id = t.album_id),
+                        t.album_id
+                   FROM tracks t WHERE t.id = ?1",
+                [track_id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            );
+        let Ok((titel, kuenstler, album, album_id)) = angaben else {
+            return;
+        };
+
+        // Das Cover nur beim Titelwechsel holen: Es liegt als Blob in der
+        // Datenbank, und ein paar hundert Kilobyte bei jedem Druck auf Pause
+        // durch die Java-Brücke zu schieben wäre Verschwendung.
+        //
+        // `None` heißt drüben „unverändert“, nicht „keins“. Ein Titel ohne
+        // Cover schickt deshalb ein leeres Feld: Sonst bliebe das Bild des
+        // vorigen stehen. Umgekehrt verschwand es anfangs beim ersten
+        // Pausieren, weil dort beides gleich aussah.
+        let wechsel = self.gemeldeter_titel != Some(track_id);
+        self.gemeldeter_titel = Some(track_id);
+        let cover = wechsel.then(|| {
+            album_id
+                .and_then(|id| crate::library::album_cover(&self.conn, id).ok().flatten())
+                .map(|(daten, _mime)| daten)
+                .unwrap_or_default()
+        });
+
+        crate::medien::melden(&crate::medien::Angabe {
+            titel,
+            kuenstler: kuenstler.unwrap_or_default(),
+            album: album.unwrap_or_default(),
+            dauer_ms: snapshot.duration_ms,
+            position_ms: snapshot.position_ms,
+            laeuft: snapshot.playing,
+            cover,
+        });
     }
 
     /// Nur die vier Werte, die sich beim Abspielen ständig ändern.

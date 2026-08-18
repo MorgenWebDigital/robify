@@ -21,6 +21,10 @@ const PAKET_ORDNER = "src-tauri/gen/android/app/src/main/java/de/robify/player";
 const YTDLP_FASSUNG = "0.18.1";
 /** Fassung von `commons-io`; die von `youtubedl-android` verlangte 2.5 ist unbrauchbar. */
 const COMMONS_IO_FASSUNG = "2.16.1";
+/** Pfad zum Manifest der App; wird bei jedem `tauri android init` neu erzeugt. */
+const MANIFEST = "src-tauri/gen/android/app/src/main/AndroidManifest.xml";
+/** Fassung von `androidx.media`; bringt MediaSession und die Medientasten mit. */
+const MEDIA_FASSUNG = "1.7.0";
 
 /**
  * Der Zurück-Knopf soll durch die App führen, nicht aus ihr heraus.
@@ -276,6 +280,121 @@ function ytdlpEinbinden() {
   console.log("yt-dlp: Einrichtung in die Activity getragen");
 }
 
+/**
+ * Trägt den Player des Systems ein.
+ *
+ * Er besteht aus zwei Dingen, die Android beide angemeldet sehen will:
+ *
+ * * Ein Vordergrunddienst hält die App am Leben, solange Musik läuft. Ohne
+ *   ihn darf Android den Prozess im Hintergrund abräumen, und die Wiedergabe
+ *   bricht mitten im Titel ab. Er muss seine Art nennen — `mediaPlayback` —,
+ *   sonst lehnt Android 14 den Start ab.
+ * * Ein Empfänger für die Medientasten. Über ihn kommen die Knöpfe aus der
+ *   Benachrichtigung und vom Sperrbildschirm zurück, ebenso die Tasten von
+ *   Kopfhörern und Autoradios.
+ */
+function systemplayerEinbinden() {
+  const gradle = readFileSync(APP_GRADLE, "utf8");
+  if (!gradle.includes("androidx.media:media")) {
+    writeFileSync(
+      APP_GRADLE,
+      gradle.replace(
+        "dependencies {",
+        [
+          "dependencies {",
+          "    // MediaSession und Medientasten, siehe scripts/android-nachruesten.mjs.",
+          `    implementation("androidx.media:media:${MEDIA_FASSUNG}")`,
+        ].join("\n"),
+      ),
+    );
+    console.log("Systemplayer: Abhängigkeit eingetragen");
+  }
+
+  copyFileSync(
+    "src-tauri/android/Wiedergabe.kt",
+    join(PAKET_ORDNER, "Wiedergabe.kt"),
+  );
+
+  const manifest = readFileSync(MANIFEST, "utf8");
+  if (manifest.includes("Wiedergabedienst")) {
+    console.log("Systemplayer: schon im Manifest");
+    return;
+  }
+
+  const mitRechten = manifest.replace(
+    '<uses-permission android:name="android.permission.INTERNET" />',
+    [
+      '<uses-permission android:name="android.permission.INTERNET" />',
+      // Ohne diese drei startet der Dienst gar nicht erst, und ab Android 13
+      // bliebe die Anzeige unsichtbar, auch wenn er läuft.
+      '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
+      '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />',
+      '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />',
+    ].join("\n"),
+  );
+
+  const dienst = [
+    "        <service",
+    '            android:name=".Wiedergabedienst"',
+    '            android:exported="false"',
+    '            android:foregroundServiceType="mediaPlayback">',
+    "            <intent-filter>",
+    '                <action android:name="android.intent.action.MEDIA_BUTTON" />',
+    "            </intent-filter>",
+    "        </service>",
+    "",
+    "        <receiver",
+    '            android:name="androidx.media.session.MediaButtonReceiver"',
+    '            android:exported="true">',
+    "            <intent-filter>",
+    '                <action android:name="android.intent.action.MEDIA_BUTTON" />',
+    "            </intent-filter>",
+    "        </receiver>",
+    "",
+    "        <provider",
+  ].join("\n");
+
+  writeFileSync(MANIFEST, mitRechten.replace("        <provider", dienst));
+  console.log("Systemplayer: Dienst und Rechte eingetragen");
+}
+
+/**
+ * Fragt die Erlaubnis für Benachrichtigungen.
+ *
+ * Seit Android 13 muss man sie erbitten. Ohne sie läuft der Vordergrunddienst
+ * zwar, seine Anzeige bleibt aber unsichtbar — und genau die ist der Player,
+ * um den es geht. Die Frage kommt beim Start und nur einmal; sagt der Nutzer
+ * nein, spielt Robify weiter, nur eben ohne Anzeige.
+ */
+function benachrichtigungenErbitten() {
+  const activity = readFileSync(MAIN_ACTIVITY, "utf8");
+  if (activity.includes("POST_NOTIFICATIONS")) {
+    console.log("Benachrichtigungen: Frage schon in der Activity");
+    return;
+  }
+
+  writeFileSync(
+    MAIN_ACTIVITY,
+    activity.replace(
+      "    super.onCreate(savedInstanceState)",
+      [
+        "    super.onCreate(savedInstanceState)",
+        "",
+        "    // Seit Android 13 ist die Anzeige des Players ohne diese Erlaubnis",
+        "    // unsichtbar. Nachgetragen von scripts/android-nachruesten.mjs.",
+        "    if (android.os.Build.VERSION.SDK_INT >= 33 &&",
+        '        checkSelfPermission("android.permission.POST_NOTIFICATIONS") !=',
+        "          android.content.pm.PackageManager.PERMISSION_GRANTED) {",
+        '      requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"), 1)',
+        "    }",
+      ].join("\n"),
+    ),
+  );
+  console.log("Benachrichtigungen: Frage in die Activity getragen");
+}
+
 zurueckKnopfAnschalten();
 zertifikatspruefungEinbinden();
 ytdlpEinbinden();
+systemplayerEinbinden();
+benachrichtigungenErbitten();

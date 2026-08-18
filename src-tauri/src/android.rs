@@ -45,6 +45,14 @@ pub fn ytdlp_klasse() -> Option<&'static GlobalRef> {
     YTDLP_KLASSE.get()
 }
 
+/// Die Brückenklasse zum Systemplayer, aus demselben Grund vorgemerkt.
+static WIEDERGABE_KLASSE: OnceLock<GlobalRef> = OnceLock::new();
+
+/// Die vorgemerkte Klasse für den Player des Systems.
+pub fn wiedergabe_klasse() -> Option<&'static GlobalRef> {
+    WIEDERGABE_KLASSE.get()
+}
+
 /// Wird von Android beim Laden von `librobify_lib.so` gerufen.
 ///
 /// Der Rückgabewert nennt die JNI-Fassung, die wir sprechen. Fehlschläge
@@ -111,6 +119,9 @@ fn umgebung_weiterreichen(vm: &JavaVM) -> Result<(), Box<dyn std::error::Error>>
     // Siehe `YTDLP_KLASSE`: Von hier aus ist sie zu finden, später nicht mehr.
     let bruecke = env.find_class("de/robify/player/Ytdlp")?;
     let _ = YTDLP_KLASSE.set(env.new_global_ref(&bruecke)?);
+
+    let anzeige = env.find_class("de/robify/player/Wiedergabe")?;
+    let _ = WIEDERGABE_KLASSE.set(env.new_global_ref(&anzeige)?);
 
     // Landet im Systemprotokoll und ist beim Suchen nach Tonproblemen die
     // erste Zeile, nach der man schaut.
