@@ -332,7 +332,7 @@ export function DownloaderPage() {
       {status && !status.jsRuntime && status.jsRuntimeRelevant && (
         <div className="mb-6 rounded-xl border border-warning/40 bg-warning-soft px-5 py-4 text-sm text-fg/80">
           {t(
-            "Es wurde keine JavaScript-Laufzeit gefunden. YouTube lehnt Downloads dann häufig mit „403“ ab. Abhilfe: Node.js, Deno oder Bun installieren.",
+            "Es wurde keine JavaScript-Laufzeit gefunden. Ohne sie lehnt YouTube jeden Download mit „403“ ab; die übrigen Quellen bleiben davon unberührt. Abhilfe: Node.js, Deno oder Bun installieren.",
           )}
         </div>
       )}

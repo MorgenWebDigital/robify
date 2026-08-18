@@ -1521,7 +1521,7 @@ fn blocked_message(has_js_runtime: bool) -> String {
         )
     } else {
         fehler!(
-            "Die Quelle hat den Zugriff abgelehnt (403). Es ist keine JavaScript-Laufzeit installiert. Ohne sie kann yt-dlp die Abrufadressen von YouTube nicht korrekt bilden. Installiere Node.js, Deno oder Bun, dann funktioniert es dauerhaft."
+            "Die Quelle hat den Zugriff abgelehnt (403). Es ist keine JavaScript-Laufzeit installiert. Ohne sie kann yt-dlp die Abrufadressen von YouTube nicht bilden, und dort scheitert dann jeder Download. Installiere Node.js, Deno oder Bun, dann funktioniert es dauerhaft."
         )
     }
 }

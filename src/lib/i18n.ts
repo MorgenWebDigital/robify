@@ -3378,14 +3378,14 @@ const TEXTE: Record<string, Fassungen> = {
       ar: "عند التنزيل الأول يجلب Robify أداة yt-dlp بنفسه، نحو 30 ميغابايت، مرة واحدة. يستغرق ذلك لحظة أطول من المعتاد.",
       zh: "首次下载时 Robify 会自行获取 yt-dlp，约 30 MB，仅一次。这会比平常多花些时间。",
     },
-  "Es wurde keine JavaScript-Laufzeit gefunden. YouTube lehnt Downloads dann häufig mit „403“ ab. Abhilfe: Node.js, Deno oder Bun installieren.":
+  "Es wurde keine JavaScript-Laufzeit gefunden. Ohne sie lehnt YouTube jeden Download mit „403“ ab; die übrigen Quellen bleiben davon unberührt. Abhilfe: Node.js, Deno oder Bun installieren.":
     {
-      en: "No JavaScript runtime was found. YouTube then often refuses downloads with a “403”. Remedy: install Node.js, Deno or Bun.",
-      es: "No se encontró ningún entorno de JavaScript. YouTube suele rechazar entonces las descargas con un «403». Solución: instalar Node.js, Deno o Bun.",
-      fr: "Aucun environnement JavaScript n'a été trouvé. YouTube refuse alors souvent les téléchargements avec un « 403 ». Remède : installer Node.js, Deno ou Bun.",
-      ru: "Среда выполнения JavaScript не найдена. YouTube в таком случае часто отклоняет загрузки с ошибкой «403». Решение: установить Node.js, Deno или Bun.",
-      ar: "لم يُعثر على بيئة تشغيل JavaScript. عندها يرفض YouTube التنزيلات غالبًا بالرمز «403». الحل: تثبيت Node.js أو Deno أو Bun.",
-      zh: "未找到 JavaScript 运行时。YouTube 此时常以“403”拒绝下载。解决办法：安装 Node.js、Deno 或 Bun。",
+      en: "No JavaScript runtime was found. Without one, YouTube refuses every download with “403”; the other sources are unaffected. Remedy: install Node.js, Deno or Bun.",
+      es: "No se encontró ningún entorno de JavaScript. Sin él, YouTube rechaza cada descarga con «403»; las demás fuentes no se ven afectadas. Solución: instala Node.js, Deno o Bun.",
+      fr: "Aucun environnement JavaScript n'a été trouvé. Sans lui, YouTube refuse chaque téléchargement avec « 403 » ; les autres sources ne sont pas concernées. Remède : installe Node.js, Deno ou Bun.",
+      ru: "Среда выполнения JavaScript не найдена. Без неё YouTube отклоняет любую загрузку с «403»; остальных источников это не касается. Решение: установи Node.js, Deno или Bun.",
+      ar: "لم يُعثر على بيئة تشغيل جافاسكربت. وبدونها يرفض يوتيوب كل تنزيل بالخطأ «403»، أما المصادر الأخرى فلا يمسّها ذلك. الحل: ثبّت Node.js أو Deno أو Bun.",
+      zh: "未找到 JavaScript 运行时。没有它，YouTube 会以“403”拒绝每一次下载；其他来源不受影响。解决办法：安装 Node.js、Deno 或 Bun。",
     },
   "Erkannt werden Links von Spotify, YouTube, SoundCloud, Bandcamp und hunderten weiteren Seiten, auch ganze Alben und Playlists. Ohne Link wird in allen Quellen gleichzeitig gesucht.":
     {
@@ -4108,14 +4108,14 @@ const TEXTE: Record<string, Fassungen> = {
       ar: "رفض المصدر الوصول (403). قد يعود ذلك إلى كثرة الطلبات المتتابعة. انتظر بضع دقائق أو جرّب نتيجة أخرى؛ فالمقطع نفسه يتوفر غالبًا على SoundCloud أو Bandcamp أيضًا.",
       zh: "来源拒绝了访问（403）。这可能是短时间内请求过多所致。请等待几分钟，或换一个搜索结果试试；同一首曲子通常在 SoundCloud 或 Bandcamp 上也有。",
     },
-  "Die Quelle hat den Zugriff abgelehnt (403). Es ist keine JavaScript-Laufzeit installiert. Ohne sie kann yt-dlp die Abrufadressen von YouTube nicht korrekt bilden. Installiere Node.js, Deno oder Bun, dann funktioniert es dauerhaft.":
+  "Die Quelle hat den Zugriff abgelehnt (403). Es ist keine JavaScript-Laufzeit installiert. Ohne sie kann yt-dlp die Abrufadressen von YouTube nicht bilden, und dort scheitert dann jeder Download. Installiere Node.js, Deno oder Bun, dann funktioniert es dauerhaft.":
     {
-      en: "The source refused access (403). No JavaScript runtime is installed. Without one, yt-dlp cannot build YouTube's request URLs correctly. Install Node.js, Deno or Bun and it will work for good.",
-      es: "La fuente denegó el acceso (403). No hay ningún entorno de JavaScript instalado. Sin él, yt-dlp no puede formar correctamente las direcciones de YouTube. Instala Node.js, Deno o Bun y funcionará de forma duradera.",
-      fr: "La source a refusé l'accès (403). Aucun environnement JavaScript n'est installé. Sans lui, yt-dlp ne peut pas construire correctement les adresses de YouTube. Installe Node.js, Deno ou Bun et cela fonctionnera durablement.",
-      ru: "Источник отказал в доступе (403). Среда выполнения JavaScript не установлена. Без неё yt-dlp не может правильно составить адреса запросов к YouTube. Установи Node.js, Deno или Bun, и это заработает надолго.",
-      ar: "رفض المصدر الوصول (403). لا توجد بيئة تشغيل JavaScript مثبَّتة، وبدونها لا يستطيع yt-dlp تكوين عناوين الطلب إلى YouTube بشكل صحيح. ثبّت Node.js أو Deno أو Bun ليعمل الأمر بشكل دائم.",
-      zh: "来源拒绝了访问（403）。系统未安装 JavaScript 运行时，没有它 yt-dlp 无法正确构造 YouTube 的请求地址。安装 Node.js、Deno 或 Bun 后即可长期正常工作。",
+      en: "The source refused access (403). No JavaScript runtime is installed. Without one, yt-dlp cannot build YouTube’s media URLs, and every download there fails. Install Node.js, Deno or Bun and it will work for good.",
+      es: "La fuente denegó el acceso (403). No hay ningún entorno de JavaScript instalado. Sin él, yt-dlp no puede construir las direcciones de YouTube y allí falla toda descarga. Instala Node.js, Deno o Bun y funcionará de forma duradera.",
+      fr: "La source a refusé l'accès (403). Aucun environnement JavaScript n'est installé. Sans lui, yt-dlp ne peut pas construire les adresses de YouTube et chaque téléchargement y échoue. Installe Node.js, Deno ou Bun et cela fonctionnera durablement.",
+      ru: "Источник отказал в доступе (403). Среда выполнения JavaScript не установлена. Без неё yt-dlp не может составить адреса YouTube, и любая загрузка оттуда срывается. Установи Node.js, Deno или Bun — и всё заработает надолго.",
+      ar: "رفض المصدر الوصول (403). لا توجد بيئة تشغيل جافاسكربت مثبّتة. وبدونها لا يستطيع yt-dlp تكوين عناوين يوتيوب، فيفشل كل تنزيل منه. ثبّت Node.js أو Deno أو Bun ليعمل الأمر بشكل دائم.",
+      zh: "来源拒绝了访问（403）。系统未安装 JavaScript 运行时。没有它，yt-dlp 无法构造 YouTube 的媒体地址，那里的每次下载都会失败。请安装 Node.js、Deno 或 Bun，即可长期正常使用。",
     },
 
   Mehr: {
