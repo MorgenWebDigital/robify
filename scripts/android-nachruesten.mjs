@@ -9,13 +9,16 @@
  *
  * Idempotent: Zweimal aufgerufen ändert es beim zweiten Mal nichts.
  */
-import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, copyFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
 
 const MAIN_ACTIVITY =
   "src-tauri/gen/android/app/src/main/java/de/robify/player/MainActivity.kt";
 const APP_GRADLE = "src-tauri/gen/android/app/build.gradle.kts";
+const PAKET_ORDNER = "src-tauri/gen/android/app/src/main/java/de/robify/player";
+/** Fassung von `youtubedl-android`; bringt yt-dlp und Python selbst mit. */
+const YTDLP_FASSUNG = "0.18.1";
 
 /**
  * Der Zurück-Knopf soll durch die App führen, nicht aus ihr heraus.
@@ -138,5 +141,109 @@ function zertifikatspruefungEinbinden() {
   console.log("Zertifikatsprüfung: eingebunden");
 }
 
+/**
+ * Bringt yt-dlp aufs Telefon.
+ *
+ * Das Programm gibt es für Android nicht: Es ist Python, und selbst die
+ * Linux-Binärdatei läuft hier nicht, weil Android eine andere C-Bibliothek
+ * verwendet. `youtubedl-android` liefert yt-dlp samt Python-Laufzeit als
+ * Bibliothek; das kostet rund hundert Megabyte im Paket, ist aber der einzige
+ * Weg, denselben Funktionsumfang zu behalten.
+ *
+ * `ffmpeg` kommt aus demselben Haus und wird zum Umwandeln gebraucht. Ohne es
+ * gäbe es nur das Format, das die Quelle liefert.
+ */
+function ytdlpEinbinden() {
+  const inhalt = readFileSync(APP_GRADLE, "utf8");
+  if (!inhalt.includes("youtubedl-android")) {
+    const mit = inhalt.replace(
+      "dependencies {",
+      [
+        "dependencies {",
+        "    // yt-dlp samt Python-Laufzeit, siehe scripts/android-nachruesten.mjs.",
+        `    implementation("io.github.junkfood02.youtubedl-android:library:${YTDLP_FASSUNG}")`,
+        `    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:${YTDLP_FASSUNG}")`,
+      ].join("\n"),
+    );
+    writeFileSync(APP_GRADLE, mit);
+    console.log("yt-dlp: Abhängigkeiten eingetragen");
+  } else {
+    console.log("yt-dlp: Abhängigkeiten schon da");
+  }
+
+  // Native Bibliotheken müssen beim Installieren ausgepackt werden.
+  //
+  // `youtubedl-android` legt seine Python-Laufzeit als `libpython.zip.so` im
+  // Bibliotheksordner ab und liest sie zur Laufzeit als gewöhnliche Datei.
+  // Moderne Android-Pakete lassen die Bibliotheken jedoch im Archiv liegen
+  // und laden sie von dort; dann gibt es die Datei nicht, und die Einrichtung
+  // scheitert mit `FileNotFoundException`. Die ältere Verpackung packt sie
+  // beim Installieren aus.
+  const mitPackung = readFileSync(APP_GRADLE, "utf8");
+  if (!mitPackung.includes("useLegacyPackaging")) {
+    writeFileSync(
+      APP_GRADLE,
+      mitPackung.replace(
+        "    buildTypes {",
+        [
+          "    packaging {",
+          "        jniLibs {",
+          "            useLegacyPackaging = true",
+          "        }",
+          "    }",
+          "    buildTypes {",
+        ].join("\n"),
+      ),
+    );
+    console.log("yt-dlp: Bibliotheken werden ausgepackt");
+  }
+
+  // Die Brücke liegt im Projekt, nicht in diesem Skript: Sie ist Kotlin und
+  // gehört dorthin, wo man sie liest und ändert.
+  copyFileSync("src-tauri/android/Ytdlp.kt", join(PAKET_ORDNER, "Ytdlp.kt"));
+
+  const activity = readFileSync(MAIN_ACTIVITY, "utf8");
+  if (activity.includes("YoutubeDL.getInstance().init")) {
+    console.log("yt-dlp: Einrichtung schon in der Activity");
+    return;
+  }
+
+  // Die Bibliothek packt ihre Python-Laufzeit beim ersten Start aus und muss
+  // dafür einmal eingerichtet werden. In einem eigenen Faden, weil das ein
+  // paar Sekunden dauert und den Aufbau der Oberfläche sonst aufhielte.
+  const mitInit = activity
+    .replace(
+      "import android.os.Bundle",
+      [
+        "import android.os.Bundle",
+        "import android.util.Log",
+        "import com.yausername.ffmpeg.FFmpeg",
+        "import com.yausername.youtubedl_android.YoutubeDL",
+      ].join("\n"),
+    )
+    .replace(
+      "    super.onCreate(savedInstanceState)",
+      [
+        "    super.onCreate(savedInstanceState)",
+        "",
+        "    // Packt beim ersten Start die Python-Laufzeit aus; das dauert",
+        "    // einige Sekunden und darf die Oberfläche nicht aufhalten.",
+        "    Thread {",
+        "      try {",
+        "        YoutubeDL.getInstance().init(this)",
+        "        FFmpeg.getInstance().init(this)",
+        '        Log.i("Robify", "yt-dlp und ffmpeg bereit")',
+        "      } catch (fehler: Throwable) {",
+        '        Log.e("Robify", "yt-dlp nicht eingerichtet", fehler)',
+        "      }",
+        "    }.start()",
+      ].join("\n"),
+    );
+
+  writeFileSync(MAIN_ACTIVITY, mitInit);
+  console.log("yt-dlp: Einrichtung in die Activity getragen");
+}
+
 zurueckKnopfAnschalten();
 zertifikatspruefungEinbinden();
+ytdlpEinbinden();
