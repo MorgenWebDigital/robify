@@ -119,44 +119,51 @@ export function ArtistDetail() {
             eyebrow={t("Künstler")}
             title={artist.name}
             subtitle={`${plural(artist.trackCount, "Titel")} · ${plural(releases.length, "Release")} · ${formatDuration(totalMs)}`}
+            actionsReihe
             actions={
               <>
                 <button
                   type="button"
                   onClick={() => playAll(false)}
                   disabled={!tracks.length}
-                  className="pill-btn is-raised is-accent h-9 px-4 text-sm font-semibold"
+                  title={t("Abspielen")}
+                  className="pill-btn is-raised is-accent aktionsknopf aktionsknopf-kurz"
                 >
                   <PlayIcon size={16} />
-                  {t("Abspielen")}
+                  <span className="beschriftung">{t("Abspielen")}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => playAll(true)}
                   disabled={!tracks.length}
-                  className="pill-btn is-raised h-9 px-4 text-sm font-semibold"
+                  title={t("Zufällig")}
+                  className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
                 >
                   <ShuffleIcon size={16} />
-                  {t("Zufällig")}
+                  <span className="beschriftung">{t("Zufällig")}</span>
                 </button>
                 {!artist.hasImage && !artist.bio && (
                   <button
                     type="button"
                     onClick={() => void fetchMetadata()}
                     disabled={fetching}
-                    className="pill-btn is-raised h-9 px-4 text-sm font-semibold"
+                    title={fetching ? t("Suche…") : t("Metadaten holen")}
+                    className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
                   >
                     <DownloadIcon size={16} />
-                    {fetching ? t("Suche…") : t("Metadaten holen")}
+                    <span className="beschriftung">
+                      {fetching ? t("Suche…") : t("Metadaten holen")}
+                    </span>
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
-                  className="pill-btn is-raised h-9 px-4 text-sm font-semibold"
+                  title={t("Bearbeiten")}
+                  className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
                 >
                   <PencilIcon size={16} />
-                  {t("Bearbeiten")}
+                  <span className="beschriftung">{t("Bearbeiten")}</span>
                 </button>
               </>
             }

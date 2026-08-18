@@ -199,6 +199,7 @@ export function PageHeader({
   subtitle,
   actions,
   actionsRechts = false,
+  actionsReihe = false,
 }: {
   eyebrow?: string;
   title: string;
@@ -206,6 +207,20 @@ export function PageHeader({
   actions?: React.ReactNode;
   /** Bedienung an den rechten Rand statt unter den Anfang der Überschrift. */
   actionsRechts?: boolean;
+  /**
+   * Enger werden statt umbrechen.
+   *
+   * Steht die Bedienung neben einem Bild, bleibt ihr wenig Breite, und drei
+   * Knöpfe rutschten dort untereinander — auf der Künstlerseite war das eine
+   * Spalte statt einer Reihe. `aktionsreihe` macht die Reihe selbst zum
+   * Maßstab; die Knöpfe fallen dann auf ihr Zeichen zusammen, wie in der
+   * Bibliothek.
+   *
+   * Bewusst als Zusatz und nicht als neue Regel für alle: Ohne
+   * `aktionsknopf-kurz` an den Knöpfen liefen sie sonst über den Rand,
+   * statt umzubrechen.
+   */
+  actionsReihe?: boolean;
 }) {
   return (
     // Feste Bauhöhe für jede Seite. Rubrik und Untertitel sind nicht überall
@@ -231,7 +246,9 @@ export function PageHeader({
           nicht mehr zusammen. Derselbe Abstand wie in den Suchzeilen. */}
       {actions && (
         <div
-          className={`mt-3 flex flex-wrap items-center gap-3 ${actionsRechts ? "justify-end" : ""}`}
+          className={`mt-3 items-center gap-3 ${
+            actionsReihe ? "aktionsreihe" : "flex flex-wrap"
+          } ${actionsRechts ? "justify-end" : ""}`}
         >
           {actions}
         </div>
