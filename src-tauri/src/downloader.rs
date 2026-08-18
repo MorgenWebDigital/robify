@@ -335,9 +335,21 @@ pub fn plans_with_fallbacks(found: Vec<SearchResult>) -> Vec<DownloadPlan> {
             // Nur Treffer, die denselben Titel meinen. Vorher stand hier die
             // ganze Trefferliste, bei „Yeat Naked“ wich der Download dann
             // bis auf „Back Home“ aus, einen völlig anderen Song.
-            let fallbacks = alle
+            let mut ausweich: Vec<&SearchResult> = alle
                 .iter()
                 .filter(|andere| andere.url != treffer.url && same_song(andere, &treffer))
+                .collect();
+            // Erst eine andere Quelle, dann der Rest derselben.
+            //
+            // Sagt eine Quelle ab, sagt sie meist für alle ihre Treffer ab:
+            // Bei YouTube endeten drei Ausweichadressen dreimal mit demselben
+            // 403, während der SoundCloud-Treffer unversucht danebenlag. Die
+            // Sortierung ist stabil, die Reihenfolge nach Passgenauigkeit
+            // bleibt innerhalb jeder Gruppe erhalten.
+            let eigene = source_label(&treffer.url);
+            ausweich.sort_by_key(|andere| source_label(&andere.url) == eigene);
+            let fallbacks = ausweich
+                .into_iter()
                 .map(|andere| andere.url.clone())
                 .take(3)
                 .collect();
@@ -838,10 +850,73 @@ pub fn cleanup_work_dir(work_dir: &Path, max_age: Duration) -> usize {
     entfernt
 }
 
-/// Ordnet eine Adresse ihrer Quelle zu, für den Mindestabstand.
+// ----------------------------------------------------- Absagen von YouTube
+//
+// YouTube gibt Tondateien nur noch heraus, wenn yt-dlp die Abrufadressen auf
+// dem neuen Weg bildet, und dafür braucht es eine JavaScript-Laufzeit. Fehlt
+// sie, weicht yt-dlp auf einen Notweg aus, und jeder Download endet mit
+// „HTTP Error 403“ — jeder, nicht nur gesperrte Titel. Auf einem Telefon
+// lässt sich dagegen nichts installieren.
+//
+// Die anderen Quellen sind davon nicht betroffen. Statt weiter gegen eine
+// verschlossene Tür zu laufen, merkt Robify sich die Absage und stellt für
+// eine Weile SoundCloud, Bandcamp und Audius nach vorn. Der Vermerk verfällt
+// von selbst: Die Lage bei YouTube ändert sich, und ohne Ablauf bliebe
+// Robify für den Rest der Sitzung bei den Ausweichquellen.
+
+/// So lange gilt eine Absage von YouTube als noch aktuell.
+const ABSAGE_GILT: Duration = Duration::from_secs(30 * 60);
+
+/// Abschlag für YouTube-Treffer, solange die Absage gilt.
 ///
-/// Grob, aber ausreichend: Es geht nur darum, Zugriffe auf denselben Dienst
-/// auseinanderzuziehen. Was sich nicht zuordnen lässt, teilt sich einen Topf.
+/// Kleiner als ein fehlendes Suchwort (20). Der Abzug soll gleichwertige
+/// Treffer umsortieren, nicht einen unpassenden Titel nach vorn holen: Lieber
+/// ein Download, der scheitert, als der falsche Song in der Bibliothek.
+const ABSAGE_ABZUG: f64 = 12.0;
+
+fn absage_vermerk() -> &'static Mutex<Option<Instant>> {
+    static VERMERK: OnceLock<Mutex<Option<Instant>>> = OnceLock::new();
+    VERMERK.get_or_init(|| Mutex::new(None))
+}
+
+/// Gehört die Adresse zu YouTube oder YouTube Music?
+fn ist_youtube(url: &str) -> bool {
+    let quelle = source_label(url);
+    quelle == SearchSource::Youtube.label() || quelle == SearchSource::YoutubeMusic.label()
+}
+
+/// Hält fest, dass YouTube den Zugriff verweigert hat.
+fn absage_merken() {
+    *absage_vermerk().lock() = Some(Instant::now());
+}
+
+/// Sagt YouTube gerade ab?
+fn youtube_sagt_ab() -> bool {
+    matches!(*absage_vermerk().lock(), Some(zeit) if zeit.elapsed() < ABSAGE_GILT)
+}
+
+/// Hat die Quelle den Zugriff verweigert?
+fn zugriff_verweigert(fehler: &anyhow::Error) -> bool {
+    fehler.to_string().contains("(403)")
+}
+
+/// Der Abschlag für einen Treffer, solange die Absage gilt.
+fn absage_abzug(url: &str) -> f64 {
+    abzug_bei(url, youtube_sagt_ab())
+}
+
+/// Dasselbe ohne den Vermerk, damit es sich prüfen lässt.
+///
+/// Der Vermerk ist modulweit; ein Test, der ihn setzt, färbte auf alle
+/// nebenher laufenden ab.
+fn abzug_bei(url: &str, sagt_ab: bool) -> f64 {
+    if sagt_ab && ist_youtube(url) {
+        ABSAGE_ABZUG
+    } else {
+        0.0
+    }
+}
+
 fn source_label(url: &str) -> &'static str {
     let lower = url.to_ascii_lowercase();
     if lower.contains("music.youtube") || lower.starts_with("ytmsearch") {
@@ -860,6 +935,10 @@ fn source_label(url: &str) -> &'static str {
     }
 }
 
+/// Ordnet eine Adresse ihrer Quelle zu, für den Mindestabstand.
+///
+/// Grob, aber ausreichend: Es geht nur darum, Zugriffe auf denselben Dienst
+/// auseinanderzuziehen. Was sich nicht zuordnen lässt, teilt sich einen Topf.
 /// Belegt einen Platz und wartet, bis die Quelle wieder an der Reihe ist.
 ///
 /// Die Genehmigung wird zurückgegeben; solange sie lebt, ist der Platz belegt.
@@ -1251,8 +1330,14 @@ fn rank_candidates(
     let mut ranked: Vec<(f64, &SearchResult)> = found
         .iter()
         .filter_map(|candidate| {
-            score_candidate(candidate, query, expected_duration_ms, expected_title)
-                .map(|score| (score + consensus_penalty(candidate, consensus), candidate))
+            score_candidate(candidate, query, expected_duration_ms, expected_title).map(|score| {
+                (
+                    score
+                        + consensus_penalty(candidate, consensus)
+                        + absage_abzug(&candidate.url),
+                    candidate,
+                )
+            })
         })
         .collect();
 
@@ -1261,7 +1346,12 @@ fn rank_candidates(
         // Textnähe ordnen, statt blind den ersten zu nehmen.
         ranked = found
             .iter()
-            .map(|candidate| (coverage_penalty(query, candidate), candidate))
+            .map(|candidate| {
+                (
+                    coverage_penalty(query, candidate) + absage_abzug(&candidate.url),
+                    candidate,
+                )
+            })
             .collect();
     }
 
@@ -1781,6 +1871,16 @@ pub async fn download<R: Runtime>(
             .collect(),
     };
 
+    // Sagt YouTube gerade ab, kommt es nach hinten.
+    //
+    // Der gewählte Treffer verliert damit seinen Vorrang, aber ein Versuch,
+    // von dem man weiß, dass er scheitert, kostet nur eine halbe Minute. Die
+    // Reihenfolge unter den übrigen bleibt, wie sie war.
+    let mut attempts = attempts;
+    if youtube_sagt_ab() {
+        attempts.sort_by_key(|url| ist_youtube(url));
+    }
+
     let mut result = Err(anyhow!(fehler!("Keine Quelle angegeben")));
     for (index, url) in attempts.iter().enumerate() {
         let attempt = DownloadOptions {
@@ -1791,6 +1891,12 @@ pub async fn download<R: Runtime>(
 
         if result.is_ok() || cancel.load(Ordering::SeqCst) {
             break;
+        }
+        // Eine Absage von YouTube gilt für alle seine Treffer, nicht nur für
+        // diesen. Erkannt am „(403)“ aus `blocked_message`; die Meldung wird
+        // erst in der Oberfläche übersetzt, die Nummer steht in jeder Sprache.
+        if ist_youtube(url) && result.as_ref().err().is_some_and(zugriff_verweigert) {
+            absage_merken();
         }
         if index + 1 < attempts.len() {
             emit(
@@ -2358,10 +2464,95 @@ fn locate_output(result_file: &Path, job_dir: &Path) -> Result<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::{
-        apply_source_metadata, blocked_message, consensus_duration_ms, explain_failure,
-        is_collection_url, rank_candidates, score_candidate, sort_by_relevance, version_penalty,
-        SearchResult, TrackMetadata,
+        abzug_bei, apply_source_metadata, blocked_message, consensus_duration_ms,
+        coverage_penalty, explain_failure,
+        ist_youtube, is_collection_url, plans_with_fallbacks, rank_candidates, score_candidate,
+        sort_by_relevance, version_penalty, SearchResult, TrackMetadata, ABSAGE_ABZUG,
     };
+
+    /// Ein Treffer mit einer Adresse, an der die Quelle erkennbar ist.
+    fn treffer_bei(titel: &str, sekunden: i64, adresse: &str) -> SearchResult {
+        SearchResult {
+            id: adresse.into(),
+            title: titel.into(),
+            uploader: None,
+            duration_ms: Some(sekunden * 1000),
+            url: adresse.into(),
+            thumbnail: None,
+            source: adresse.into(),
+        }
+    }
+
+    #[test]
+    fn youtube_wird_an_der_adresse_erkannt() {
+        assert!(ist_youtube("https://www.youtube.com/watch?v=abc"));
+        assert!(ist_youtube("https://youtu.be/abc"));
+        assert!(ist_youtube("https://music.youtube.com/watch?v=abc"));
+        assert!(!ist_youtube("https://soundcloud.com/wer/was"));
+        assert!(!ist_youtube("https://kuenstler.bandcamp.com/track/was"));
+    }
+
+    /// Der Abschlag darf umsortieren, aber nichts Falsches nach vorn holen.
+    ///
+    /// Ein fehlendes Suchwort kostet 20. Läge der Abschlag darüber, gewänne
+    /// ein SoundCloud-Treffer mit fremdem Titel gegen den richtigen Song bei
+    /// YouTube — und ein falscher Titel in der Bibliothek fällt später kaum
+    /// noch auf, ein gescheiterter Download dagegen sofort.
+    #[test]
+    fn abschlag_bleibt_unter_einem_fehlenden_wort() {
+        // Gemessen statt behauptet: Was ein fehlendes Wort kostet, steht in
+        // `coverage_penalty` und darf sich ändern, ohne dass dieser Test
+        // stillschweigend nutzlos wird.
+        let fremd = treffer_bei("Ganz was anderes", 199, "https://soundcloud.com/wer/was");
+        let fehlendes_wort = coverage_penalty("Impact Prelude", &fremd);
+        assert!(
+            ABSAGE_ABZUG < fehlendes_wort,
+            "Abschlag {ABSAGE_ABZUG} überholt einen fremden Titel ({fehlendes_wort})"
+        );
+    }
+
+    #[test]
+    fn ohne_absage_gibt_es_keinen_abschlag() {
+        let youtube = "https://www.youtube.com/watch?v=abc";
+        assert_eq!(abzug_bei(youtube, false), 0.0);
+        assert_eq!(abzug_bei(youtube, true), ABSAGE_ABZUG);
+        // Die übrigen Quellen trifft die Absage nie.
+        assert_eq!(abzug_bei("https://soundcloud.com/wer/was", true), 0.0);
+    }
+
+    /// Die Ausweichliste soll die Quelle wechseln.
+    ///
+    /// Sagt YouTube ab, sagt es für alle seine Treffer ab. Vorher standen
+    /// drei YouTube-Adressen in der Liste und endeten dreimal mit demselben
+    /// 403, während der SoundCloud-Treffer unversucht danebenlag.
+    #[test]
+    fn die_ausweichliste_wechselt_zuerst_die_quelle() {
+        let treffer = vec![
+            treffer_bei("Impact Prelude", 199, "https://www.youtube.com/watch?v=eins"),
+            treffer_bei("Impact Prelude", 199, "https://www.youtube.com/watch?v=zwei"),
+            treffer_bei("Impact Prelude", 199, "https://soundcloud.com/wer/impact"),
+        ];
+
+        let plaene = plans_with_fallbacks(treffer);
+        let erster = &plaene[0];
+        assert_eq!(erster.url, "https://www.youtube.com/watch?v=eins");
+        assert_eq!(
+            erster.fallbacks.first().map(String::as_str),
+            Some("https://soundcloud.com/wer/impact"),
+            "die andere Quelle muss zuerst versucht werden: {:?}",
+            erster.fallbacks
+        );
+    }
+
+    #[test]
+    fn abgelehnter_zugriff_wird_als_absage_erkannt() {
+        // Genau der Weg, den `download` geht: erklärte Meldung, dann Prüfung.
+        let meldung = explain_failure("ERROR: unable to download video data: HTTP Error 403: Forbidden\n");
+        assert!(super::zugriff_verweigert(&anyhow::anyhow!(meldung)));
+        assert!(!super::zugriff_verweigert(&anyhow::anyhow!(explain_failure(
+            "ERROR: [youtube] abc: Private video"
+        ))));
+    }
 
     #[test]
     fn drm_meldung_wird_erklaert() {
