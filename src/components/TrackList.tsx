@@ -160,7 +160,24 @@ export function TrackList({
                   : undefined
               }
               {...merkmale(index)}
-              className={`group relative hover:z-20 grid grid-cols-[2.25rem_1fr_auto] items-center gap-3 rounded-lg px-2 py-1.5 transition sm:grid-cols-[2.25rem_minmax(0,3fr)_minmax(0,2fr)_auto] ${
+              /*
+               * Die ganze Zeile startet den Titel.
+               *
+               * Auf einem Telefon zielt man nicht auf einen kleinen Knopf,
+               * man tippt auf den Song. Alles, was selbst etwas tut, behält
+               * dabei den Vortritt: die Künstler- und Albumlinks, die beiden
+               * Knöpfe rechts, der Titel. Ohne diese Ausnahme startete ein
+               * Druck auf „Yeat“ den Titel, statt zum Künstler zu führen.
+               *
+               * Die Zeile bleibt ein `li` und wird kein Knopf: Sie enthält
+               * Knöpfe und Links, und die dürfen nicht in einem Knopf stehen.
+               * Über die Tastatur führt weiter der Titel hinein.
+               */
+              onClick={(event) => {
+                if ((event.target as HTMLElement).closest("a, button")) return;
+                playAt(index);
+              }}
+              className={`group relative hover:z-20 grid cursor-pointer grid-cols-[2.25rem_1fr_auto] items-center gap-3 rounded-lg px-2 py-1.5 transition sm:grid-cols-[2.25rem_minmax(0,3fr)_minmax(0,2fr)_auto] ${
                 isCurrent ? "raised-row" : "hover:bg-ink-800"
               } ${isHighlighted ? "bg-ink-800 ring-2 ring-[var(--accent)]" : ""} ${
                 zieht === index ? "opacity-40" : ""

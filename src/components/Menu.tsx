@@ -166,12 +166,28 @@ export function Menu({
       }
     : undefined;
 
+  /**
+   * Beim Verlassen zufallen — außer der Finger war es.
+   *
+   * Auf einem Telefon endet der Zeiger mit der Berührung: Gleich nach dem
+   * Tippen meldet sich „leave“, und das eben erst geöffnete Menü fiel nach
+   * 160 ms wieder zu, ohne dass etwas zu sehen war. Das Öffnen nimmt
+   * Berührungen längst aus, das Schließen tat es nicht. Dort schließt der
+   * Druck daneben, den `pointerdown` am Dokument schon abfängt.
+   */
+  const beimVerlassen = hover
+    ? (event: React.PointerEvent) => {
+        if (event.pointerType === "touch") return;
+        spaeterSchliessen();
+      }
+    : undefined;
+
   return (
     <div
       ref={container}
       className="relative"
       onPointerEnter={beimUeberfahren}
-      onPointerLeave={hover ? spaeterSchliessen : undefined}
+      onPointerLeave={beimVerlassen}
     >
       {trigger({ open, toggle: () => (open ? setOpen(false) : oeffnen()) })}
 
@@ -182,7 +198,7 @@ export function Menu({
             ref={liste}
             role="menu"
             onPointerEnter={hover ? nichtSchliessen : undefined}
-            onPointerLeave={hover ? spaeterSchliessen : undefined}
+            onPointerLeave={beimVerlassen}
             style={{
               position: "fixed",
               [lage.obenAus ? "bottom" : "top"]: lage.y,
