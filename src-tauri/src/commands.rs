@@ -1343,6 +1343,25 @@ pub async fn update_ytdlp(state: State<'_, AppState>) -> CmdResult<String> {
     Ok(crate::ytdlp::aktualisieren(&ytdlp).await?)
 }
 
+/// Schreibt das Schema einer eingegebenen Adresse klein.
+///
+/// Tastaturen auf dem Telefon schreiben den Satzanfang groß; aus einem
+/// eingetippten Link wird „HTTPS://…“. Die Erkennung sah darin keine Adresse,
+/// Robify suchte den ganzen Link als Stichwort — fand den Titel zwar trotzdem,
+/// warnte danach aber, das Geladene passe nicht zur Eingabe, und verglich es
+/// dafür mit der Adresse.
+///
+/// Nur das Schema, nicht die ganze Adresse: Alles dahinter ist von Bedeutung,
+/// YouTube-Kennungen unterscheiden Groß- und Kleinschreibung.
+fn schema_kleinschreiben(eingabe: &str) -> String {
+    for schema in ["https://", "http://"] {
+        if eingabe.len() >= schema.len() && eingabe[..schema.len()].eq_ignore_ascii_case(schema) {
+            return format!("{schema}{}", &eingabe[schema.len()..]);
+        }
+    }
+    eingabe.to_string()
+}
+
 /// Nimmt entgegen, was im Downloader eingegeben wurde, und entscheidet selbst,
 /// was zu tun ist:
 ///
@@ -1358,7 +1377,7 @@ pub async fn resolve_input(
     input: String,
     limit: Option<usize>,
 ) -> CmdResult<LinkPlan> {
-    let input = input.trim().to_string();
+    let input = schema_kleinschreiben(input.trim());
     if input.is_empty() {
         return Err(Error(fehler!("Bitte etwas eingeben.")));
     }
@@ -2091,7 +2110,40 @@ pub fn app_paths(app: AppHandle, state: State<'_, AppState>) -> CmdResult<serde_
 
 #[cfg(test)]
 mod tests {
-    use super::sanitize;
+    use super::{sanitize, schema_kleinschreiben};
+
+    /// Ein eingetippter Link bleibt ein Link.
+    ///
+    /// Auf dem Telefon schreibt die Tastatur den Satzanfang groß. Aus
+    /// „https://…“ wurde „HTTPS://…“, und Robify hielt das für ein Stichwort:
+    /// Es suchte den ganzen Link in allen Quellen und warnte danach, das
+    /// Geladene passe nicht zur Eingabe — verglichen mit der Adresse.
+    #[test]
+    fn grossgeschriebenes_schema_wird_erkannt() {
+        assert_eq!(
+            schema_kleinschreiben("HTTPS://www.youtube.com/watch?v=7ccyYIfoRPg"),
+            "https://www.youtube.com/watch?v=7ccyYIfoRPg"
+        );
+        assert_eq!(
+            schema_kleinschreiben("Http://beispiel.test/Weg"),
+            "http://beispiel.test/Weg"
+        );
+    }
+
+    /// Hinter dem Schema bleibt alles, wie es war.
+    ///
+    /// YouTube-Kennungen unterscheiden Groß- und Kleinschreibung; die ganze
+    /// Adresse kleinzuschreiben führte auf ein anderes Video oder ins Leere.
+    #[test]
+    fn nur_das_schema_wird_angefasst() {
+        assert_eq!(
+            schema_kleinschreiben("https://youtu.be/AbCdEfGhIjK"),
+            "https://youtu.be/AbCdEfGhIjK"
+        );
+        // Ein Stichwort bleibt unberührt, auch wenn es groß beginnt.
+        assert_eq!(schema_kleinschreiben("Yeat COMË N GO"), "Yeat COMË N GO");
+        assert_eq!(schema_kleinschreiben(""), "");
+    }
 
     #[test]
     fn dateinamen_bleiben_im_zielordner() {
