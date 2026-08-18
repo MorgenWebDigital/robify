@@ -1565,21 +1565,6 @@ fn explain_failure(stderr: &str) -> String {
         || haystack.contains("http error 429")
         || haystack.contains("too many requests")
     {
-        // Bei YouTube ist es keine Drosselung, sondern eine Bedingung.
-        //
-        // YouTube gibt die Abrufadressen nur noch gegen ein Echtheitszeichen
-        // heraus („PO Token“). yt-dlp kann es ohne Zusatzmodul nicht bilden
-        // und meldet dann `PO Token Providers: none`; jeder Abspiel-Client
-        // endet danach mit 403, bei jedem Titel. „Warte ein paar Minuten“
-        // wäre hier schlicht falsch — auch morgen ändert sich nichts.
-        if haystack.contains("[youtube") {
-            return with_details(
-                fehler!(
-                    "YouTube gibt Tondateien nur noch gegen ein Echtheitszeichen heraus, das yt-dlp hier nicht erzeugen kann. Das betrifft jeden Titel, nicht nur diesen, und geht auch nach Warten nicht weg. Robify weicht deshalb auf SoundCloud, Bandcamp und Audius aus."
-                ),
-                raw,
-            );
-        }
         return with_details(blocked_message(js_runtime().is_some()), raw);
     }
     // Die Nachbearbeitung stolpert über eine fehlende Python-Bibliothek.
@@ -2008,6 +1993,19 @@ async fn download_inner<R: Runtime>(
         "--print-to-file".into(),
         "%(track)s\u{1f}%(artist)s\u{1f}%(album)s\u{1f}%(release_year)s\u{1f}%(track_number)s".into(),
         music_file.to_string_lossy().into_owned(),
+        // Welchen Abspiel-Client yt-dlp bei YouTube benutzt.
+        //
+        // Von sich aus wählt yt-dlp `android_vr`; dessen Abrufadressen weist
+        // YouTube inzwischen mit „HTTP Error 403“ ab — bei jedem Titel, auch
+        // bei frei lizenzierten. `web_embedded` liefert Adressen, die YouTube
+        // annimmt, sofern eine JavaScript-Laufzeit da ist. Nachgemessen:
+        // `default` scheitert, `web_embedded,default` lädt.
+        //
+        // Die übrigen Clients bleiben als Rückfall dahinter stehen, sonst
+        // fiele weg, was nur einer von ihnen hergibt. Die Angabe trägt den
+        // Namensraum `youtube:` und geht andere Quellen nichts an.
+        "--extractor-args".into(),
+        "youtube:player_client=web_embedded,default".into(),
         "-f".into(),
         format_selector(options.format == "best"),
         "-o".into(),
@@ -2557,29 +2555,6 @@ mod tests {
             "die andere Quelle muss zuerst versucht werden: {:?}",
             erster.fallbacks
         );
-    }
-
-    /// Bei YouTube ist der 403 dauerhaft, bei anderen Quellen nicht.
-    ///
-    /// „Warte ein paar Minuten“ war dort falsch: Ohne Echtheitszeichen endet
-    /// jeder Abspiel-Client mit 403, und daran ändert Warten nichts.
-    #[test]
-    fn bei_youtube_wird_nicht_zum_warten_geraten() {
-        let stderr = "\
-[youtube] 8brfFygGyMg: Downloading android vr player API JSON
-ERROR: unable to download video data: HTTP Error 403: Forbidden
-";
-        let meldung = explain_failure(stderr);
-        assert!(meldung.contains("Echtheitszeichen"), "unerwartet: {meldung}");
-        assert!(!meldung.contains("Warte ein paar Minuten"));
-        // Ausweichen bleibt der genannte Weg.
-        assert!(meldung.contains("SoundCloud"));
-
-        // Bei einer anderen Quelle bleibt es bei der Drosselung als Erklärung.
-        let fremd = explain_failure(
-            "[soundcloud] wer/was: Downloading\nERROR: unable to download video data: HTTP Error 403: Forbidden\n",
-        );
-        assert!(!fremd.contains("Echtheitszeichen"), "unerwartet: {fremd}");
     }
 
     #[test]

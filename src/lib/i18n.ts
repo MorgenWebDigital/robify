@@ -491,15 +491,6 @@ const TEXTE: Record<string, Fassungen> = {
       ar: "يرفض يوتيوب الإصدارات القديمة بالخطأ «403». وإن لم يُجدِ التحديث، فالسبب في المصدر.",
       zh: "YouTube 会以“403”拒绝旧版本。若更新后仍无效，问题出在来源。",
     },
-  "YouTube gibt Tondateien nur noch gegen ein Echtheitszeichen heraus, das yt-dlp hier nicht erzeugen kann. Das betrifft jeden Titel, nicht nur diesen, und geht auch nach Warten nicht weg. Robify weicht deshalb auf SoundCloud, Bandcamp und Audius aus.":
-    {
-      en: "YouTube now only hands out audio files against a proof-of-origin token that yt-dlp cannot produce here. This affects every track, not just this one, and waiting will not change it. Robify therefore falls back to SoundCloud, Bandcamp and Audius.",
-      es: "YouTube solo entrega archivos de audio a cambio de un distintivo de origen que yt-dlp no puede generar aquí. Afecta a todos los temas, no solo a este, y esperar no cambia nada. Por eso Robify recurre a SoundCloud, Bandcamp y Audius.",
-      fr: "YouTube ne délivre plus de fichiers audio que contre un jeton d'authenticité que yt-dlp ne peut pas produire ici. Cela concerne tous les titres, pas seulement celui-ci, et attendre n'y changera rien. Robify se rabat donc sur SoundCloud, Bandcamp et Audius.",
-      ru: "YouTube выдаёт звуковые файлы только в обмен на знак подлинности, который yt-dlp здесь создать не может. Это касается любого трека, а не только этого, и ожидание не поможет. Поэтому Robify переходит на SoundCloud, Bandcamp и Audius.",
-      ar: "لم يعد يوتيوب يسلّم الملفات الصوتية إلا مقابل علامة أصالة لا يستطيع yt-dlp توليدها هنا. وهذا يشمل كل المقاطع لا هذا وحده، والانتظار لا يغيّر شيئًا. لذلك يلجأ Robify إلى SoundCloud وBandcamp وAudius.",
-      zh: "YouTube 现在只在收到来源证明令牌后才提供音频文件，而 yt-dlp 在这里无法生成该令牌。这影响每一首曲子，不只是这一首，等待也无济于事。因此 Robify 会改用 SoundCloud、Bandcamp 和 Audius。",
-    },
   "Sicherung anlegen": {
     en: "Create backup",
     fr: "Créer une sauvegarde",
