@@ -13,11 +13,15 @@ use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+// Nur der Weg über einen eigenen Prozess braucht sie; auf Android laufen
+// yt-dlp und ffmpeg über die Java-Brücke.
+#[cfg(not(target_os = "android"))]
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Runtime};
+#[cfg(not(target_os = "android"))]
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use crate::fehler;
@@ -2260,27 +2264,56 @@ async fn ensure_playable<R: Runtime>(
     );
 
     let target = path.with_extension("m4a");
-    let mut cmd = Command::new("ffmpeg");
-    cmd.args(["-y", "-loglevel", "error", "-i"])
-        .arg(&path)
-        .args(["-c:a", "aac", "-b:a", "192k"])
-        .arg(&target)
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped());
-    configure(&mut cmd);
+    let args = vec![
+        "-y".to_string(),
+        "-loglevel".to_string(),
+        "error".to_string(),
+        "-i".to_string(),
+        path.to_string_lossy().into_owned(),
+        "-c:a".to_string(),
+        "aac".to_string(),
+        "-b:a".to_string(),
+        "192k".to_string(),
+        target.to_string_lossy().into_owned(),
+    ];
 
-    let output = tokio::time::timeout(CONVERT_TIMEOUT, cmd.output())
+    let ausgabe = tokio::time::timeout(CONVERT_TIMEOUT, ffmpeg_lassen(args))
         .await
         .map_err(|_| anyhow!(fehler!("Die Umwandlung von {0} dauert zu lange.", format)))??;
-    if !output.status.success() || !target.exists() {
+    if !ausgabe.erfolg || !target.exists() {
         bail!(
             "Umwandlung von {format} fehlgeschlagen: {}",
-            String::from_utf8_lossy(&output.stderr).trim()
+            ausgabe.stderr.trim()
         );
     }
 
     let _ = std::fs::remove_file(&path);
     Ok(target)
+}
+
+/// Ruft ffmpeg auf, gleich auf welchem System.
+///
+/// Auf dem Rechner ist es ein Programm im Suchpfad. Auf Android liegt es als
+/// Bibliothek bei — dort gibt es kein `ffmpeg` zu finden, und ein eigener
+/// Prozessstart scheiterte schon daran, dass Android das Ausführen außerhalb
+/// des Bibliotheksordners nicht erlaubt.
+#[cfg(not(target_os = "android"))]
+async fn ffmpeg_lassen(args: Vec<String>) -> Result<crate::ytdlp::Ausgabe> {
+    let mut cmd = Command::new("ffmpeg");
+    cmd.args(&args).stdout(Stdio::null()).stderr(Stdio::piped());
+    configure(&mut cmd);
+
+    let ausgabe = cmd.output().await?;
+    Ok(crate::ytdlp::Ausgabe {
+        erfolg: ausgabe.status.success(),
+        stdout: String::new(),
+        stderr: String::from_utf8_lossy(&ausgabe.stderr).into_owned(),
+    })
+}
+
+#[cfg(target_os = "android")]
+async fn ffmpeg_lassen(args: Vec<String>) -> Result<crate::ytdlp::Ausgabe> {
+    crate::ytdlp::ffmpeg(args).await
 }
 
 fn locate_output(result_file: &Path, job_dir: &Path) -> Result<PathBuf> {

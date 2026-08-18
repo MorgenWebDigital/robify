@@ -17,6 +17,7 @@
 //! unsere Bibliothek lädt, und reicht dabei die `JavaVM` herein. Den Context
 //! holen wir uns von dort selbst.
 
+use jni::objects::GlobalRef;
 use jni::sys::{jint, JNI_VERSION_1_6};
 use jni::JavaVM;
 use std::ffi::c_void;

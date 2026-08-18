@@ -1,8 +1,10 @@
 package de.robify.player
 
+import android.content.Context
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import org.json.JSONObject
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -63,6 +65,64 @@ object Ytdlp {
             antwort.put("err", fehler.message ?: fehler.toString())
         } finally {
             fortschritte.remove(id)
+        }
+        return antwort.toString()
+    }
+
+    /**
+     * Führt das mitgelieferte ffmpeg aus.
+     *
+     * yt-dlp bekommt ffmpeg von der Bibliothek über `--ffmpeg-location`
+     * gereicht und kann damit umwandeln. Robify wandelt aber auch einmal
+     * selbst um: Bietet eine Quelle den Titel nur in einem Format an, das der
+     * Player nicht kennt, wird die fertige Datei nachträglich gewandelt. Dafür
+     * gibt es keinen Weg über yt-dlp.
+     *
+     * Das Programm liegt als `libffmpeg.so` im Bibliotheksordner der App —
+     * einer der wenigen Orte, an denen Android das Ausführen noch erlaubt. Die
+     * Umgebung ist dieselbe, die `youtubedl-android` setzt, wenn es ffmpeg für
+     * yt-dlp startet; ohne sie fände das Programm seine eigenen Bibliotheken
+     * nicht.
+     */
+    @JvmStatic
+    fun umwandeln(kontext: Context, args: Array<String>): String {
+        val antwort = JSONObject()
+        try {
+            val binOrdner = File(kontext.applicationInfo.nativeLibraryDir)
+            val pakete = File(File(kontext.noBackupFilesDir, "youtubedl-android"), "packages")
+            val python = File(pakete, "python")
+            val ffmpeg = File(pakete, "ffmpeg")
+
+            val befehl = ArrayList<String>()
+            befehl.add(File(binOrdner, "libffmpeg.so").absolutePath)
+            befehl.addAll(args)
+
+            val bau = ProcessBuilder(befehl)
+            bau.environment().apply {
+                put(
+                    "LD_LIBRARY_PATH",
+                    "${python.absolutePath}/usr/lib:${ffmpeg.absolutePath}/usr/lib",
+                )
+                put("PATH", "${System.getenv("PATH")}:${binOrdner.absolutePath}")
+                put("HOME", kontext.cacheDir.absolutePath)
+                put("TMPDIR", kontext.cacheDir.absolutePath)
+            }
+            // Beide Ströme in einem: Liest man sie nacheinander, blockiert der
+            // eine, während der andere volläuft, und der Aufruf kehrt nie
+            // zurück. ffmpeg schreibt seine Meldungen ohnehin nur nach stderr.
+            bau.redirectErrorStream(true)
+
+            val prozess = bau.start()
+            val ausgabe = prozess.inputStream.bufferedReader().use { it.readText() }
+            val code = prozess.waitFor()
+
+            antwort.put("code", code)
+            antwort.put("out", "")
+            antwort.put("err", ausgabe)
+        } catch (fehler: Throwable) {
+            antwort.put("code", -1)
+            antwort.put("out", "")
+            antwort.put("err", fehler.message ?: fehler.toString())
         }
         return antwort.toString()
     }

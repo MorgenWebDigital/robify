@@ -73,7 +73,7 @@ pub fn bruecke_rufen(id: &str, args: &[String]) -> Result<Ausgabe> {
     let kennung = env.new_string(id)?;
     let antwort = env
         .call_static_method(
-            klasse.as_obj(),
+            klasse,
             "ausfuehren",
             "(Ljava/lang/String;[Ljava/lang/String;)Ljava/lang/String;",
             &[
@@ -108,7 +108,7 @@ pub fn fortschritt(id: &str) -> Option<f32> {
     let kennung = env.new_string(id).ok()?;
     let wert = env
         .call_static_method(
-            klasse.as_obj(),
+            klasse,
             "fortschritt",
             "(Ljava/lang/String;)F",
             &[JValue::Object(&kennung)],
@@ -139,9 +139,72 @@ pub fn abbrechen(id: &str) {
         return;
     };
     let _ = env.call_static_method(
-        klasse.as_obj(),
+        klasse,
         "abbrechen",
         "(Ljava/lang/String;)V",
         &[JValue::Object(&kennung)],
     );
+}
+
+/// Wandelt eine Datei mit dem mitgelieferten ffmpeg um.
+///
+/// Auf dem Rechner gibt es dafür nichts zu kapseln: `ffmpeg` steht im
+/// Suchpfad, und der Downloader startet es selbst. Auf Android liegt es als
+/// Bibliothek bei und lässt sich nur über die Java-Seite starten, die weiß,
+/// wo das Programm steht und welche Umgebung es braucht.
+#[cfg(target_os = "android")]
+pub async fn ffmpeg(args: Vec<String>) -> Result<Ausgabe> {
+    tokio::task::spawn_blocking(move || ffmpeg_rufen(&args)).await?
+}
+
+/// Ruft `de.robify.player.Ytdlp.umwandeln` über JNI auf.
+///
+/// Den Anwendungskontext gibt der Rust-Teil selbst mit: Er hat ihn seit dem
+/// Start in Verwahrung (siehe `android::JNI_OnLoad`). So braucht die
+/// Java-Seite keinen eigenen Merkposten, den jemand zu füllen vergessen kann.
+#[cfg(target_os = "android")]
+fn ffmpeg_rufen(args: &[String]) -> Result<Ausgabe> {
+    use anyhow::{anyhow, Context};
+    use jni::objects::{JObject, JString, JValue};
+    use jni::JavaVM;
+
+    let klasse = crate::android::ytdlp_klasse()
+        .ok_or_else(|| anyhow!("Die Brücke zu ffmpeg wurde nicht eingerichtet."))?;
+
+    let kontext = ndk_context::android_context();
+    let vm = unsafe { JavaVM::from_raw(kontext.vm().cast()) }?;
+    let mut env = vm.attach_current_thread()?;
+
+    // Nur geliehen: Der Verweis gehört der Verwahrung aus `JNI_OnLoad`.
+    // `JObject` gibt von sich aus nichts frei, das Ausleihen ist also gefahrlos.
+    let anwendung = unsafe { JObject::from_raw(kontext.context().cast()) };
+
+    let leer = env.new_string("")?;
+    let feld = env.new_object_array(args.len() as i32, "java/lang/String", &leer)?;
+    for (stelle, wert) in args.iter().enumerate() {
+        let text = env.new_string(wert)?;
+        env.set_object_array_element(&feld, stelle as i32, text)?;
+    }
+
+    let antwort = env
+        .call_static_method(
+            klasse,
+            "umwandeln",
+            "(Landroid/content/Context;[Ljava/lang/String;)Ljava/lang/String;",
+            &[
+                JValue::Object(&anwendung),
+                JValue::Object(&JObject::from(feld)),
+            ],
+        )?
+        .l()?;
+
+    let roh: String = env.get_string(&JString::from(antwort))?.into();
+    let daten: serde_json::Value =
+        serde_json::from_str(&roh).context("Antwort der ffmpeg-Brücke ist kein JSON")?;
+
+    Ok(Ausgabe {
+        erfolg: daten["code"].as_i64() == Some(0),
+        stdout: daten["out"].as_str().unwrap_or_default().to_string(),
+        stderr: daten["err"].as_str().unwrap_or_default().to_string(),
+    })
 }

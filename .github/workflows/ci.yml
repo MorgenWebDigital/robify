@@ -103,3 +103,47 @@ jobs:
       # diesem Projekt.
       - name: Tests
         run: cargo test --manifest-path src-tauri/Cargo.toml
+
+  # Der Rust-Teil für Android wird von den beiden Aufträgen oben nicht
+  # angefasst: Er hängt fast vollständig hinter `#[cfg(target_os = "android")]`
+  # und ist auf dem Rechner unsichtbar. Genau dort blieb ein fehlender Import
+  # stehen, der Bau brach ab, und auf dem Testgerät lief tagelang eine alte
+  # Fassung weiter, ohne dass es jemandem auffiel.
+  #
+  # Übersetzt wird nur, nicht verpackt: Die APK entsteht beim Release. Das
+  # kostet ein paar Minuten statt einer halben Stunde und fängt trotzdem
+  # jeden Fehler in diesem Teil ab.
+  android:
+    name: Rust für Android
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust einrichten
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: aarch64-linux-android
+
+      - name: Rust-Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: android
+          cache-on-failure: true
+
+      - name: Platzhalter für die Oberfläche
+        run: mkdir -p dist && echo '<!doctype html><title>ci</title>' > dist/index.html
+
+      # `aws-lc-sys` übersetzt eigenen C-Code und sucht dafür einen Compiler
+      # namens `aarch64-linux-android-clang`. Den gibt es im NDK nicht: Dort
+      # trägt jeder Compiler die kleinste unterstützte Android-Fassung im
+      # Namen. Ohne diese Zuweisung scheitert schon das Bauskript.
+      - name: Clippy
+        env:
+          CC_aarch64_linux_android: aarch64-linux-android26-clang
+          AR_aarch64_linux_android: llvm-ar
+        run: |
+          export PATH="$ANDROID_NDK_LATEST_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
+          cargo clippy --manifest-path src-tauri/Cargo.toml \
+            --lib --target aarch64-linux-android
