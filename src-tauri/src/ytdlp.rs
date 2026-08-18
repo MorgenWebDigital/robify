@@ -118,3 +118,30 @@ pub fn fortschritt(id: &str) -> Option<f32> {
         .ok()?;
     (wert >= 0.0).then_some(wert)
 }
+
+/// Bricht einen laufenden Auftrag ab.
+#[cfg(target_os = "android")]
+pub fn abbrechen(id: &str) {
+    use jni::objects::JValue;
+    use jni::JavaVM;
+
+    let Some(klasse) = crate::android::ytdlp_klasse() else {
+        return;
+    };
+    let kontext = ndk_context::android_context();
+    let Ok(vm) = (unsafe { JavaVM::from_raw(kontext.vm().cast()) }) else {
+        return;
+    };
+    let Ok(mut env) = vm.attach_current_thread() else {
+        return;
+    };
+    let Ok(kennung) = env.new_string(id) else {
+        return;
+    };
+    let _ = env.call_static_method(
+        klasse.as_obj(),
+        "abbrechen",
+        "(Ljava/lang/String;)V",
+        &[JValue::Object(&kennung)],
+    );
+}

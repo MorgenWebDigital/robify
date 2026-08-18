@@ -568,6 +568,17 @@ pub fn find_ytdlp(configured: Option<&str>, tools_dir: &Path) -> Option<PathBuf>
 /// geladenes Programm wäre schlimmer als gar keines und würde später mit
 /// unverständlichen Fehlern auffallen.
 pub async fn ensure_ytdlp(configured: Option<&str>, tools_dir: &Path) -> Result<PathBuf> {
+    // Auf Android gibt es nichts zu holen: yt-dlp liegt als Bibliothek bei,
+    // samt Python-Laufzeit, und wird beim Start eingerichtet. Ohne diese
+    // Ausnahme lud die App die Linux-Binärdatei herunter und scheiterte
+    // danach an der Probe, weil Android eine andere C-Bibliothek verwendet.
+    //
+    // Der Pfad ist ein Platzhalter: Die Brücke in `crate::ytdlp` braucht ihn
+    // nicht, sie ruft in die Java-Laufzeit statt ein Programm zu starten.
+    if cfg!(target_os = "android") {
+        return Ok(PathBuf::from("eingebaut"));
+    }
+
     if let Some(path) = find_ytdlp(configured, tools_dir) {
         return Ok(path);
     }
@@ -1524,6 +1535,151 @@ fn explain_failure(stderr: &str) -> String {
     fehler!("yt-dlp: {0}", raw.trim_start_matches("ERROR:").trim())
 }
 
+/// Lässt yt-dlp laufen und meldet den Fortschritt.
+///
+/// Auf dem Rechner ein eigener Prozess, dessen Ausgabe zeilenweise mitgelesen
+/// wird: So greift ein Abbruch zeitnah, und ein hängender Lauf fällt an der
+/// ausbleibenden Zeile auf.
+#[cfg(not(target_os = "android"))]
+async fn laufen_lassen<R: Runtime>(
+    app: &AppHandle<R>,
+    job_id: &str,
+    ytdlp: &Path,
+    args: &[String],
+    job_dir: &Path,
+    cancel: &Arc<AtomicBool>,
+) -> Result<()> {
+    let mut cmd = Command::new(ytdlp);
+    cmd.args(args).stdout(Stdio::piped()).stderr(Stdio::piped());
+    configure(&mut cmd);
+
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| anyhow!(fehler!("yt-dlp-Start fehlgeschlagen: {0}", e)))?;
+    let stdout = child.stdout.take().expect("stdout ist gesetzt");
+    let stderr = child.stderr.take().expect("stderr ist gesetzt");
+
+    let gestartet = Instant::now();
+    let mut letzte_zeile = Instant::now();
+    let mut out_lines = BufReader::new(stdout).lines();
+    let stderr_task = tokio::spawn(async move {
+        let mut lines = BufReader::new(stderr).lines();
+        let mut collected = String::new();
+        while let Ok(Some(line)) = lines.next_line().await {
+            if collected.len() < 4000 {
+                collected.push_str(&line);
+                collected.push('\n');
+            }
+        }
+        collected
+    });
+
+    loop {
+        if cancel.load(Ordering::SeqCst) {
+            let _ = child.kill().await;
+            let _ = std::fs::remove_dir_all(job_dir);
+            bail!(fehler!("Download abgebrochen"));
+        }
+
+        // Ein hängender Prozess schreibt nichts mehr. Beides begrenzen: die
+        // Gesamtdauer und die Stille dazwischen.
+        if gestartet.elapsed() > DOWNLOAD_TIMEOUT || letzte_zeile.elapsed() > IDLE_TIMEOUT {
+            let _ = child.kill().await;
+            let _ = std::fs::remove_dir_all(job_dir);
+            bail!(
+                "Die Quelle antwortet nicht mehr, nach {} ohne Fortschritt abgebrochen.",
+                format_seconds(letzte_zeile.elapsed().as_millis() as i64)
+            );
+        }
+
+        // Zeilenweise lesen, damit der Abbruch zeitnah greift.
+        let next =
+            tokio::time::timeout(std::time::Duration::from_millis(400), out_lines.next_line())
+                .await;
+        match next {
+            Ok(Ok(Some(line))) => {
+                letzte_zeile = Instant::now();
+                if let Some(progress) = parse_progress(job_id, &line) {
+                    emit(app, progress);
+                } else if line.starts_with("[ExtractAudio]") || line.starts_with("[Metadata]") {
+                    emit(app, status(job_id, "processing", 99.0, Some(line)));
+                }
+            }
+            Ok(Ok(None)) => break,
+            Ok(Err(err)) => bail!(fehler!("Fehler beim Lesen der Ausgabe: {0}", err)),
+            Err(_) => continue,
+        }
+    }
+
+    let exit = child.wait().await?;
+    let stderr_text = stderr_task.await.unwrap_or_default();
+    if !exit.success() {
+        bail!("{}", explain_failure(&stderr_text));
+    }
+    Ok(())
+}
+
+/// Lässt yt-dlp laufen, über die Java-Brücke.
+///
+/// Dort gibt es keinen Prozess und keine Ausgabe zum Mitlesen: Der Aufruf
+/// blockiert bis zum Ende und liefert erst dann. Den Fortschritt führt die
+/// Brücke deshalb als abfragbaren Wert, den dieser Lauf im Takt abholt und
+/// weitergibt. Ein Abbruch geht denselben Weg zurück.
+#[cfg(target_os = "android")]
+async fn laufen_lassen<R: Runtime>(
+    app: &AppHandle<R>,
+    job_id: &str,
+    _ytdlp: &Path,
+    args: &[String],
+    job_dir: &Path,
+    cancel: &Arc<AtomicBool>,
+) -> Result<()> {
+    let kennung = format!("robify-{job_id}");
+    let mitgabe = args.to_vec();
+    let fuer_faden = kennung.clone();
+    let lauf = tokio::task::spawn_blocking(move || {
+        crate::ytdlp::bruecke_rufen(&fuer_faden, &mitgabe)
+    });
+    tokio::pin!(lauf);
+
+    let gestartet = Instant::now();
+    let mut zuletzt = 0.0_f32;
+    let mut seit_bewegung = Instant::now();
+
+    let ausgabe = loop {
+        tokio::select! {
+            fertig = &mut lauf => break fertig??,
+            _ = tokio::time::sleep(std::time::Duration::from_millis(400)) => {
+                if cancel.load(Ordering::SeqCst) {
+                    crate::ytdlp::abbrechen(&kennung);
+                    let _ = std::fs::remove_dir_all(job_dir);
+                    bail!(fehler!("Download abgebrochen"));
+                }
+                if gestartet.elapsed() > DOWNLOAD_TIMEOUT || seit_bewegung.elapsed() > IDLE_TIMEOUT {
+                    crate::ytdlp::abbrechen(&kennung);
+                    let _ = std::fs::remove_dir_all(job_dir);
+                    bail!(
+                        "Die Quelle antwortet nicht mehr, nach {} ohne Fortschritt abgebrochen.",
+                        format_seconds(seit_bewegung.elapsed().as_millis() as i64)
+                    );
+                }
+                if let Some(prozent) = crate::ytdlp::fortschritt(&kennung) {
+                    if prozent > zuletzt {
+                        zuletzt = prozent;
+                        seit_bewegung = Instant::now();
+                        emit(app, status(job_id, "downloading", prozent as f64, None));
+                    }
+                }
+            }
+        }
+    };
+
+    if !ausgabe.erfolg {
+        bail!("{}", explain_failure(&ausgabe.stderr));
+    }
+    Ok(())
+}
+
 fn format_seconds(ms: i64) -> String {
     let total = ms.max(0) / 1000;
     format!("{}:{:02}", total / 60, total % 60)
@@ -1683,50 +1839,56 @@ async fn download_inner<R: Runtime>(
         status(job_id, "starting", 0.0, Some("Quelle wird gelesen…".into())),
     );
 
-    let mut cmd = Command::new(ytdlp);
-    cmd.arg("--newline")
-        .arg("--no-playlist")
-        .arg("--no-warnings")
+    // Als Liste statt am Befehl aufgebaut: Auf Android startet kein Programm,
+    // dort geht dieselbe Liste über die Java-Brücke an yt-dlp.
+    let mut args: Vec<String> = vec![
+        "--newline".into(),
+        "--no-playlist".into(),
+        "--no-warnings".into(),
         // Kurzzeitige Sperren (HTTP 403) verschwinden meist von selbst.
-        .arg("--retries")
-        .arg("5")
-        .arg("--extractor-retries")
-        .arg("3")
-        .arg("--retry-sleep")
-        .arg("3")
-        .arg("--progress")
-        .arg("--progress-template")
-        .arg(format!(
+        "--retries".into(),
+        "5".into(),
+        "--extractor-retries".into(),
+        "3".into(),
+        "--retry-sleep".into(),
+        "3".into(),
+        "--progress".into(),
+        "--progress-template".into(),
+        format!(
             "download:{PROGRESS_MARKER}|%(progress.downloaded_bytes)s|%(progress.total_bytes)s|\
              %(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.eta)s"
-        ))
-        .arg("--print-to-file")
-        .arg("after_move:filepath")
-        .arg(&result_file)
+        ),
+        "--print-to-file".into(),
+        "after_move:filepath".into(),
+        result_file.to_string_lossy().into_owned(),
         // Das Konto, unter dem der Titel veröffentlicht wurde.
-        .arg("--print-to-file")
-        .arg("%(uploader,channel,creator,artist)s")
-        .arg(&uploader_file)
+        "--print-to-file".into(),
+        "%(uploader,channel,creator,artist)s".into(),
+        uploader_file.to_string_lossy().into_owned(),
         // Die Musikangaben der Quelle. Wo es sie gibt (YouTube Music, offizielle
         // Uploads, SoundCloud), sind sie sauberer als alles, was sich aus dem
         // Videotitel ableiten lässt.
-        .arg("--print-to-file")
-        .arg("%(track)s\u{1f}%(artist)s\u{1f}%(album)s\u{1f}%(release_year)s\u{1f}%(track_number)s")
-        .arg(&music_file)
-        .arg("-f")
-        .arg(format_selector(options.format == "best"))
-        .arg("-o")
-        .arg(job_dir.join("%(title).150B.%(ext)s"));
+        "--print-to-file".into(),
+        "%(track)s\u{1f}%(artist)s\u{1f}%(album)s\u{1f}%(release_year)s\u{1f}%(track_number)s".into(),
+        music_file.to_string_lossy().into_owned(),
+        "-f".into(),
+        format_selector(options.format == "best"),
+        "-o".into(),
+        job_dir
+            .join("%(title).150B.%(ext)s")
+            .to_string_lossy()
+            .into_owned(),
+    ];
 
     if ffmpeg_available() {
         // `-x` löst die Audiospur aus dem Container. Ohne `--audio-format`
         // bleibt sie unverändert, kein zweiter verlustbehafteter Durchgang.
-        cmd.arg("-x");
+        args.push("-x".into());
         if options.format != "best" {
-            cmd.arg("--audio-format")
-                .arg(&options.format)
-                .arg("--audio-quality")
-                .arg(options.quality.as_deref().unwrap_or("0"));
+            args.push("--audio-format".into());
+            args.push(options.format.clone());
+            args.push("--audio-quality".into());
+            args.push(options.quality.clone().unwrap_or_else(|| "0".into()));
         }
     } else if options.format != "best" {
         bail!(
@@ -1737,78 +1899,17 @@ async fn download_inner<R: Runtime>(
     // Fehlt `mutagen`, wird das Cover ausgelassen statt den Download zu
     // verlieren. Robify schreibt es beim Import ohnehin selbst hinein.
     if options.embed_thumbnail && ffmpeg_available() && supports_thumbnail_embedding(ytdlp).await {
-        cmd.arg("--embed-thumbnail");
+        args.push("--embed-thumbnail".into());
     }
-    cmd.arg("--embed-metadata").arg(&options.url);
-
-    add_js_runtime(&mut cmd, ytdlp).await;
-    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
-    configure(&mut cmd);
+    args.push("--embed-metadata".into());
+    args.push(options.url.clone());
+    args.extend(js_runtime_args(ytdlp).await);
 
     // Der Platz bleibt für die gesamte Dauer des Downloads belegt, sonst
     // liefen bei „Alle laden“ beliebig viele Übertragungen nebeneinander.
     let _slot = acquire_slot(source_label(&options.url)).await;
 
-    let mut child = cmd.spawn().map_err(|e| anyhow!(fehler!("yt-dlp-Start fehlgeschlagen: {0}", e)))?;
-    let stdout = child.stdout.take().expect("stdout ist gesetzt");
-    let stderr = child.stderr.take().expect("stderr ist gesetzt");
-
-    let gestartet = Instant::now();
-    let mut letzte_zeile = Instant::now();
-    let mut out_lines = BufReader::new(stdout).lines();
-    let stderr_task = tokio::spawn(async move {
-        let mut lines = BufReader::new(stderr).lines();
-        let mut collected = String::new();
-        while let Ok(Some(line)) = lines.next_line().await {
-            if collected.len() < 4000 {
-                collected.push_str(&line);
-                collected.push('\n');
-            }
-        }
-        collected
-    });
-
-    loop {
-        if cancel.load(Ordering::SeqCst) {
-            let _ = child.kill().await;
-            let _ = std::fs::remove_dir_all(&job_dir);
-            bail!(fehler!("Download abgebrochen"));
-        }
-
-        // Ein hängender Prozess schreibt nichts mehr. Beides begrenzen: die
-        // Gesamtdauer und die Stille dazwischen.
-        if gestartet.elapsed() > DOWNLOAD_TIMEOUT || letzte_zeile.elapsed() > IDLE_TIMEOUT {
-            let _ = child.kill().await;
-            let _ = std::fs::remove_dir_all(&job_dir);
-            bail!(
-                "Die Quelle antwortet nicht mehr, nach {} ohne Fortschritt abgebrochen.",
-                format_seconds(letzte_zeile.elapsed().as_millis() as i64)
-            );
-        }
-
-        // Zeilenweise lesen, damit der Abbruch zeitnah greift.
-        let next = tokio::time::timeout(std::time::Duration::from_millis(400), out_lines.next_line())
-            .await;
-        match next {
-            Ok(Ok(Some(line))) => {
-                letzte_zeile = Instant::now();
-                if let Some(progress) = parse_progress(job_id, &line) {
-                    emit(app, progress);
-                } else if line.starts_with("[ExtractAudio]") || line.starts_with("[Metadata]") {
-                    emit(app, status(job_id, "processing", 99.0, Some(line)));
-                }
-            }
-            Ok(Ok(None)) => break,
-            Ok(Err(err)) => bail!(fehler!("Fehler beim Lesen der Ausgabe: {0}", err)),
-            Err(_) => continue,
-        }
-    }
-
-    let exit = child.wait().await?;
-    let stderr_text = stderr_task.await.unwrap_or_default();
-    if !exit.success() {
-        bail!("{}", explain_failure(&stderr_text));
-    }
+    laufen_lassen(app, job_id, ytdlp, &args, &job_dir, cancel).await?;
 
     emit(
         app,
