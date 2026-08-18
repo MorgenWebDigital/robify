@@ -45,8 +45,14 @@ object Ytdlp {
     fun ausfuehren(id: String, args: Array<String>): String {
         val antwort = JSONObject()
         try {
-            val auftrag = YoutubeDLRequest(emptyList())
-            args.forEach { auftrag.addOption(it) }
+            // `addCommands` reicht die Liste unverändert weiter. `addOption`
+            // täte das nicht: Es legt jeden Eintrag als Schlüssel in eine
+            // Zuordnung, und ein Wert, den es schon einmal gab, fällt dabei
+            // heraus. Aus `--extractor-retries 3 --retry-sleep 3` wurde so
+            // `--extractor-retries 3 --retry-sleep`, und yt-dlp las den
+            // nächsten Schalter als Wartezeit: „invalid http retry sleep
+            // expression '--progress'“.
+            val auftrag = YoutubeDLRequest(emptyList()).addCommands(args.toList())
 
             fortschritte[id] = 0f
             val ergebnis = YoutubeDL.getInstance().execute(auftrag, id) { prozent, _, _ ->
