@@ -133,6 +133,34 @@ object Ytdlp {
         return antwort.toString()
     }
 
+    /**
+     * Holt die neueste Fassung von yt-dlp und legt sie über die mitgelieferte.
+     *
+     * Die Bibliothek bringt yt-dlp mit, aber in dem Stand, den sie beim
+     * Erscheinen hatte — hier November 2025, während oben schon Juli 2026
+     * steht. YouTube ändert seinen Abspieler laufend und weist alte Fassungen
+     * ab; genau daher kamen die 403 auf dem Telefon. Auf dem Rechner behilft
+     * man sich mit `yt-dlp -U`, hier gibt es diesen Weg.
+     *
+     * Zurück kommt die Fassung, die danach gilt.
+     */
+    @JvmStatic
+    fun aktualisieren(kontext: Context): String {
+        val antwort = JSONObject()
+        try {
+            YoutubeDL.getInstance()
+                .updateYoutubeDL(kontext, YoutubeDL.UpdateChannel._STABLE)
+            antwort.put("code", 0)
+            antwort.put("out", YoutubeDL.getInstance().version(kontext) ?: "")
+            antwort.put("err", "")
+        } catch (fehler: Throwable) {
+            antwort.put("code", -1)
+            antwort.put("out", "")
+            antwort.put("err", fehler.message ?: fehler.toString())
+        }
+        return antwort.toString()
+    }
+
     /** Fortschritt eines Auftrags in Prozent, oder -1, wenn er nicht läuft. */
     @JvmStatic
     fun fortschritt(id: String): Float = fortschritte[id] ?: -1f

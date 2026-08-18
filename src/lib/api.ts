@@ -223,6 +223,8 @@ export const api = {
 
   // Downloader
   downloaderStatus: () => invoke<DownloaderStatus>("downloader_status"),
+  /** Holt die neueste Fassung von yt-dlp und liefert deren Nummer zurück. */
+  ytdlpAktualisieren: () => invoke<string>("update_ytdlp"),
   /** Erkennt selbst, ob ein Link eingefügt oder gesucht wurde. */
   resolveInput: (input: string, limit?: number) =>
     invoke<LinkPlan>("resolve_input", { input, limit: limit ?? null }),

@@ -208,3 +208,68 @@ fn ffmpeg_rufen(args: &[String]) -> Result<Ausgabe> {
         stderr: daten["err"].as_str().unwrap_or_default().to_string(),
     })
 }
+
+/// Bringt yt-dlp auf den neuesten Stand und nennt die Fassung danach.
+///
+/// Auf dem Rechner erledigt yt-dlp das selbst: `-U` lädt die neue Datei und
+/// legt sie über die eigene. Wer es über den Paketverwalter installiert hat,
+/// bekommt von yt-dlp eine Absage — die reichen wir wörtlich weiter, statt sie
+/// als eigenen Fehler auszugeben.
+#[cfg(not(target_os = "android"))]
+pub async fn aktualisieren(werkzeug: &Path) -> Result<String> {
+    let lauf = einmal(werkzeug, &["-U".to_string()]).await?;
+    if !lauf.erfolg {
+        anyhow::bail!("{}", lauf.stderr.trim());
+    }
+    let fassung = einmal(werkzeug, &["--version".to_string()]).await?;
+    Ok(fassung.stdout.trim().to_string())
+}
+
+/// Dasselbe über die Java-Brücke.
+///
+/// yt-dlp liegt dort nicht als Datei, sondern in der Bibliothek — und zwar in
+/// dem Stand, den sie beim Erscheinen hatte. `-U` gibt es deshalb nicht; die
+/// Bibliothek holt die neue Fassung selbst von GitHub.
+#[cfg(target_os = "android")]
+pub async fn aktualisieren(_werkzeug: &Path) -> Result<String> {
+    let ausgabe = tokio::task::spawn_blocking(aktualisieren_rufen).await??;
+    if !ausgabe.erfolg {
+        anyhow::bail!("{}", ausgabe.stderr.trim());
+    }
+    Ok(ausgabe.stdout.trim().to_string())
+}
+
+/// Ruft `de.robify.player.Ytdlp.aktualisieren` über JNI auf.
+#[cfg(target_os = "android")]
+fn aktualisieren_rufen() -> Result<Ausgabe> {
+    use anyhow::{anyhow, Context};
+    use jni::objects::{JObject, JString, JValue};
+    use jni::JavaVM;
+
+    let klasse = crate::android::ytdlp_klasse()
+        .ok_or_else(|| anyhow!("Die Brücke zu yt-dlp wurde nicht eingerichtet."))?;
+
+    let kontext = ndk_context::android_context();
+    let vm = unsafe { JavaVM::from_raw(kontext.vm().cast()) }?;
+    let mut env = vm.attach_current_thread()?;
+    let anwendung = unsafe { JObject::from_raw(kontext.context().cast()) };
+
+    let antwort = env
+        .call_static_method(
+            klasse,
+            "aktualisieren",
+            "(Landroid/content/Context;)Ljava/lang/String;",
+            &[JValue::Object(&anwendung)],
+        )?
+        .l()?;
+
+    let roh: String = env.get_string(&JString::from(antwort))?.into();
+    let daten: serde_json::Value =
+        serde_json::from_str(&roh).context("Antwort der yt-dlp-Brücke ist kein JSON")?;
+
+    Ok(Ausgabe {
+        erfolg: daten["code"].as_i64() == Some(0),
+        stdout: daten["out"].as_str().unwrap_or_default().to_string(),
+        stderr: daten["err"].as_str().unwrap_or_default().to_string(),
+    })
+}

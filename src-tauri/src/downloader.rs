@@ -752,14 +752,7 @@ async fn supports_thumbnail_embedding(ytdlp: &Path) -> bool {
     *SUPPORTED.get_or_init(|| supported)
 }
 
-/// Ergänzt die Laufzeitumgebung, sofern vorhanden und unterstützt.
-async fn add_js_runtime(cmd: &mut Command, ytdlp: &Path) {
-    for wert in js_runtime_args(ytdlp).await {
-        cmd.arg(wert);
-    }
-}
-
-/// Dieselbe Angabe als Argumentliste, für den Weg über die Java-Brücke.
+/// Die Laufzeitumgebung als Argumentliste, sofern vorhanden und unterstützt.
 async fn js_runtime_args(ytdlp: &Path) -> Vec<String> {
     match js_runtime() {
         Some(runtime) if supports_js_runtimes(ytdlp).await => {
@@ -1421,6 +1414,17 @@ pub async fn search_all_sources(
 /// Erklärung für einen abgelehnten Zugriff. Ohne JavaScript-Laufzeit ist das
 /// fast immer die Ursache, mit einer ist es meist nur eine kurze Drosselung.
 fn blocked_message(has_js_runtime: bool) -> String {
+    // Auf Android geht beides ins Leere, was die anderen beiden Sätze raten:
+    // Eine JavaScript-Laufzeit lässt sich nicht nachinstallieren, und `yt-dlp
+    // -U` gibt es nicht, weil yt-dlp dort keine Datei ist, sondern in der
+    // Bibliothek steckt. Fehlen tut auch nichts: Dieselbe Bibliothek bringt
+    // QuickJS mit und reicht es yt-dlp über `--js-runtimes` weiter. Bleibt
+    // also nur die Drosselung — und der Rat, es woanders zu versuchen.
+    if cfg!(target_os = "android") {
+        return fehler!(
+            "Die Quelle hat den Zugriff abgelehnt (403). Das kann an zu vielen Abrufen kurz hintereinander liegen. Warte ein paar Minuten oder versuche einen anderen Treffer; oft liegt derselbe Titel auch bei SoundCloud oder Bandcamp."
+        );
+    }
     if has_js_runtime {
         fehler!(
             "Die Quelle hat den Zugriff abgelehnt (403). Das kann an zu vielen Abrufen kurz hintereinander liegen. Warte ein paar Minuten. Hilft das nicht, aktualisiere yt-dlp (`yt-dlp -U`)."
@@ -2378,6 +2382,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
     }
 
     #[test]
+    #[cfg(not(target_os = "android"))]
     fn fehlende_js_laufzeit_wird_als_ursache_genannt() {
         // Ohne Laufzeit ist das die eigentliche Ursache …
         assert!(blocked_message(false).contains("JavaScript-Laufzeit"));
@@ -2385,6 +2390,23 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
         // … mit Laufzeit bleibt nur die Drosselung als Erklärung.
         assert!(!blocked_message(true).contains("JavaScript-Laufzeit"));
         assert!(blocked_message(true).contains("yt-dlp -U"));
+    }
+
+    /// Auf Android taugt keiner der beiden Ratschläge.
+    ///
+    /// Node.js lässt sich dort nicht installieren, und `yt-dlp -U` greift ins
+    /// Leere, weil yt-dlp aus der Bibliothek kommt. Genau das stand nach einem
+    /// 403 auf dem Telefon: „Es ist keine JavaScript-Laufzeit installiert“ —
+    /// obwohl QuickJS mitgeliefert wird und yt-dlp es benutzt.
+    #[test]
+    #[cfg(target_os = "android")]
+    fn auf_android_wird_nichts_zum_installieren_geraten() {
+        for mit_laufzeit in [true, false] {
+            let meldung = blocked_message(mit_laufzeit);
+            assert!(meldung.contains("(403)"));
+            assert!(!meldung.contains("Node.js"));
+            assert!(!meldung.contains("yt-dlp -U"));
+        }
     }
 
     #[test]

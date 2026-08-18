@@ -450,6 +450,47 @@ const TEXTE: Record<string, Fassungen> = {
     zh: "确认提示",
     ar: "التأكيدات",
   },
+  Werkzeuge: {
+    en: "Tools",
+    es: "Herramientas",
+    fr: "Outils",
+    ru: "Инструменты",
+    ar: "الأدوات",
+    zh: "工具",
+  },
+  "yt-dlp aktualisieren": {
+    en: "Update yt-dlp",
+    es: "Actualizar yt-dlp",
+    fr: "Mettre à jour yt-dlp",
+    ru: "Обновить yt-dlp",
+    ar: "تحديث yt-dlp",
+    zh: "更新 yt-dlp",
+  },
+  "Holt…": {
+    en: "Fetching…",
+    es: "Descargando…",
+    fr: "Téléchargement…",
+    ru: "Загрузка…",
+    ar: "جارٍ الجلب…",
+    zh: "正在获取…",
+  },
+  "yt-dlp steht jetzt auf {0}.": {
+    en: "yt-dlp is now at {0}.",
+    es: "yt-dlp está ahora en {0}.",
+    fr: "yt-dlp est maintenant en {0}.",
+    ru: "yt-dlp теперь версии {0}.",
+    ar: "أصبح yt-dlp الآن بالإصدار {0}.",
+    zh: "yt-dlp 现在是 {0}。",
+  },
+  "YouTube weist alte Fassungen mit „403“ ab. Hilft eine Aktualisierung nicht, liegt es an der Quelle.":
+    {
+      en: "YouTube rejects old versions with “403”. If updating does not help, the source is at fault.",
+      es: "YouTube rechaza las versiones antiguas con «403». Si actualizar no ayuda, el problema está en la fuente.",
+      fr: "YouTube refuse les anciennes versions avec « 403 ». Si la mise à jour n'aide pas, cela vient de la source.",
+      ru: "YouTube отклоняет старые версии с «403». Если обновление не помогает, дело в источнике.",
+      ar: "يرفض يوتيوب الإصدارات القديمة بالخطأ «403». وإن لم يُجدِ التحديث، فالسبب في المصدر.",
+      zh: "YouTube 会以“403”拒绝旧版本。若更新后仍无效，问题出在来源。",
+    },
   "Sicherung anlegen": {
     en: "Create backup",
     fr: "Créer une sauvegarde",
@@ -4057,6 +4098,15 @@ const TEXTE: Record<string, Fassungen> = {
       ru: "Источник отказал в доступе (403). Причиной может быть слишком много обращений подряд. Подожди несколько минут. Если не помогает, обнови yt-dlp (`yt-dlp -U`).",
       ar: "رفض المصدر الوصول (403). قد يعود ذلك إلى كثرة الطلبات المتتابعة. انتظر بضع دقائق، وإن لم يُجدِ ذلك فحدّث yt-dlp (`yt-dlp -U`).",
       zh: "来源拒绝了访问（403）。这可能是短时间内请求过多所致。请等待几分钟。若仍无效，请更新 yt-dlp（`yt-dlp -U`）。",
+    },
+  "Die Quelle hat den Zugriff abgelehnt (403). Das kann an zu vielen Abrufen kurz hintereinander liegen. Warte ein paar Minuten oder versuche einen anderen Treffer; oft liegt derselbe Titel auch bei SoundCloud oder Bandcamp.":
+    {
+      en: "The source refused access (403). That can come from too many requests in quick succession. Wait a few minutes or try another result; the same track is often on SoundCloud or Bandcamp too.",
+      es: "La fuente denegó el acceso (403). Puede deberse a demasiadas peticiones seguidas. Espera unos minutos o prueba otro resultado; el mismo tema suele estar también en SoundCloud o Bandcamp.",
+      fr: "La source a refusé l'accès (403). Cela peut venir de trop de requêtes rapprochées. Attends quelques minutes ou essaie un autre résultat ; le même titre se trouve souvent aussi sur SoundCloud ou Bandcamp.",
+      ru: "Источник отказал в доступе (403). Причиной может быть слишком много обращений подряд. Подожди несколько минут или попробуй другой результат — тот же трек часто есть и на SoundCloud или Bandcamp.",
+      ar: "رفض المصدر الوصول (403). قد يعود ذلك إلى كثرة الطلبات المتتابعة. انتظر بضع دقائق أو جرّب نتيجة أخرى؛ فالمقطع نفسه يتوفر غالبًا على SoundCloud أو Bandcamp أيضًا.",
+      zh: "来源拒绝了访问（403）。这可能是短时间内请求过多所致。请等待几分钟，或换一个搜索结果试试；同一首曲子通常在 SoundCloud 或 Bandcamp 上也有。",
     },
   "Die Quelle hat den Zugriff abgelehnt (403). Es ist keine JavaScript-Laufzeit installiert. Ohne sie kann yt-dlp die Abrufadressen von YouTube nicht korrekt bilden. Installiere Node.js, Deno oder Bun, dann funktioniert es dauerhaft.":
     {

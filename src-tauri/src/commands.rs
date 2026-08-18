@@ -1327,6 +1327,22 @@ pub async fn downloader_status(state: State<'_, AppState>) -> CmdResult<Download
     })
 }
 
+/// Holt die neueste Fassung von yt-dlp und nennt sie.
+///
+/// YouTube ändert seinen Abspieler laufend und weist alte Fassungen mit „403“
+/// ab. Auf dem Rechner behilft sich yt-dlp mit `-U`; auf Android liegt es in
+/// der Bibliothek, und zwar in dem Stand, den sie beim Erscheinen hatte —
+/// dort gibt es keinen anderen Weg als diesen.
+#[tauri::command]
+pub async fn update_ytdlp(state: State<'_, AppState>) -> CmdResult<String> {
+    let configured = {
+        let conn = state.db.lock();
+        db::get_setting(&conn, "ytdlp_path").ok().flatten()
+    };
+    let ytdlp = downloader::ensure_ytdlp(configured.as_deref(), &state.tools_dir()).await?;
+    Ok(crate::ytdlp::aktualisieren(&ytdlp).await?)
+}
+
 /// Nimmt entgegen, was im Downloader eingegeben wurde, und entscheidet selbst,
 /// was zu tun ist:
 ///

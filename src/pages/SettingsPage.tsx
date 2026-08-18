@@ -12,7 +12,7 @@ import { api, errorMessage, fallback } from "../lib/api";
 import { formatDuration, plural } from "../lib/format";
 import { useLibrary } from "../store/library";
 import { useUi } from "../store/ui";
-import type { AppPaths } from "../types";
+import type { AppPaths, DownloaderStatus } from "../types";
 
 /**
  * Auswahllisten als Funktionen, nicht als feste Listen: Eine Liste auf
@@ -92,6 +92,8 @@ export function SettingsPage() {
   const notify = useUi((s) => s.notify);
 
   const [paths, setPaths] = useState<AppPaths | null>(null);
+  const [werkzeuge, setWerkzeuge] = useState<DownloaderStatus | null>(null);
+  const [holt, setHolt] = useState(false);
   const [saving, setSaving] = useState(false);
   const [zuruecksetzen, setZuruecksetzen] = useState(false);
   const [dateienLoeschen, setDateienLoeschen] = useState(false);
@@ -102,6 +104,10 @@ export function SettingsPage() {
       .appPaths()
       .then(setPaths)
       .catch((error) => setPaths(fallback(null, t("Speicherorte"))(error)));
+    void api
+      .downloaderStatus()
+      .then(setWerkzeuge)
+      .catch(fallback(null, t("Werkzeuge")));
   }, [settings]);
 
   if (!settings) {
@@ -121,6 +127,30 @@ export function SettingsPage() {
       notify(errorMessage(error), "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  /*
+   * yt-dlp altert schneller als Robify.
+   *
+   * YouTube ändert seinen Abspieler laufend und weist alte Fassungen mit
+   * „403“ ab. Auf dem Rechner ist yt-dlp eine Datei, die sich selbst
+   * erneuert; auf Android steckt es in der Bibliothek und war dort im Stand
+   * vom November 2025 stehen geblieben, acht Monate hinter dem aktuellen.
+   * Genau daran scheiterten die Downloads von YouTube auf dem Telefon.
+   */
+  const werkzeugHolen = async () => {
+    setHolt(true);
+    try {
+      const fassung = await api.ytdlpAktualisieren();
+      setWerkzeuge((vorher) =>
+        vorher ? { ...vorher, ytdlpVersion: fassung } : vorher,
+      );
+      notify(t("yt-dlp steht jetzt auf {0}.", fassung), "success");
+    } catch (error) {
+      notify(errorMessage(error), "error");
+    } finally {
+      setHolt(false);
     }
   };
 
@@ -372,6 +402,29 @@ export function SettingsPage() {
           </Section>
         )}
 
+        {werkzeuge && (
+          <Section title={t("Werkzeuge")}>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                onClick={() => void werkzeugHolen()}
+                variant="outline"
+                disabled={holt}
+              >
+                {holt ? t("Holt…") : t("yt-dlp aktualisieren")}
+              </Button>
+              <span className="text-xs text-mute">
+                {t(
+                  "YouTube weist alte Fassungen mit „403“ ab. Hilft eine Aktualisierung nicht, liegt es an der Quelle.",
+                )}
+              </span>
+            </div>
+            <AngabeZeile
+              label={t("yt-dlp")}
+              value={werkzeuge.ytdlpVersion ?? t("unbekannt")}
+            />
+          </Section>
+        )}
+
         <Section title={t("Zurücksetzen")}>
           <div className="flex flex-wrap items-center gap-3">
             <Button
@@ -510,6 +563,22 @@ function Toggle({
         {hint && <span className="block text-xs text-mute">{hint}</span>}
       </span>
     </label>
+  );
+}
+
+/**
+ * Eine reine Angabe, ohne Knopf.
+ *
+ * `PathRow` taugt dafür nicht: Es hält die Beschriftung auf fester Breite und
+ * bietet „Öffnen“ an. Auf dem Telefon blieb von „2025.11.12“ eine „2“ übrig,
+ * und der Knopf hätte versucht, eine Fassungsnummer als Ordner zu öffnen.
+ */
+function AngabeZeile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      <span className="text-sm text-mute">{label}</span>
+      <code className="rounded bg-ink-900 px-2 py-1 text-xs">{value}</code>
+    </div>
   );
 }
 

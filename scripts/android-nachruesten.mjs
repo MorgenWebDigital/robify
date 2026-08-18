@@ -19,6 +19,8 @@ const APP_GRADLE = "src-tauri/gen/android/app/build.gradle.kts";
 const PAKET_ORDNER = "src-tauri/gen/android/app/src/main/java/de/robify/player";
 /** Fassung von `youtubedl-android`; bringt yt-dlp und Python selbst mit. */
 const YTDLP_FASSUNG = "0.18.1";
+/** Fassung von `commons-io`; die von `youtubedl-android` verlangte 2.5 ist unbrauchbar. */
+const COMMONS_IO_FASSUNG = "2.16.1";
 
 /**
  * Der Zurück-Knopf soll durch die App führen, nicht aus ihr heraus.
@@ -169,6 +171,36 @@ function ytdlpEinbinden() {
     console.log("yt-dlp: Abhängigkeiten eingetragen");
   } else {
     console.log("yt-dlp: Abhängigkeiten schon da");
+  }
+
+  // Commons-IO auf eine Fassung heben, die es noch gibt.
+  //
+  // `youtubedl-android` verlangt commons-io 2.5 von 2016. Dessen `FileUtils`
+  // greift über die Hilfsklasse `Java7Support` auf `java.nio.file` zu, und
+  // genau die landet nicht im fertigen Paket — D8 lässt sie fallen. Solange
+  // niemand `FileUtils` benutzt, fällt das nicht auf; beim Aktualisieren von
+  // yt-dlp tut es das, und die App brach mit `NoClassDefFoundError:
+  // org.apache.commons.io.Java7Support` ab. Neuere Fassungen kommen ohne den
+  // Umweg aus und bieten dieselben Methoden.
+  const mitCommons = readFileSync(APP_GRADLE, "utf8");
+  if (!mitCommons.includes("commons-io")) {
+    writeFileSync(
+      APP_GRADLE,
+      mitCommons.replace(
+        "dependencies {",
+        [
+          "configurations.configureEach {",
+          "    resolutionStrategy {",
+          "        // Siehe scripts/android-nachruesten.mjs.",
+          `        force("commons-io:commons-io:${COMMONS_IO_FASSUNG}")`,
+          "    }",
+          "}",
+          "",
+          "dependencies {",
+        ].join("\n"),
+      ),
+    );
+    console.log("yt-dlp: commons-io angehoben");
   }
 
   // Native Bibliotheken müssen beim Installieren ausgepackt werden.

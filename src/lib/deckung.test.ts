@@ -71,6 +71,7 @@ const FERTIG = [
  */
 const EIGENNAMEN = new Set([
   "Robify",
+  "yt-dlp",
   "OGG Vorbis",
   "MP3",
   "FLAC",

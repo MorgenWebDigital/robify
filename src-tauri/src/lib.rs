@@ -303,6 +303,7 @@ pub fn run() {
             commands::wrapped,
             // Downloader
             commands::downloader_status,
+            commands::update_ytdlp,
             commands::resolve_input,
             commands::start_download,
             commands::cancel_download,
