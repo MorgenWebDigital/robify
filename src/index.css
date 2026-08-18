@@ -487,6 +487,67 @@ h4 {
   }
 }
 
+/*
+ * Die Suche ist ein Knopf, der sich beim Benutzen öffnet.
+ *
+ * `search-field` bringt die runde Kante und die Höhe mit; auf 2.25rem Breite
+ * wird daraus ein Kreis in der Größe der Knöpfe daneben. Tippt man hinein,
+ * fährt das Feld aus — ohne zweites Antippen und ohne einen Umschalter, der
+ * irgendwo hängen bleiben kann.
+ *
+ * Bewusst ohne Container-Abfrage, anders als bei `aktionsknopf-kurz`. Der
+ * Maßstab dort ist die Reihe selbst, und ein Feld mit fester Breite kann sie
+ * über die Schwelle schieben: Dann schaltet sich genau die Regel ab, die es
+ * schmal machen sollte. Das ließ den Kreis am Rand abgeschnitten stehen und
+ * die Seite waagerecht rollen. Immer schmal kennt diesen Rückkopplungsweg
+ * nicht.
+ *
+ * Steht etwas darin, bleibt es offen. Sonst verschwände die laufende Suche
+ * aus dem Blick, und die Liste wäre gefiltert, ohne dass man sähe wonach.
+ */
+@utility suchfeld-kurz {
+  min-width: 0;
+  /* Breite doppelt gesetzt: `flex-basis` gilt nur, solange das Feld auch
+     wirklich in einer Flex-Reihe steht, `width` immer. Ohne die zweite
+     Angabe blieb es bei der Eigenbreite eines Eingabefeldes, rund 170px,
+     und lief über den Rand hinaus. */
+  width: 2.25rem;
+  flex: 0 0 2.25rem;
+  transition:
+    width 0.16s ease,
+    flex-basis 0.16s ease;
+
+  &:focus-within,
+  &:has(input:not(:placeholder-shown)) {
+    width: 16rem;
+    flex: 0 1 16rem;
+  }
+
+  /* Zusammengefallen rückt das Zeichen in die Mitte des Kreises. Über
+     `inset-inline` und `margin-inline`, nicht über eine Verschiebung: Die
+     gilt in beide Leserichtungen, eine halbe Breite nach links nicht. */
+  &:not(:focus-within):not(:has(input:not(:placeholder-shown))) > svg {
+    inset-inline: 0;
+    margin-inline: auto;
+  }
+
+  /* Ohne Polsterung, solange es ein Kreis ist.
+     Bei `border-box` kann eine Box nicht schmaler werden als ihre eigene
+     Polsterung: 40px vorn für das Zeichen, 16px hinten, dazu die Rahmen —
+     macht 58px Untergrenze. Die 2.25rem waren damit physisch unmöglich, und
+     das Feld stand über den Fensterrand hinaus. Zu sehen ist ohnehin nichts,
+     der Platzhalter ist verborgen und Text steht keiner darin. */
+  &:not(:focus-within):not(:has(input:not(:placeholder-shown))) > input {
+    padding-inline: 0;
+
+    /* Der Platzhalter schob sich vorher gegen die Polsterung aus dem Bild.
+       Ohne sie stand er mitten im Kreis und lag über der Lupe. */
+    &::placeholder {
+      color: transparent;
+    }
+  }
+}
+
 @utility aktionsknopf-weicht {
   min-width: 0;
 }

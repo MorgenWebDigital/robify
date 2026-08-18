@@ -262,19 +262,6 @@ export function LibraryPage() {
       )}
 
       <div className="aktionsreihe mb-5 gap-3">
-        <div className="aktionsfeld relative flex-1">
-          <SearchIcon
-            size={16}
-            className="pointer-events-none absolute top-1/2 start-3.5 -translate-y-1/2 text-mute"
-          />
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={t("Titel, Künstler oder Album suchen")}
-            className="search-field ps-10"
-          />
-        </div>
-
         <Auswahl
           value={ordnung}
           options={sortierungen()}
@@ -348,6 +335,29 @@ export function LibraryPage() {
             <span className="beschriftung">{t("Von vorn hören")}</span>
           </button>
         )}
+        {/* Die Suche steht am Ende der Reihe und fällt bei Enge auf ihr
+            Zeichen zusammen, wie die Knöpfe daneben. Vorn stand sie im Weg:
+            Auf einem Telefon nahm sie die halbe Reihe und war trotzdem zu
+            schmal, um ihre eigene Beschriftung zu zeigen. `ms-auto` schiebt
+            sie an die Kante, auch wenn davor Platz bleibt.
+
+            Ohne `aktionsfeld`: Dessen Mindestbreite sinkt bei Enge zwar mit,
+            endet aber bei 7rem und hielt das Feld genau dort fest — der Kreis
+            kam nie zustande. Die Breite regelt `suchfeld-kurz` selbst, in
+            beiden Zuständen. */}
+        <div className="suchfeld-kurz relative ms-auto">
+          <SearchIcon
+            size={16}
+            className="pointer-events-none absolute top-1/2 start-3.5 -translate-y-1/2 text-mute"
+          />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t("Titel, Künstler oder Album suchen")}
+            aria-label={t("Titel, Künstler oder Album suchen")}
+            className="search-field ps-10"
+          />
+        </div>
       </div>
 
       {sortiert !== null && (
