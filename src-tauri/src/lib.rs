@@ -1,3 +1,5 @@
+#[cfg(target_os = "android")]
+mod android;
 pub mod commands;
 pub mod db;
 pub mod downloader;

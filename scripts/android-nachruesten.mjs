@@ -10,9 +10,12 @@
  * Idempotent: Zweimal aufgerufen ändert es beim zweiten Mal nichts.
  */
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { dirname, join } from "node:path";
 
 const MAIN_ACTIVITY =
   "src-tauri/gen/android/app/src/main/java/de/robify/player/MainActivity.kt";
+const APP_GRADLE = "src-tauri/gen/android/app/build.gradle.kts";
 
 /**
  * Der Zurück-Knopf soll durch die App führen, nicht aus ihr heraus.
@@ -59,4 +62,81 @@ function zurueckKnopfAnschalten() {
   console.log("Zurück-Knopf: angeschaltet");
 }
 
+/**
+ * Bindet den Java-Teil der Zertifikatsprüfung ein.
+ *
+ * `rustls-platform-verifier` prüft Zertifikate über den Vertrauensspeicher von
+ * Android und ruft dafür in die Java-Laufzeit. Die Klasse dazu liegt als
+ * fertiges Maven-Paket in der Kiste `rustls-platform-verifier-android`, muss
+ * aber im Gradle-Bau benannt werden. Fehlt sie, startet die App zwar, doch
+ * jede HTTPS-Anfrage endet mit `ClassNotFoundException` und die Oberfläche
+ * wartet ewig auf eine Antwort.
+ *
+ * Der Pfad wird bei jedem Lauf frisch von `cargo metadata` erfragt statt fest
+ * eingetragen: Er zeigt in den Paketspeicher von Cargo und sieht auf jedem
+ * Rechner anders aus, auch auf dem Bauläufer.
+ */
+function zertifikatspruefungEinbinden() {
+  if (!existsSync(APP_GRADLE)) {
+    console.error(
+      `${APP_GRADLE} fehlt. Erst \`tauri android init\` laufen lassen.`,
+    );
+    process.exit(1);
+  }
+
+  const inhalt = readFileSync(APP_GRADLE, "utf8");
+  if (inhalt.includes("rustls-platform-verifier")) {
+    console.log("Zertifikatsprüfung: schon eingebunden");
+    return;
+  }
+
+  const roh = execFileSync(
+    "cargo",
+    [
+      "metadata",
+      "--format-version",
+      "1",
+      "--filter-platform",
+      "aarch64-linux-android",
+      "--manifest-path",
+      "src-tauri/Cargo.toml",
+    ],
+    { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
+  );
+  const paket = JSON.parse(roh).packages.find(
+    (p) => p.name === "rustls-platform-verifier-android",
+  );
+  if (!paket) {
+    console.error(
+      "rustls-platform-verifier-android steckt nicht im Abhängigkeitsbaum.",
+    );
+    process.exit(1);
+  }
+  const maven = join(dirname(paket.manifest_path), "maven");
+
+  const mitRepo = inhalt.replace(
+    "dependencies {",
+    [
+      "// Der Java-Teil der Zertifikatsprüfung, siehe scripts/android-nachruesten.mjs.",
+      "repositories {",
+      `    maven {`,
+      `        url = uri("${maven}")`,
+      "        metadataSources { artifact() }",
+      "    }",
+      "}",
+      "",
+      "dependencies {",
+      // Feste Fassung statt `latest.release`: Für eine bewegliche Angabe
+      // bräuchte Gradle eine `maven-metadata.xml`, und die legt die Kiste
+      // nicht bei. `@aar` ist nötig, weil dort ein Android-Archiv liegt und
+      // kein Jar; ohne die Endung sucht Gradle eine Datei, die es nicht gibt.
+      `    implementation("rustls:rustls-platform-verifier:${paket.version}@aar")`,
+    ].join("\n"),
+  );
+
+  writeFileSync(APP_GRADLE, mitRepo);
+  console.log("Zertifikatsprüfung: eingebunden");
+}
+
 zurueckKnopfAnschalten();
+zertifikatspruefungEinbinden();
