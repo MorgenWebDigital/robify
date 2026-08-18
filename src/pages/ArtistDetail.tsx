@@ -122,25 +122,18 @@ export function ArtistDetail() {
             actionsReihe
             actions={
               <>
+                {/* Bearbeiten steht links, Abspielen rechts außen.
+                    `ms-auto` nimmt den freien Platz vor dem Abspielen auf und
+                    schiebt es an die Kante; die übrigen bleiben beieinander
+                    am Anfang. */}
                 <button
                   type="button"
-                  onClick={() => playAll(false)}
-                  disabled={!tracks.length}
-                  title={t("Abspielen")}
-                  className="pill-btn is-raised is-accent aktionsknopf aktionsknopf-kurz"
-                >
-                  <PlayIcon size={16} />
-                  <span className="beschriftung">{t("Abspielen")}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => playAll(true)}
-                  disabled={!tracks.length}
-                  title={t("Zufällig")}
+                  onClick={() => setEditing(true)}
+                  title={t("Bearbeiten")}
                   className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
                 >
-                  <ShuffleIcon size={16} />
-                  <span className="beschriftung">{t("Zufällig")}</span>
+                  <PencilIcon size={16} />
+                  <span className="beschriftung">{t("Bearbeiten")}</span>
                 </button>
                 {!artist.hasImage && !artist.bio && (
                   <button
@@ -158,12 +151,23 @@ export function ArtistDetail() {
                 )}
                 <button
                   type="button"
-                  onClick={() => setEditing(true)}
-                  title={t("Bearbeiten")}
+                  onClick={() => playAll(true)}
+                  disabled={!tracks.length}
+                  title={t("Zufällig")}
                   className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
                 >
-                  <PencilIcon size={16} />
-                  <span className="beschriftung">{t("Bearbeiten")}</span>
+                  <ShuffleIcon size={16} />
+                  <span className="beschriftung">{t("Zufällig")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => playAll(false)}
+                  disabled={!tracks.length}
+                  title={t("Abspielen")}
+                  className="pill-btn is-raised is-accent aktionsknopf aktionsknopf-kurz ms-auto"
+                >
+                  <PlayIcon size={16} />
+                  <span className="beschriftung">{t("Abspielen")}</span>
                 </button>
               </>
             }
