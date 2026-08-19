@@ -59,15 +59,25 @@ export const NAV: NavEintrag[] = [
 ];
 
 /**
- * Was am Telefon unten steht.
+ * Was am Telefon unten steht, in dieser Reihenfolge.
  *
  * Vier Punkte plus „Mehr“: Mehr als fünf Ziele nebeneinander werden auf einer
  * Handbreite zu schmal zum Treffen. Die übrigen liegen hinter „Mehr“, damit
  * kein Abschnitt unerreichbar wird.
+ *
+ * Ausdrücklich aufgezählt und nicht die ersten vier aus `NAV`: Unten gehört
+ * hin, was man am Telefon oft braucht, und das ist nicht dasselbe wie die
+ * Reihenfolge in der Seitenleiste. Der Downloader ist am Telefon ein
+ * täglicher Griff, die Künstlerübersicht erreicht man meist über einen Titel.
  */
-export const UNTEN = NAV.slice(0, 4);
+const UNTEN_PFADE = ["/", "/library", "/downloader", "/playlists"];
+
+export const UNTEN: NavEintrag[] = UNTEN_PFADE.map((pfad) =>
+  NAV.find((eintrag) => eintrag.to === pfad)!,
+);
+
 export const UNTER_MEHR: NavEintrag[] = [
-  ...NAV.slice(4),
+  ...NAV.filter((eintrag) => !UNTEN_PFADE.includes(eintrag.to)),
   {
     to: "/settings",
     schluessel: "Einstellungen",

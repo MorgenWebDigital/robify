@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { t } from "../lib/i18n";
-import { api, fallback } from "../lib/api";
+import { api, errorMessage, fallback } from "../lib/api";
 import { albumCover, artistImage } from "../lib/cover";
 import { formatTime, releaseLabel } from "../lib/format";
+import { useLibrary } from "../store/library";
 import { usePlayer } from "../store/player";
 import { useUi } from "../store/ui";
 import { Cover } from "./Cover";
 import {
   ChevronDownIcon,
+  HeartIcon,
   LyricsIcon,
   NextIcon,
   PauseIcon,
@@ -40,8 +42,14 @@ export function NowPlaying() {
   const previous = usePlayer((s) => s.previous);
   const toggleShuffle = usePlayer((s) => s.toggleShuffle);
   const cycleRepeat = usePlayer((s) => s.cycleRepeat);
-  const { nowPlayingOpen, setNowPlayingOpen, setQueueOpen, openAddToPlaylist } =
-    useUi();
+  const {
+    nowPlayingOpen,
+    setNowPlayingOpen,
+    setQueueOpen,
+    openAddToPlaylist,
+    notify,
+  } = useUi();
+  const refreshLibrary = useLibrary((s) => s.refresh);
   const { sichtbar, schliesst } = useAusblenden(nowPlayingOpen, ZU_MS);
   /* Nur am Telefon: Dort steht der Text nicht daneben, sondern hinter einer
      Kachel. Am Rechner ist er ohnehin die ganze Zeit zu sehen. */
@@ -88,6 +96,33 @@ export function NowPlaying() {
 
   // Beim Titelwechsel schließt sich der Vollbildtext: Er gehörte zum vorigen.
   useEffect(() => setTextOffen(false), [trackId]);
+
+  /*
+   * Der Favoritenstand hier, nicht nur im geladenen Titel.
+   *
+   * `currentTrack` wird beim Titelwechsel einmal geholt und danach nicht mehr;
+   * ein Druck auf das Herz änderte die Datenbank, das Herz selbst bliebe aber
+   * leer. Der eigene Stand springt sofort um und geht zurück, falls das
+   * Speichern scheitert.
+   */
+  const [favorit, setFavorit] = useState(false);
+  useEffect(
+    () => setFavorit(Boolean(currentTrack?.favorite)),
+    [currentTrack?.id, currentTrack?.favorite],
+  );
+
+  const favoritUmschalten = async () => {
+    if (!currentTrack) return;
+    const neu = !favorit;
+    setFavorit(neu);
+    try {
+      await api.setFavorite(currentTrack.id, neu);
+      void refreshLibrary();
+    } catch (error) {
+      setFavorit(!neu);
+      notify(errorMessage(error), "error");
+    }
+  };
 
   const artistId = currentTrack?.artistId ?? null;
   const [weitere, setWeitere] = useState<Track[]>([]);
@@ -227,6 +262,20 @@ export function NowPlaying() {
                     className="pill-btn is-raised h-8 w-8"
                   >
                     <PlusIcon size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void favoritUmschalten()}
+                    aria-label={
+                      favorit ? t("Aus Favoriten entfernen") : t("Zu Favoriten")
+                    }
+                    title={
+                      favorit ? t("Aus Favoriten entfernen") : t("Zu Favoriten")
+                    }
+                    aria-pressed={favorit}
+                    className={`pill-btn is-raised h-8 w-8 ${favorit ? "is-on" : ""}`}
+                  >
+                    <HeartIcon size={16} filled={favorit} />
                   </button>
                   <button
                     type="button"
