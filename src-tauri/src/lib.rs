@@ -451,6 +451,7 @@ pub fn run() {
             commands::add_to_playlist,
             commands::remove_from_playlist,
             commands::reorder_playlist,
+            commands::reorder_favorites,
             commands::reorder_playlists,
             // Player
             commands::player_state,

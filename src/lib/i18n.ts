@@ -3351,14 +3351,14 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "نُسخ إلى الحافظة",
     zh: "已复制到剪贴板",
   },
-  "Was fehlt, was stört, was nicht funktioniert: Rückmeldungen sind das, woraus die nächste Fassung entsteht. Robify schickt von sich aus nichts los — der Bericht landet in der Zwischenablage, und du entscheidest, wohin er geht und was du vorher herausnimmst.":
+  "Was fehlt, was stört, was nicht funktioniert: Rückmeldungen sind das, woraus die nächste Fassung entsteht. Robify schickt von sich aus nichts los. Der Bericht landet in der Zwischenablage, und du entscheidest, wohin er geht und was du vorher herausnimmst.":
     {
-      en: "What is missing, what annoys you, what does not work: feedback is what the next version is made of. Robify sends nothing on its own — the report goes to your clipboard, and you decide where it goes and what you take out of it first.",
+      en: "What is missing, what annoys you, what does not work: feedback is what the next version is made of. Robify sends nothing on its own. The report goes to your clipboard, and you decide where it goes and what you take out of it first.",
       es: "Lo que falta, lo que molesta, lo que no funciona: los comentarios son la materia de la próxima versión. Robify no envía nada por su cuenta: el informe va al portapapeles y tú decides adónde va y qué quitas antes.",
-      fr: "Ce qui manque, ce qui gêne, ce qui ne marche pas : les retours sont la matière de la prochaine version. Robify n'envoie rien de lui-même — le rapport va dans le presse-papiers, et tu décides où il va et ce que tu en retires avant.",
+      fr: "Ce qui manque, ce qui gêne, ce qui ne marche pas : les retours sont la matière de la prochaine version. Robify n'envoie rien de lui-même. Le rapport va dans le presse-papiers, et tu décides où il va et ce que tu en retires avant.",
       ru: "Чего не хватает, что мешает, что не работает: из отзывов складывается следующая версия. Robify ничего не отправляет сам — отчёт попадает в буфер обмена, а вы решаете, куда его отправить и что убрать заранее.",
-      ar: "ما ينقص، وما يزعج، وما لا يعمل: الملاحظات هي ما تُبنى منه النسخة التالية. لا يرسل Robify شيئًا من تلقاء نفسه — يذهب التقرير إلى الحافظة، وأنت تقرّر إلى أين يذهب وما تحذفه قبل ذلك.",
-      zh: "缺什么、烦什么、坏了什么：下一个版本正是由这些反馈构成的。Robify 不会自行发送任何内容——报告只进入剪贴板，去向由你决定，你也可以先删掉不想给的部分。",
+      ar: "ما ينقص، وما يزعج، وما لا يعمل: الملاحظات هي ما تُبنى منه النسخة التالية. لا يرسل Robify شيئًا من تلقاء نفسه. يذهب التقرير إلى الحافظة، وأنت تقرّر إلى أين يذهب وما تحذفه قبل ذلك.",
+      zh: "缺什么、烦什么、坏了什么：下一个版本正是由这些反馈构成的。Robify 不会自行发送任何内容。报告只进入剪贴板，去向由你决定，你也可以先删掉不想给的部分。",
     },
   "Robify kostet nichts und wird es nicht. Wer trotzdem etwas dalassen möchte, kann das hier tun; die Adresse geht in die Zwischenablage, alles Weitere passiert in deiner Wallet.":
     {
@@ -3394,6 +3394,15 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "اختيار ملفات",
     zh: "选择文件",
   },
+  "Das dauert meist eine halbe bis eine Minute je Titel. Robify sucht ihn in mehreren Quellen, lädt ihn und schreibt die Metadaten hinein.":
+    {
+      en: "This usually takes half a minute to a minute per track. Robify looks for it in several sources, downloads it and writes the metadata into it.",
+      es: "Suele tardar entre medio minuto y un minuto por canción. Robify la busca en varias fuentes, la descarga y le escribe los metadatos.",
+      fr: "Cela prend en général d'une demi-minute à une minute par titre. Robify le cherche dans plusieurs sources, le télécharge et y inscrit les métadonnées.",
+      ru: "Обычно это занимает от полуминуты до минуты на трек. Robify ищет его в нескольких источниках, скачивает и записывает в него метаданные.",
+      ar: "يستغرق ذلك عادةً من نصف دقيقة إلى دقيقة لكل مقطع. يبحث Robify عنه في عدة مصادر، ثم ينزّله ويكتب فيه البيانات الوصفية.",
+      zh: "每首通常需要半分钟到一分钟。Robify 会在多个来源中查找、下载，并把元数据写入其中。",
+    },
   "Wochenmix {0}": {
     en: "Weekly Mix {0}",
     es: "Mezcla semanal {0}",

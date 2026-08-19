@@ -24,6 +24,7 @@ import {
 } from "./Icons";
 import type { Track } from "../types";
 import { LyricsPanel } from "./LyricsPanel";
+import { activeLineIndex, parseLrc, type LyricLine } from "../lib/lrc";
 import { useAusblenden } from "../lib/ausblenden";
 import { useSchliesstBeimSeitenwechsel } from "../lib/seitenwechsel";
 
@@ -56,7 +57,10 @@ export function NowPlaying() {
   /* Nur am Telefon: Dort steht der Text nicht daneben, sondern hinter einer
      Kachel. Am Rechner ist er ohnehin die ganze Zeit zu sehen. */
   const [textOffen, setTextOffen] = useState(false);
+  /** Die Vorschau als Text, wenn keine zeitsynchrone Fassung vorliegt. */
   const [anfang, setAnfang] = useState<string[]>([]);
+  /** Die zeitsynchrone Fassung, sofern es eine gibt. */
+  const [synchron, setSynchron] = useState<LyricLine[]>([]);
 
   const trackId = currentTrack?.id ?? null;
 
@@ -72,6 +76,7 @@ export function NowPlaying() {
   useEffect(() => {
     if (!trackId) {
       setAnfang([]);
+      setSynchron([]);
       return;
     }
     let gilt = true;
@@ -80,6 +85,7 @@ export function NowPlaying() {
       .catch(fallback(null, t("Lyrics")))
       .then((lyrics) => {
         if (!gilt) return;
+        setSynchron(lyrics?.synced ? parseLrc(lyrics.synced) : []);
         const roh = lyrics?.plain || lyrics?.synced || "";
         setAnfang(
           roh
@@ -95,6 +101,33 @@ export function NowPlaying() {
       gilt = false;
     };
   }, [trackId]);
+
+  /*
+   * Der Ausschnitt, der in der Kachel steht.
+   *
+   * Liegt der Text zeitsynchron vor, wandert er mit: Die gerade gesungene
+   * Zeile steht in der zweiten von acht, davor zwei zum Nachlesen, dahinter
+   * fünf zum Vorauslesen. Vorher standen dort immer dieselben acht Zeilen vom
+   * Anfang, und beim dritten Refrain hatte das mit dem, was zu hören war,
+   * nichts mehr zu tun.
+   *
+   * Ohne Zeitmarken bleibt es beim Anfang: Etwas mitlaufen zu lassen, das
+   * nicht weiß, wo es steht, wäre geraten.
+   */
+  const SICHTBAR = 8;
+  const VORLAUF = 2;
+  const vorschau = (() => {
+    if (synchron.length === 0) return anfang;
+    const jetzt = Math.max(0, activeLineIndex(synchron, positionMs));
+    const start = Math.min(
+      Math.max(0, jetzt - VORLAUF),
+      Math.max(0, synchron.length - SICHTBAR),
+    );
+    return synchron
+      .slice(start, start + SICHTBAR)
+      .map((zeile) => zeile.text)
+      .filter(Boolean);
+  })();
 
   // Beim Titelwechsel schließt sich der Vollbildtext: Er gehörte zum vorigen.
   useEffect(() => setTextOffen(false), [trackId]);
@@ -443,8 +476,8 @@ export function NowPlaying() {
                     {t("Songtext")}
                   </span>
                   <span className="mt-2 block text-base leading-snug">
-                    {anfang.length > 0
-                      ? anfang.join("\n")
+                    {vorschau.length > 0
+                      ? vorschau.join("\n")
                       : t("Noch keiner hinterlegt.")}
                   </span>
                 </button>

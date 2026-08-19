@@ -340,6 +340,15 @@ h4 {
   }
 
   /*
+   * Auswahlfelder ebenso: Sechsunddreißig Punkte sind für einen Zeiger
+   * reichlich und für einen Daumen knapp. Sie stehen einzeln unter ihrer
+   * Beschriftung, nichts daneben verrutscht dadurch.
+   */
+  .pill-select {
+    height: 2.75rem;
+  }
+
+  /*
    * Ein Kreuzchen mit einer Zeile daneben ist zwanzig Punkte hoch. Die Zeile
    * daneben zählt zwar mit, weil das Kästchen in seiner Beschriftung steckt,
    * zwischen zwei solchen Zeilen liegen aber nur acht Punkte — wer knapp

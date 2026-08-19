@@ -147,6 +147,13 @@ CREATE TABLE IF NOT EXISTS recommendations (
         // Entfernte Playlists bleiben stehen, bis der Griff nicht mehr
         // zurückgenommen werden kann.
         ("playlists", "deleted_at", "INTEGER"),
+        // Selbst gewählte Reihenfolge unter den Favoriten.
+        //
+        // Ohne sie stand dort, was zuletzt dazukam, immer oben, und umsortieren
+        // ging gar nicht. Der Vorgabewert ist negativ und wird gleich darunter
+        // aus der bisherigen Ordnung gefüllt, damit sich beim Aktualisieren
+        // nichts umstellt.
+        ("tracks", "favorite_position", "INTEGER NOT NULL DEFAULT 0"),
         // Wann der Titel zuletzt lief, unabhängig davon, ob er lang genug
         // lief, um in der Statistik zu zählen.
         //
@@ -182,6 +189,27 @@ CREATE TABLE IF NOT EXISTS recommendations (
                  WHERE p2.created_at > playlists.created_at
                     OR (p2.created_at = playlists.created_at AND p2.id > playlists.id)
              ) + 1",
+            [],
+        )?;
+    }
+
+    // Die bisherige Ordnung der Favoriten festhalten: zuletzt hinzugefügt
+    // oben. Läuft nur, solange noch keiner eine Stelle trägt; ein späteres
+    // Umsortieren wird dadurch nie überschrieben.
+    let ohne_ordnung: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM tracks WHERE favorite = 1 AND favorite_position != 0",
+        [],
+        |r| r.get(0),
+    )?;
+    if ohne_ordnung == 0 {
+        conn.execute(
+            "UPDATE tracks SET favorite_position = (
+                 SELECT COUNT(*) FROM tracks t2
+                 WHERE t2.favorite = 1
+                   AND (t2.added_at > tracks.added_at
+                        OR (t2.added_at = tracks.added_at AND t2.id > tracks.id))
+             ) + 1
+             WHERE favorite = 1",
             [],
         )?;
     }

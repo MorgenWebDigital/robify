@@ -170,8 +170,12 @@ export function Modal({
           {children}
         </div>
 
+        {/* `flex-wrap`: Steht links im Fuß noch etwas anderes als die Knöpfe,
+            ein Kästchen mit Beschriftung etwa, so drängelten sich auf einer
+            Handbreite alle drei in eine Zeile, und der Text brach mitten im
+            Wort um. Umgebrochen steht er in seiner eigenen. */}
         {footer && (
-          <footer className="animate-content flex items-center justify-end gap-3 border-t border-ink-700 px-6 py-4">
+          <footer className="animate-content flex flex-wrap items-center justify-end gap-3 border-t border-ink-700 px-6 py-4">
             {footer}
           </footer>
         )}

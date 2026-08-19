@@ -338,6 +338,7 @@ function MiniPlayer() {
   const durationMs = usePlayer((s) => s.durationMs);
   const toggle = usePlayer((s) => s.toggle);
   const next = usePlayer((s) => s.next);
+  const previous = usePlayer((s) => s.previous);
   const setNowPlayingOpen = useUi((s) => s.setNowPlayingOpen);
   const nowPlayingOpen = useUi((s) => s.nowPlayingOpen);
 
@@ -431,6 +432,17 @@ function MiniPlayer() {
           </p>
         )}
 
+        {/* Zurück gehört dazu: Ohne den Knopf war der Weg zum vorigen Titel
+            nur über die Vollbildansicht zu finden, während der nächste
+            gleich danebenstand. */}
+        <button
+          type="button"
+          onClick={() => void previous()}
+          aria-label={t("Vorheriger Titel")}
+          className="pill-btn is-raised h-11 w-11 shrink-0"
+        >
+          <PrevIcon size={20} />
+        </button>
         <button
           type="button"
           onClick={() => void toggle()}

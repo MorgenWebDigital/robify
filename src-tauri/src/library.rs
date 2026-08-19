@@ -867,9 +867,14 @@ pub fn artist_features(conn: &Connection, artist_id: i64) -> Result<Vec<Track>> 
     Ok(out)
 }
 
+/// Die Favoriten in ihrer selbst gewählten Ordnung.
+///
+/// `added_at` bleibt als zweites Merkmal stehen: Wer noch nie umsortiert hat,
+/// sieht weiterhin das Zuletztgemerkte oben, und zwei Titel mit derselben
+/// Stelle stehen nicht willkürlich zueinander.
 pub fn favorite_tracks(conn: &Connection) -> Result<Vec<Track>> {
     let sql = format!("{TRACK_SELECT} WHERE t.favorite = 1 AND t.deleted_at IS NULL
-         ORDER BY t.added_at DESC");
+         ORDER BY t.favorite_position, t.added_at DESC");
     let mut stmt = conn.prepare(&sql)?;
     let mut out = stmt
         .query_map([], map_track)?
@@ -884,6 +889,27 @@ pub fn set_favorite(conn: &Connection, track_id: i64, favorite: bool) -> Result<
         "UPDATE tracks SET favorite = ?2 WHERE id = ?1",
         params![track_id, i64::from(favorite)],
     )?;
+    // Neu gemerkt heißt oben: Man sucht gerade das, was man eben angetippt
+    // hat. Eine Stelle vor der bisher ersten, ohne alle anderen anzufassen.
+    if favorite {
+        conn.execute(
+            "UPDATE tracks SET favorite_position =
+                 COALESCE((SELECT MIN(favorite_position) FROM tracks WHERE favorite = 1), 1) - 1
+             WHERE id = ?1",
+            params![track_id],
+        )?;
+    }
+    Ok(())
+}
+
+/// Setzt die Reihenfolge der Favoriten neu (Ziehen und Ablegen im Frontend).
+pub fn reorder_favorites(conn: &Connection, track_ids: &[i64]) -> Result<()> {
+    for (stelle, track_id) in track_ids.iter().enumerate() {
+        conn.execute(
+            "UPDATE tracks SET favorite_position = ?2 WHERE id = ?1",
+            params![track_id, stelle as i64],
+        )?;
+    }
     Ok(())
 }
 

@@ -83,7 +83,7 @@ export function Mitmachen({ ytdlp }: { ytdlp?: string | null }) {
       "Robify {0}\nSystem: {1}\nyt-dlp: {2}\n\nWas wolltest du tun?\n\nWas ist stattdessen passiert?\n\nLässt es sich wiederholen?",
       version,
       systemZeile(),
-      ytdlp || "—",
+      ytdlp || t("unbekannt"),
     );
     if (await inDieAblage(text)) {
       setBericht(true);
@@ -108,7 +108,7 @@ export function Mitmachen({ ytdlp }: { ytdlp?: string | null }) {
     <div className="space-y-4">
       <p className="text-sm text-mute">
         {t(
-          "Was fehlt, was stört, was nicht funktioniert: Rückmeldungen sind das, woraus die nächste Fassung entsteht. Robify schickt von sich aus nichts los — der Bericht landet in der Zwischenablage, und du entscheidest, wohin er geht und was du vorher herausnimmst.",
+          "Was fehlt, was stört, was nicht funktioniert: Rückmeldungen sind das, woraus die nächste Fassung entsteht. Robify schickt von sich aus nichts los. Der Bericht landet in der Zwischenablage, und du entscheidest, wohin er geht und was du vorher herausnimmst.",
         )}
       </p>
 

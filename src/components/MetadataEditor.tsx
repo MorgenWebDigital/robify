@@ -269,13 +269,18 @@ export function MetadataForm({
       </div>
 
       <div className="grid gap-5 sm:grid-cols-[10rem_1fr]">
-        {/* Cover */}
+        {/* Cover.
+
+            Auf einer Handbreite ist die Spalte die ganze Breite, und ein
+            quadratisches Bild darin nahm dreihundert Punkte Höhe ein: Vom
+            Formular blieb darunter kein Feld mehr sichtbar. Ab `sm` steht es
+            wieder in seiner zehn Zeichen breiten Spalte und füllt sie. */}
         <div className="space-y-2">
           <Cover
             src={dataUrl(value.coverBase64, value.coverMime)}
             alt={t("Cover")}
             seed={value.album || value.title}
-            className="aspect-square w-full"
+            className="mx-auto aspect-square w-32 sm:mx-0 sm:w-full"
             rounded="rounded-xl"
           />
           <input
@@ -538,7 +543,10 @@ export function MetadataEditorModal({
       width="max-w-3xl"
       footer={
         <>
-          <label className="mr-auto flex items-center gap-2 text-sm text-mute">
+          {/* Auf einer Handbreite eine Zeile für sich: Sonst blieb für die
+              beiden Knöpfe so wenig übrig, dass „Speichern“ allein in die
+              nächste Zeile rutschte und von „Abbrechen“ wegwanderte. */}
+          <label className="flex w-full items-center gap-2 text-sm text-mute sm:mr-auto sm:w-auto">
             <input
               type="checkbox"
               checked={writeToFile}

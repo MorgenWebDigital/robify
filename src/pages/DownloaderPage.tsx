@@ -411,6 +411,16 @@ export function DownloaderPage() {
           <h2 className="mb-3 text-xl font-semibold tracking-tight">
             {t("Downloads")}
           </h2>
+          {/* Der Hinweis steht bei den Aufträgen und nicht nur über der
+              Trefferliste: Die geht beim Laden weg, und dann stünde da ein
+              Balken, der sich minutenlang kaum bewegt, ohne ein Wort dazu. */}
+          {jobs.some((job) => !job.outcome && !job.error) && (
+            <p className="mb-3 text-xs text-mute">
+              {t(
+                "Das dauert meist eine halbe bis eine Minute je Titel. Robify sucht ihn in mehreren Quellen, lädt ihn und schreibt die Metadaten hinein.",
+              )}
+            </p>
+          )}
           <ul className="space-y-2">
             {jobs.map((job) => (
               <li key={job.id} className="surface p-4">

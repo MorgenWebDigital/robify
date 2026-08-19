@@ -4,10 +4,11 @@ import { PageHeader } from "../components/Cards";
 import { EmptyState } from "../components/EmptyState";
 import { HeartIcon, PlayIcon } from "../components/Icons";
 import { TrackList } from "../components/TrackList";
-import { api, fallback } from "../lib/api";
+import { api, errorMessage, fallback } from "../lib/api";
 import { formatDuration, plural } from "../lib/format";
 import { t } from "../lib/i18n";
 import { useLibrary } from "../store/library";
+import { useUi } from "../store/ui";
 import type { Track } from "../types";
 
 /**
@@ -20,6 +21,7 @@ import type { Track } from "../types";
 export function FavoritesPage() {
   const revision = useLibrary((s) => s.revision);
   const refresh = useLibrary((s) => s.refresh);
+  const notify = useUi((s) => s.notify);
   /** `null`, solange noch nicht geladen, sonst blitzt der Leerzustand auf. */
   const [tracks, setTracks] = useState<Track[] | null>(null);
 
@@ -29,6 +31,26 @@ export function FavoritesPage() {
       .then(setTracks)
       .catch((error) => setTracks(fallback([], t("Favoriten"))(error)));
   }, [revision]);
+
+  /**
+   * Neue Reihenfolge nach dem Ziehen sichern.
+   *
+   * Erst anzeigen, dann schreiben: Sonst springt die Zeile an ihren alten
+   * Platz zurück, während die Datenbank noch arbeitet. Geht das Schreiben
+   * schief, holt der Neuaufbau den wahren Stand zurück.
+   */
+  const neuOrdnen = async (ids: number[]) => {
+    const vorher = tracks ?? [];
+    setTracks(
+      ids.map((id) => vorher.find((t) => t.id === id)!).filter(Boolean),
+    );
+    try {
+      await api.reorderFavorites(ids);
+    } catch (error) {
+      notify(errorMessage(error), "error");
+      setTracks(await api.favoriteTracks().catch(fallback([], t("Favoriten"))));
+    }
+  };
 
   const gesamt = (tracks ?? []).reduce(
     (summe, track) => summe + track.durationMs,
@@ -68,6 +90,7 @@ export function FavoritesPage() {
       {tracks !== null && (
         <TrackList
           tracks={tracks}
+          onReorder={(ids) => void neuOrdnen(ids)}
           onChanged={() => void refresh()}
           emptyMessage={
             <EmptyState

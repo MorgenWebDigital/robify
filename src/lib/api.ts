@@ -185,6 +185,8 @@ export const api = {
     invoke<void>("remove_from_playlist", { playlistId, trackId }),
   reorderPlaylist: (playlistId: number, trackIds: number[]) =>
     invoke<void>("reorder_playlist", { playlistId, trackIds }),
+  reorderFavorites: (trackIds: number[]) =>
+    invoke<void>("reorder_favorites", { trackIds }),
   /** Reihenfolge der Sammlung selbst, nicht der Titel darin. */
   reorderPlaylists: (playlistIds: number[]) =>
     invoke<void>("reorder_playlists", { playlistIds }),

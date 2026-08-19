@@ -175,17 +175,6 @@ export function PlaylistCard({
   playlist: Playlist;
   size?: GridSize;
 }) {
-  const play = async (event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const tracks = await api.playlistTracks(playlist.id);
-    if (tracks.length > 0)
-      await api.playTracks(
-        tracks.map((t) => t.id),
-        0,
-      );
-  };
-
   return (
     <Link
       // Ohne dies zieht der Browser den Verweis statt der Kachel: Ein
@@ -206,14 +195,9 @@ export function PlaylistCard({
           size="aspect-square w-full"
           coverSrc={playlist.hasCover ? playlistCover(playlist.id) : null}
         />
-        <button
-          type="button"
-          onClick={play}
-          aria-label={t("{0} abspielen", playlist.name)}
-          className="accent-bg absolute end-2 bottom-2 grid h-10 w-10 translate-y-2 place-items-center rounded-full opacity-0 shadow-xl transition group-hover:translate-y-0 group-hover:opacity-100"
-        >
-          <PlayIcon size={18} className="ml-0.5" />
-        </button>
+        {/* Kein Dreieck auf dem Bild. Ohne Zeigegerät steht es dort
+            ständig und verdeckt eine Ecke des Mosaiks; die Kachel führt in
+            die Playlist, wo das Abspielen als eigener Knopf steht. */}
       </div>
       <p
         className={`mt-3 truncate font-medium ${size === "sm" ? "text-xs" : "text-sm"}`}

@@ -1101,6 +1101,13 @@ pub fn reorder_playlist(
     Ok(library::reorder_playlist(&conn, playlist_id, &track_ids)?)
 }
 
+/// Reihenfolge der Favoriten, wie sie der Nutzer gezogen hat.
+#[tauri::command]
+pub fn reorder_favorites(state: State<'_, AppState>, track_ids: Vec<i64>) -> CmdResult<()> {
+    let conn = state.db.lock();
+    Ok(library::reorder_favorites(&conn, &track_ids)?)
+}
+
 /// Reihenfolge der Sammlung selbst, nicht der Titel darin.
 #[tauri::command]
 pub fn reorder_playlists(
@@ -2000,8 +2007,11 @@ pub fn get_settings(state: State<'_, AppState>) -> CmdResult<Settings> {
         move_downloads_into_library: flag("move_downloads_into_library", true),
         accent: get("accent", "#a8a8b3"),
         theme: get("theme", "system"),
-        playlist_view: get("playlist_view", "grid"),
-        playlist_size: get("playlist_size", "md"),
+        // Liste statt Kacheln, und in der großen Fassung: Eine Playlist
+        // erkennt man am Namen, nicht am Mosaik aus vier Covern. Als Zeile
+        // steht der Name daneben statt darunter abgeschnitten.
+        playlist_view: get("playlist_view", "list"),
+        playlist_size: get("playlist_size", "lg"),
         confirm_delete: flag("confirm_delete", true),
         playlist_from_download: flag("playlist_from_download", true),
         wrapped_mode: get("wrapped_mode", "all"),
@@ -2024,6 +2034,9 @@ pub fn set_setting(state: State<'_, AppState>, key: String, value: String) -> Cm
 /// Wie viele Sicherungen aufgehoben werden.
 const MAX_BACKUPS: usize = 5;
 
+/// Ordner für die Sicherungen, wenn die Speicherorte feststehen.
+const SICHERUNGEN: &str = "saves";
+
 /// Legt eine Sicherung der Datenbank an und gibt deren Pfad zurück.
 ///
 /// `VACUUM INTO` schreibt eine in sich stimmige Kopie, auch während die
@@ -2031,11 +2044,19 @@ const MAX_BACKUPS: usize = 5;
 /// in einer Schreiboperation landen.
 #[tauri::command]
 pub fn backup_database(state: State<'_, AppState>) -> CmdResult<String> {
-    let dir = state
-        .db_path
-        .parent()
-        .map(|p| p.join("backups"))
-        .ok_or_else(|| Error(fehler!("Kein Ort für die Sicherung gefunden.")))?;
+    // Stehen die Orte fest, liegt die Sicherung sichtbar im Musikordner unter
+    // „saves“, nicht im versteckten „.robify“. Eine Sicherung nützt nur, wenn
+    // man sie auch findet und wegkopieren kann; der versteckte Ordner ist für
+    // das gedacht, was der Nutzer nie anfassen soll.
+    let dir = if state.feste_orte {
+        state.library_dir().join(SICHERUNGEN)
+    } else {
+        state
+            .db_path
+            .parent()
+            .map(|p| p.join("backups"))
+            .ok_or_else(|| Error(fehler!("Kein Ort für die Sicherung gefunden.")))?
+    };
     std::fs::create_dir_all(&dir)?;
 
     let stempel = chrono::Local::now().format("%Y-%m-%d-%H%M%S");
