@@ -30,6 +30,36 @@ async function inDieAblage(text: string): Promise<boolean> {
   }
 }
 
+/**
+ * Das System in einer lesbaren Zeile.
+ *
+ * `navigator.userAgent` steht voller Beiwerk, das seit dreißig Jahren
+ * mitgeschleppt wird: „Mozilla/5.0 (Linux; Android 15; A063 Build/AQ3A…; wv)
+ * AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/150.0.7871.181“.
+ * In einem Fehlerbericht zählt davon dreierlei — welches Android, welches
+ * Gerät, welcher Unterbau —, und der Rest verstellt den Blick darauf.
+ *
+ * Auf allen anderen Systemen steht in der ersten Klammer schon das Richtige:
+ * „X11; Linux x86_64“, „Windows NT 10.0; Win64; x64“, „Macintosh; Intel Mac OS
+ * X 10_15_7“.
+ */
+function systemZeile(): string {
+  const kennung = navigator.userAgent;
+  const android = /Android (\d+(?:\.\d+)*)[^)]*?; ([^;)]+?) Build\//.exec(
+    kennung,
+  );
+  const unterbau = /Chrome\/(\d+)/.exec(kennung);
+
+  if (android) {
+    const teile = [`Android ${android[1]}`, android[2].trim()];
+    if (unterbau) teile.push(`Chromium ${unterbau[1]}`);
+    return teile.join(" · ");
+  }
+
+  const klammer = /\(([^)]+)\)/.exec(kennung);
+  return klammer ? klammer[1] : kennung;
+}
+
 /** Adresse gekürzt, damit sie in eine Zeile passt: Anfang … Ende. */
 function gekuerzt(adresse: string): string {
   if (adresse.length <= 24) return adresse;
@@ -52,7 +82,7 @@ export function Mitmachen({ ytdlp }: { ytdlp?: string | null }) {
     const text = t(
       "Robify {0}\nSystem: {1}\nyt-dlp: {2}\n\nWas wolltest du tun?\n\nWas ist stattdessen passiert?\n\nLässt es sich wiederholen?",
       version,
-      navigator.userAgent,
+      systemZeile(),
       ytdlp || "—",
     );
     if (await inDieAblage(text)) {
