@@ -213,7 +213,14 @@ export function Auswahl({
                           />
                         )}
                       </span>
-                      {option.symbol && <Zeichen wert={option.symbol} />}
+                      {/* Der Platz bleibt auch ohne Zeichen stehen: „System“
+                          trägt keine Flagge, und ohne den leeren Kasten
+                          begänne es weiter links als die Sprachen darunter.
+                          Nur die Liste braucht das; auf dem Knopf steht
+                          jeweils ein einziger Eintrag. */}
+                      {options.some((eintrag) => eintrag.symbol) && (
+                        <Zeichen wert={option.symbol ?? ""} />
+                      )}
                       {option.label}
                     </button>
                   </li>

@@ -70,12 +70,10 @@ function qualitaeten() {
  */
 function sprachOptionen() {
   return [
-    {
-      id: "system",
-      label: t("System"),
-      symbol: "🌐",
-      suchtext: "system automatisch",
-    },
+    // Ohne Zeichen: Die Flaggen daneben stehen für je ein Land, die
+    // Weltkugel stünde für keins. Sie sah aus wie eine weitere Sprache
+    // und war doch nur die Abwesenheit einer Wahl.
+    { id: "system", label: t("System"), suchtext: "system automatisch" },
     ...SPRACHEN.map((eintrag) => ({
       id: eintrag.id,
       label: eintrag.name,
