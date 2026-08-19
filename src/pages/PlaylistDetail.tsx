@@ -196,32 +196,22 @@ export function PlaylistDetail() {
               ` · ${formatDuration(playlist.durationMs)}`}
           </p>
 
+          {/* Bearbeiten und Löschen links, Abspielen rechts außen: Was die
+              Playlist verwaltet, steht beieinander, was sie hört, am anderen
+              Ende. `ms-auto` nimmt den freien Platz davor auf.
+
+              Alle klein: Bei Enge fallen sie auf ihr Zeichen zusammen, wie in
+              der Bibliothek. Vier beschriftete Knöpfe nebeneinander passen auf
+              eine Handbreite ohnehin nicht. */}
           <div className="aktionsreihe mt-4 gap-2">
             <button
               type="button"
-              onClick={() => play(false)}
-              disabled={!tracks.length}
-              className="pill-btn is-raised is-accent aktionsknopf shrink-0"
-            >
-              <PlayIcon size={16} />
-              {t("Abspielen")}
-            </button>
-            <button
-              type="button"
-              onClick={() => play(true)}
-              disabled={!tracks.length}
-              className="pill-btn is-raised aktionsknopf shrink-0"
-            >
-              <ShuffleIcon size={16} />
-              {t("Zufällig")}
-            </button>
-            <button
-              type="button"
               onClick={() => setEditing(true)}
-              className="pill-btn is-raised aktionsknopf shrink-0"
+              title={t("Bearbeiten")}
+              className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
             >
               <PencilIcon size={16} />
-              {t("Bearbeiten")}
+              <span className="beschriftung truncate">{t("Bearbeiten")}</span>
             </button>
             <button
               type="button"
@@ -229,10 +219,31 @@ export function PlaylistDetail() {
                 if (settings && !settings.confirmDelete) void remove();
                 else setLoeschen(true);
               }}
-              className="pill-btn is-raised aktionsknopf aktionsknopf-weicht"
+              title={t("Löschen")}
+              className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
             >
               <TrashIcon size={16} />
-              <span className="truncate">{t("Löschen")}</span>
+              <span className="beschriftung truncate">{t("Löschen")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => play(true)}
+              disabled={!tracks.length}
+              title={t("Zufällig")}
+              className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
+            >
+              <ShuffleIcon size={16} />
+              <span className="beschriftung truncate">{t("Zufällig")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => play(false)}
+              disabled={!tracks.length}
+              title={t("Abspielen")}
+              className="pill-btn is-raised is-accent aktionsknopf aktionsknopf-kurz ms-auto"
+            >
+              <PlayIcon size={16} />
+              <span className="beschriftung truncate">{t("Abspielen")}</span>
             </button>
           </div>
         </div>
