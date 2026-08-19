@@ -2,49 +2,107 @@
 <!--
     Die Vorderseite des Startsymbols.
 
+    Dieselbe Zeichnung wie `icons/robify-logo.svg`, in der Bauweise der Knöpfe
+    in der App: eine Fläche mit einem Verlauf von hell nach dunkel und darunter
+    eine harte Kante, die das Zeichen von der Fläche abhebt. Ein weicher
+    Schatten ginge nicht, Vektoren in Android kennen keinen; die Tiefe kommt
+    deshalb daher, dass die Zeichnung zweimal dasteht, die untere um 2.4
+    Einheiten versetzt und dunkler.
+
+    Der Hintergrund ist durchsichtig. Die weiße Scheibe darunter machte aus dem
+    Zeichen eine Marke auf einem Teller; ohne sie steht es frei auf dem
+    Startbildschirm, wie die Symbole daneben auch.
+
     Android schneidet ein Startsymbol in die Form, die der Nutzer eingestellt
-    hat — Kreis, Quadrat, Tropfen. Sicher sichtbar bleibt nur der innere Kreis
-    von 72 der 108 Einheiten; alles weiter außen kann wegfallen. Das aus
-    `app-icon.png` erzeugte Bild füllt die Fläche bis zum Rand, und im Kreis
-    standen die Notenköpfe deshalb angeschnitten.
+    hat. Sicher sichtbar bleibt nur der innere Kreis von 72 der 108 Einheiten;
+    die Zeichnung ist auf ihren Mittelpunkt bezogen und so weit verkleinert,
+    dass auch die versetzte Kante darin bleibt.
 
-    Dieselbe Zeichnung wie `icons/robify-logo.svg`, aber mit ausgerechneten
-    Koordinaten statt ineinandergelegter Gruppen: Verschachtelt kamen die
-    Notenköpfe als Punkte heraus und der Balken als Fläche. Ohne Gruppen zeigt
-    der Vektor genau das, was dasteht.
-
-    Die Zeichnung ist auf ihren eigenen Mittelpunkt bezogen und so weit
-    verkleinert, dass ihr äußerster Punkt 33 Einheiten vom Mittelpunkt
-    entfernt bleibt — drei innerhalb des sicheren Kreises, damit auch die runde
-    Maske nichts abschneidet.
+    Die Koordinaten stehen ausgerechnet da statt in ineinander gelegten
+    Gruppen: Verschachtelt kamen die Notenköpfe als Punkte heraus und der
+    Balken als Fläche.
 
     Liegt hier und nicht unter `gen/android`, weil dieses Verzeichnis bei jedem
     `tauri android init` neu entsteht; hineingelegt wird es von
     scripts/android-nachruesten.mjs.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Die Kante darunter, dieselbe Zeichnung versetzt. -->
+    <path
+        android:fillColor="#FF6E6E78"
+        android:pathData="M44.918,44.072 L76.757,35.943 L76.757,44.75 L44.918,52.879 z" />
+    <path
+        android:fillColor="#FF6E6E78"
+        android:pathData="M44.918,44.072 L49.321,44.072 L49.321,69.476 L44.918,69.476 z" />
+    <path
+        android:fillColor="#FF6E6E78"
+        android:pathData="M72.354,37.068 L76.757,37.068 L76.757,61.347 L72.354,61.347 z" />
+    <path
+        android:fillColor="#FF6E6E78"
+        android:pathData="M31.561,72.827 a8.807,6.774 -20 1,0 16.551,-6.024 a8.807,6.774 -20 1,0 -16.551,6.024 z" />
+    <path
+        android:fillColor="#FF6E6E78"
+        android:pathData="M58.997,64.697 a8.807,6.774 -20 1,0 16.551,-6.024 a8.807,6.774 -20 1,0 -16.551,6.024 z" />
+
+    <!-- Die Fläche darüber, mit Verlauf von oben nach unten. -->
     <!-- Balken über beiden Hälsen, ansteigend. -->
-    <path
-        android:fillColor="#FFA8A8B3"
-        android:pathData="M44.205,40.705 L78.542,31.939 L78.542,41.436 L44.205,50.203 z" />
+    <path android:pathData="M44.918,41.672 L76.757,33.543 L76.757,42.35 L44.918,50.479 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54" android:startY="33.543"
+                android:endX="54" android:endY="74.457"
+                android:startColor="#FFD5D5DC"
+                android:endColor="#FF9C9CA8" />
+        </aapt:attr>
+    </path>
     <!-- Linker Hals. -->
-    <path
-        android:fillColor="#FFA8A8B3"
-        android:pathData="M44.205,40.705 L48.954,40.705 L48.954,68.101 L44.205,68.101 z" />
+    <path android:pathData="M44.918,41.672 L49.321,41.672 L49.321,67.076 L44.918,67.076 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54" android:startY="33.543"
+                android:endX="54" android:endY="74.457"
+                android:startColor="#FFD5D5DC"
+                android:endColor="#FF9C9CA8" />
+        </aapt:attr>
+    </path>
     <!-- Rechter Hals. -->
-    <path
-        android:fillColor="#FFA8A8B3"
-        android:pathData="M73.793,33.151 L78.542,33.151 L78.542,59.335 L73.793,59.335 z" />
+    <path android:pathData="M72.354,34.668 L76.757,34.668 L76.757,58.947 L72.354,58.947 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54" android:startY="33.543"
+                android:endX="54" android:endY="74.457"
+                android:startColor="#FFD5D5DC"
+                android:endColor="#FF9C9CA8" />
+        </aapt:attr>
+    </path>
     <!-- Linker Notenkopf, gekippt wie in der Notenschrift. -->
-    <path
-        android:fillColor="#FFA8A8B3"
-        android:pathData="M29.802,71.715 a9.497,7.306 -20 1,0 17.849,-6.497 a9.497,7.306 -20 1,0 -17.849,6.497 z" />
+    <path android:pathData="M31.561,70.427 a8.807,6.774 -20 1,0 16.551,-6.024 a8.807,6.774 -20 1,0 -16.551,6.024 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54" android:startY="33.543"
+                android:endX="54" android:endY="74.457"
+                android:startColor="#FFD5D5DC"
+                android:endColor="#FF9C9CA8" />
+        </aapt:attr>
+    </path>
     <!-- Rechter Notenkopf. -->
-    <path
-        android:fillColor="#FFA8A8B3"
-        android:pathData="M59.389,62.948 a9.497,7.306 -20 1,0 17.849,-6.497 a9.497,7.306 -20 1,0 -17.849,6.497 z" />
+    <path android:pathData="M58.997,62.297 a8.807,6.774 -20 1,0 16.551,-6.024 a8.807,6.774 -20 1,0 -16.551,6.024 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54" android:startY="33.543"
+                android:endX="54" android:endY="74.457"
+                android:startColor="#FFD5D5DC"
+                android:endColor="#FF9C9CA8" />
+        </aapt:attr>
+    </path>
 </vector>

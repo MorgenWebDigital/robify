@@ -643,6 +643,20 @@ function startsymbolEinlegen() {
     ].join("\n"),
   );
 
+  // Der Hintergrund bleibt durchsichtig: Die weiße Scheibe machte aus dem
+  // Zeichen eine Marke auf einem Teller. `tauri icon` legt die Farbe als
+  // `#fff` ab, sie kommt mit den Symbolen mit und wird hier überschrieben.
+  writeFileSync(
+    join(RES, "values", "ic_launcher_background.xml"),
+    [
+      '<?xml version="1.0" encoding="utf-8"?>',
+      "<resources>",
+      '  <color name="ic_launcher_background">#00000000</color>',
+      "</resources>",
+      "",
+    ].join("\n"),
+  );
+
   console.log(`Startsymbol: ${gelegt} Dateien eingelegt, Vorderseite als Vektor`);
 }
 
