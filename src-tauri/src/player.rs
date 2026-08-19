@@ -747,7 +747,7 @@ impl Engine {
         if self.queue.is_empty() {
             return Ok(());
         }
-        self.order_pos = Some(vorherige_stelle(self.order_pos));
+        self.order_pos = Some(vorherige_stelle(self.order_pos, self.order.len()));
         self.start_current()
     }
 
@@ -1033,17 +1033,23 @@ fn naechste_stelle(
 
 /// Wohin der Rückwärtsschritt führt.
 ///
-/// Am Anfang ist Schluss: Von der ersten Stelle springt er nicht ans Ende der
-/// Warteschlange, auch nicht bei „Wiederholen: alle“. Wer zurückgeht, sucht
-/// das eben Gehörte, und das liegt nie ganz hinten. Stattdessen beginnt der
-/// laufende Titel von vorn, wie es ein zweiter Druck ohnehin täte.
+/// Am Anfang geht es ans Ende: Die Liste ist ein Ring, und man kann in beide
+/// Richtungen beliebig weit darin gehen.
+///
+/// Hier stand vorher das Gegenteil, mit der Begründung, wer zurückgeht, suche
+/// das eben Gehörte, und das liege nie ganz hinten. Das stimmt für den
+/// einzelnen Schritt — nicht aber für eine Liste, die man als Ring versteht:
+/// Dort ist der letzte Titel der Nachbar des ersten, in beide Richtungen.
 ///
 /// Als freie Funktion, damit sich die Regel ohne Tonausgabe und Datenbank
 /// prüfen lässt; im Player selbst ginge das nicht.
-fn vorherige_stelle(order_pos: Option<usize>) -> usize {
+fn vorherige_stelle(order_pos: Option<usize>, laenge: usize) -> usize {
     match order_pos {
         Some(pos) if pos > 0 => pos - 1,
-        _ => 0,
+        // Vom ersten ans Ende. Bei leerer Liste bleibt nur die Null; der
+        // Aufrufer prüft das ohnehin vorher.
+        Some(_) => laenge.saturating_sub(1),
+        None => 0,
     }
 }
 
@@ -1085,15 +1091,22 @@ mod tests {
 
     #[test]
     fn zurueck_geht_eine_stelle_zurueck() {
-        assert_eq!(vorherige_stelle(Some(3)), 2);
-        assert_eq!(vorherige_stelle(Some(1)), 0);
+        assert_eq!(vorherige_stelle(Some(3), 5), 2);
+        assert_eq!(vorherige_stelle(Some(1), 5), 0);
     }
 
-    /// Der eigentliche Punkt: kein Sprung ans Ende.
+    /// Der eigentliche Punkt: Die Liste ist ein Ring.
+    ///
+    /// Vom ersten Titel führt der Rückwärtsschritt ans Ende, so wie der
+    /// Vorwärtsschritt vom letzten an den Anfang. Hier stand vorher das
+    /// Gegenteil.
     #[test]
-    fn am_anfang_bleibt_es_beim_ersten_titel() {
-        assert_eq!(vorherige_stelle(Some(0)), 0);
-        assert_eq!(vorherige_stelle(None), 0);
+    fn vom_ersten_geht_es_ans_ende() {
+        assert_eq!(vorherige_stelle(Some(0), 5), 4);
+        assert_eq!(vorherige_stelle(Some(0), 1), 0);
+        // Ohne laufende Stelle gibt es nichts zu umlaufen.
+        assert_eq!(vorherige_stelle(None, 5), 0);
+        assert_eq!(vorherige_stelle(Some(0), 0), 0);
     }
 
     #[test]
