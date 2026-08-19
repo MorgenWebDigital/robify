@@ -144,6 +144,30 @@ export function NowPlaying() {
   /** Ab hier ist es eine Geste und nicht mehr ein Verrutschen. */
   const ZUG_SCHWELLE = 90;
 
+  /*
+   * Wohin gerade geblättert wird, für die kurze Bewegung dabei.
+   *
+   * Der Wechsel selbst kommt aus dem Rust-Teil und braucht einen Augenblick;
+   * ohne Bewegung stünde in dieser Zeit einfach der alte Titel da, und der
+   * Wisch sähe aus, als sei er ins Leere gegangen.
+   */
+  const [blaettert, setBlaettert] = useState<"vor" | "zurueck" | null>(null);
+  const blaetterUhr = useRef<number | null>(null);
+
+  const blaettern = (richtung: "vor" | "zurueck") => {
+    if (blaetterUhr.current) window.clearTimeout(blaetterUhr.current);
+    setBlaettert(richtung);
+    // Muss zur Dauer von `blaettern-vor` im Stylesheet passen.
+    blaetterUhr.current = window.setTimeout(() => setBlaettert(null), 260);
+  };
+
+  useEffect(
+    () => () => {
+      if (blaetterUhr.current) window.clearTimeout(blaetterUhr.current);
+    },
+    [],
+  );
+
   const zugStart = (event: React.TouchEvent<HTMLDivElement>) => {
     zugBeginn.current = {
       x: event.touches[0].clientX,
@@ -162,6 +186,7 @@ export function NowPlaying() {
     if (Math.abs(dx) > Math.abs(dy)) {
       if (Math.abs(dx) < ZUG_SCHWELLE) return;
       // Nach links kommt das Nächste ins Bild, wie beim Umblättern.
+      blaettern(dx < 0 ? "vor" : "zurueck");
       void (dx < 0 ? next() : previous());
       return;
     }
@@ -243,6 +268,12 @@ export function NowPlaying() {
               onTouchEnd={zugEnde}
               className={`flex min-h-0 flex-col items-center gap-6 overflow-y-auto lg:justify-center lg:overflow-visible ${
                 schliesst ? "" : "animate-content"
+              } ${
+                blaettert === "vor"
+                  ? "blaettert-vor"
+                  : blaettert === "zurueck"
+                    ? "blaettert-zurueck"
+                    : ""
               }`}
             >
               <Cover

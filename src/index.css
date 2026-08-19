@@ -662,6 +662,62 @@ h4 {
   }
 }
 
+/*
+ * Umblättern zwischen zwei Titeln.
+ *
+ * Der Inhalt geht in die Richtung des Wischens hinaus und kommt von der
+ * anderen Seite zurück — dieselbe Bewegung wie beim Blättern in einem Buch.
+ * Der Titelwechsel geschieht dabei irgendwo in der Mitte; genau dort ist die
+ * Fläche durchsichtig, und der Wechsel bleibt unsichtbar.
+ *
+ * Kurz gehalten: Eine Geste soll sich beantwortet anfühlen, nicht abgewartet.
+ */
+@keyframes blaettern-vor {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  45% {
+    transform: translateX(-28px);
+    opacity: 0;
+  }
+  55% {
+    transform: translateX(28px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes blaettern-zurueck {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  45% {
+    transform: translateX(28px);
+    opacity: 0;
+  }
+  55% {
+    transform: translateX(-28px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@utility blaettert-vor {
+  animation: blaettern-vor 260ms ease;
+}
+
+@utility blaettert-zurueck {
+  animation: blaettern-zurueck 260ms ease;
+}
+
 @utility mehr-anzeigen {
   position: absolute;
   inset-inline-end: 0;
@@ -1255,6 +1311,12 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* Das Umblättern entfällt; der Titel wechselt dann ohne Bewegung. */
+  .blaettert-vor,
+  .blaettert-zurueck {
+    animation: none;
+  }
+
   /* Nur noch die hervorgehobene Zeile: Die Fläche selbst trägt keine
      Verwandlung mehr, siehe `lyrics-plane`. */
   .lyrics-active {

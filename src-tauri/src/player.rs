@@ -683,12 +683,17 @@ impl Engine {
         }
     }
 
-    /// Nächster Titel. `manual` unterscheidet Nutzerklick von Titelende:
-    /// bei "Titel wiederholen" springt ein Klick trotzdem weiter.
+    /// Nächster Titel. `manual` unterscheidet Nutzerklick von Titelende.
     fn advance(&mut self, manual: bool) -> Result<()> {
         self.record_play();
 
-        if !manual && self.repeat == RepeatMode::One {
+        // „Titel wiederholen“ gilt auch für den Klick.
+        //
+        // Vorher sprang ein Klick trotzdem weiter, mit der Überlegung, der
+        // Nutzer wolle ja gerade wechseln. In der Hand liest es sich anders:
+        // Wer einen Titel auf Dauerschleife stellt, will ihn beim Weitertippen
+        // wieder hören, nicht die Einstellung umgangen bekommen.
+        if self.repeat == RepeatMode::One {
             return self.start_current();
         }
         if self.queue.is_empty() {
@@ -696,20 +701,13 @@ impl Engine {
             return Ok(());
         }
 
-        let next = match self.order_pos {
-            Some(pos) if pos + 1 < self.order.len() => Some(pos + 1),
-            Some(_) => match self.repeat {
-                RepeatMode::All => {
-                    if self.shuffle {
-                        // Neue Zufallsrunde, sonst wiederholt sich die Reihenfolge.
-                        self.order.shuffle(&mut rand::rng());
-                    }
-                    Some(0)
-                }
-                _ => None,
-            },
-            None => Some(0),
-        };
+        let am_ende = matches!(self.order_pos, Some(pos) if pos + 1 >= self.order.len());
+        let next = naechste_stelle(self.order_pos, self.order.len(), manual, self.repeat);
+
+        // Neue Zufallsrunde beim Umlauf, sonst wiederholt sich die Reihenfolge.
+        if am_ende && next == Some(0) && self.shuffle {
+            self.order.shuffle(&mut rand::rng());
+        }
 
         match next {
             Some(pos) => {
@@ -1008,6 +1006,31 @@ fn vorgeschichte_kuerzen(
     Some((neue_queue, neue_order, order_pos - zu_viel))
 }
 
+/// Welche Stelle nach der laufenden kommt.
+///
+/// Am Ende der Liste wird umgelaufen, wenn der Nutzer selbst weitertippt: Wer
+/// in einer Playlist beim letzten Titel noch einmal drückt, will wieder von
+/// vorn, nicht ins Leere. Von selbst hört die Wiedergabe dort auf — außer bei
+/// „Alle wiederholen“, das dafür da ist.
+///
+/// Als eigene Funktion, damit sich die vier Fälle prüfen lassen, ohne einen
+/// Player samt Tongerät zu bauen.
+fn naechste_stelle(
+    stelle: Option<usize>,
+    laenge: usize,
+    von_hand: bool,
+    wiederholen: RepeatMode,
+) -> Option<usize> {
+    if laenge == 0 {
+        return None;
+    }
+    match stelle {
+        Some(pos) if pos + 1 < laenge => Some(pos + 1),
+        Some(_) => (von_hand || wiederholen == RepeatMode::All).then_some(0),
+        None => Some(0),
+    }
+}
+
 /// Wohin der Rückwärtsschritt führt.
 ///
 /// Am Anfang ist Schluss: Von der ersten Stelle springt er nicht ans Ende der
@@ -1026,7 +1049,39 @@ fn vorherige_stelle(order_pos: Option<usize>) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::{vorgeschichte_kuerzen, vorherige_stelle};
+    use super::{naechste_stelle, vorgeschichte_kuerzen, vorherige_stelle, RepeatMode};
+
+    /// Von Hand am Ende: wieder der erste.
+    ///
+    /// Vorher hörte die Wiedergabe dort auf, und in einer Playlist stand man
+    /// beim letzten Titel vor einem Knopf, der nichts mehr tat.
+    #[test]
+    fn von_hand_laeuft_am_ende_um() {
+        assert_eq!(naechste_stelle(Some(2), 3, true, RepeatMode::Off), Some(0));
+        assert_eq!(naechste_stelle(Some(2), 3, true, RepeatMode::All), Some(0));
+    }
+
+    /// Von selbst nicht: Sonst liefe jede Liste endlos weiter, und „Alle
+    /// wiederholen“ hätte keinen Sinn mehr.
+    #[test]
+    fn von_selbst_endet_die_liste() {
+        assert_eq!(naechste_stelle(Some(2), 3, false, RepeatMode::Off), None);
+        assert_eq!(naechste_stelle(Some(2), 3, false, RepeatMode::All), Some(0));
+    }
+
+    #[test]
+    fn mittendrin_geht_es_schlicht_weiter() {
+        assert_eq!(naechste_stelle(Some(0), 3, true, RepeatMode::Off), Some(1));
+        assert_eq!(naechste_stelle(Some(1), 3, false, RepeatMode::Off), Some(2));
+        // Ohne laufende Stelle beginnt die Liste von vorn.
+        assert_eq!(naechste_stelle(None, 3, false, RepeatMode::Off), Some(0));
+    }
+
+    #[test]
+    fn eine_leere_liste_hat_kein_weiter() {
+        assert_eq!(naechste_stelle(None, 0, true, RepeatMode::All), None);
+        assert_eq!(naechste_stelle(Some(0), 0, true, RepeatMode::All), None);
+    }
 
     #[test]
     fn zurueck_geht_eine_stelle_zurueck() {
