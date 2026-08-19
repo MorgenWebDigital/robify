@@ -53,6 +53,47 @@ pub fn wiedergabe_klasse() -> Option<&'static GlobalRef> {
     WIEDERGABE_KLASSE.get()
 }
 
+/// Der Stamm des Gerätespeichers, meist `/storage/emulated/0`.
+///
+/// Fest verdrahtet wäre der Pfad falsch, sobald das Gerät mehrere Nutzer
+/// führt — dann heißt er `/storage/emulated/10` und so fort. Android nennt
+/// ihn selbst, `Environment` ist eine Klasse des Systems und darum auch aus
+/// einem nachträglich angehängten Faden zu finden.
+///
+/// Ob dort tatsächlich geschrieben werden darf, sagt dieser Pfad nicht; das
+/// hängt an der Erlaubnis „Zugriff auf alle Dateien“ und wird an der Stelle
+/// geprüft, an der es darauf ankommt.
+pub fn geraetespeicher() -> Option<std::path::PathBuf> {
+    stamm_holen().ok()
+}
+
+fn stamm_holen() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    use jni::objects::JString;
+
+    let kontext = ndk_context::android_context();
+    let vm = unsafe { JavaVM::from_raw(kontext.vm().cast()) }?;
+    let mut env = vm.attach_current_thread()?;
+
+    let klasse = env.find_class("android/os/Environment")?;
+    let ordner = env
+        .call_static_method(
+            klasse,
+            "getExternalStorageDirectory",
+            "()Ljava/io/File;",
+            &[],
+        )?
+        .l()?;
+    if ordner.is_null() {
+        return Err("Environment.getExternalStorageDirectory() lieferte nichts".into());
+    }
+
+    let pfad = env
+        .call_method(&ordner, "getAbsolutePath", "()Ljava/lang/String;", &[])?
+        .l()?;
+    let text: String = env.get_string(&JString::from(pfad))?.into();
+    Ok(std::path::PathBuf::from(text))
+}
+
 /// Wird von Android beim Laden von `librobify_lib.so` gerufen.
 ///
 /// Der Rückgabewert nennt die JNI-Fassung, die wir sprechen. Fehlschläge

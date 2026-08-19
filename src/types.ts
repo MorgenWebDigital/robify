@@ -420,6 +420,13 @@ export interface Settings {
   accentCustom: string;
   /** Oberflächensprache: „system“, „de“ oder „en“. */
   language: string;
+  /**
+   * Stehen die Speicherorte fest?
+   *
+   * Auf dem Telefon liegen die Titel in „Robify“ und alles Übrige in
+   * „.robify“, beides im Gerätespeicher. Die Ordnerwahl entfällt dort.
+   */
+  festeOrte: boolean;
 }
 
 export interface AppPaths {

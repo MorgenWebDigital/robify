@@ -1542,6 +1542,90 @@ pub fn cleanup_trash(papierkorb: &std::path::Path, max_age: std::time::Duration)
     entfernt
 }
 
+/// Holt Titel von einem alten Bibliotheksordner an den neuen.
+///
+/// Nötig auf dem Telefon: Bis Fassung 0.1.0 lagen die Titel im eigenen Ordner
+/// der App, seither in `Robify` im Gerätespeicher. Die Bibliothek merkt sich
+/// aber vollständige Pfade, ein bloßes Verschieben ließe jeden Eintrag ins
+/// Leere zeigen.
+///
+/// Datei für Datei, und der Eintrag wird sofort nachgezogen: Bricht es
+/// mittendrin ab — kein Platz mehr, Erlaubnis entzogen —, zeigt kein einziger
+/// Eintrag auf eine Datei, die dort nicht liegt. Der Rest wandert beim
+/// nächsten Start.
+///
+/// Was nicht in der Bibliothek steht, wandert trotzdem mit; es lag im
+/// Musikordner und gehört dorthin.
+pub fn bibliothek_umziehen(
+    conn: &Connection,
+    alt: &std::path::Path,
+    neu: &std::path::Path,
+) -> usize {
+    if !alt.is_dir() || alt == neu {
+        return 0;
+    }
+
+    let mut gewandert = 0;
+    umziehen_rekursiv(conn, alt, alt, neu, &mut gewandert);
+
+    // Zurück bleiben leere Ordner; die dürfen weg, der Rest bleibt liegen.
+    let _ = entleerte_ordner_entfernen(alt);
+    gewandert
+}
+
+fn umziehen_rekursiv(
+    conn: &Connection,
+    wurzel: &std::path::Path,
+    ordner: &std::path::Path,
+    ziel_wurzel: &std::path::Path,
+    gewandert: &mut usize,
+) {
+    let Ok(eintraege) = std::fs::read_dir(ordner) else {
+        return;
+    };
+
+    for eintrag in eintraege.filter_map(Result::ok) {
+        let quelle = eintrag.path();
+        if quelle.is_dir() {
+            umziehen_rekursiv(conn, wurzel, &quelle, ziel_wurzel, gewandert);
+            continue;
+        }
+
+        let Ok(relativ) = quelle.strip_prefix(wurzel) else {
+            continue;
+        };
+        let ziel = ziel_wurzel.join(relativ);
+        if ziel.exists() {
+            continue;
+        }
+        if let Some(eltern) = ziel.parent() {
+            if std::fs::create_dir_all(eltern).is_err() {
+                continue;
+            }
+        }
+        if crate::verschieben(&quelle, &ziel).is_err() {
+            continue;
+        }
+
+        let _ = conn.execute(
+            "UPDATE tracks SET path = ?2 WHERE path = ?1",
+            params![quelle.to_string_lossy(), ziel.to_string_lossy()],
+        );
+        *gewandert += 1;
+    }
+}
+
+/// Räumt leere Ordner von unten nach oben weg.
+fn entleerte_ordner_entfernen(ordner: &std::path::Path) -> std::io::Result<()> {
+    for eintrag in std::fs::read_dir(ordner)?.filter_map(Result::ok) {
+        let pfad = eintrag.path();
+        if pfad.is_dir() {
+            let _ = entleerte_ordner_entfernen(&pfad);
+        }
+    }
+    std::fs::remove_dir(ordner)
+}
+
 /// Ablage im Papierkorb: Kennung des Titels plus ursprüngliche Endung. Über
 /// die Kennung findet das Wiederherstellen die Datei zielsicher wieder,
 /// unabhängig davon, wie sie ursprünglich hieß.
@@ -1627,6 +1711,80 @@ pub fn library_stats(conn: &Connection) -> Result<LibraryStats> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Ein Ordner unter `target`, der sich nicht mit anderen Läufen beißt.
+    fn testordner(name: &str) -> std::path::PathBuf {
+        let pfad = std::env::temp_dir().join(format!("robify-umzug-{name}"));
+        let _ = std::fs::remove_dir_all(&pfad);
+        std::fs::create_dir_all(&pfad).expect("Testordner");
+        pfad
+    }
+
+    /// Der Umzug auf dem Telefon: Datei wandert, Eintrag zeigt hinterher.
+    ///
+    /// Der wunde Punkt ist nicht das Verschieben, sondern der Gleichlauf. Ein
+    /// Eintrag, der auf den alten Ort zeigt, während die Datei schon am neuen
+    /// liegt, ist ein Titel, der sich nicht mehr abspielen lässt.
+    #[test]
+    fn umzug_zieht_die_eintraege_mit() {
+        let basis = testordner("mit");
+        let alt = basis.join("alt");
+        let neu = basis.join("neu");
+        let ordner = alt.join("Yeat").join("2093");
+        std::fs::create_dir_all(&ordner).unwrap();
+        let datei = ordner.join("03 - Breathe.m4a");
+        std::fs::write(&datei, b"ton").unwrap();
+
+        let conn = Connection::open_in_memory().unwrap();
+        crate::db::migrate(&conn).unwrap();
+        conn.execute_batch(
+            "INSERT INTO artists (id, name, name_key, sort_name, created_at)
+                 VALUES (1, 'Yeat', 'yeat', 'Yeat', 0);
+             INSERT INTO albums (id, title, title_key, artist_id, release_type, created_at)
+                 VALUES (1, '2093', '2093', 1, 'album', 0);",
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO tracks (id, path, title, artist_id, album_id, added_at)
+             VALUES (1, ?1, 'Breathe', 1, 1, 0)",
+            params![datei.to_string_lossy()],
+        )
+        .unwrap();
+
+        assert_eq!(bibliothek_umziehen(&conn, &alt, &neu), 1);
+
+        let ziel = neu.join("Yeat").join("2093").join("03 - Breathe.m4a");
+        assert!(ziel.is_file(), "die Datei liegt am neuen Ort");
+        assert!(!datei.exists(), "am alten liegt sie nicht mehr");
+        let gespeichert: String = conn
+            .query_row("SELECT path FROM tracks WHERE id = 1", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(gespeichert, ziel.to_string_lossy());
+        assert!(!alt.exists(), "der leergeräumte Ordner ist weg");
+
+        let _ = std::fs::remove_dir_all(&basis);
+    }
+
+    /// Was am Ziel schon liegt, wird nicht überschrieben.
+    #[test]
+    fn umzug_laesst_vorhandenes_stehen() {
+        let basis = testordner("vorhanden");
+        let alt = basis.join("alt");
+        let neu = basis.join("neu");
+        std::fs::create_dir_all(&alt).unwrap();
+        std::fs::create_dir_all(&neu).unwrap();
+        std::fs::write(alt.join("a.m4a"), b"alt").unwrap();
+        std::fs::write(neu.join("a.m4a"), b"neu").unwrap();
+
+        let conn = Connection::open_in_memory().unwrap();
+        crate::db::migrate(&conn).unwrap();
+
+        assert_eq!(bibliothek_umziehen(&conn, &alt, &neu), 0);
+        assert_eq!(std::fs::read(neu.join("a.m4a")).unwrap(), b"neu");
+        assert!(alt.join("a.m4a").is_file(), "das alte bleibt liegen");
+
+        let _ = std::fs::remove_dir_all(&basis);
+    }
 
     #[test]
     fn zerlegt_videotitel_in_kuenstler_und_titel() {

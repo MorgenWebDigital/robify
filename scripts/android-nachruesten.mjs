@@ -393,8 +393,120 @@ function benachrichtigungenErbitten() {
   console.log("Benachrichtigungen: Frage in die Activity getragen");
 }
 
+/**
+ * Erbittet den Zugriff auf den Gerätespeicher.
+ *
+ * Robify legt seine Titel in `Robify` ab und alles Übrige in `.robify`, beide
+ * unmittelbar im Gerätespeicher. Dort sind sie im Dateimanager zu sehen und
+ * überleben das Entfernen der App — anders als alles unter `Android/data`.
+ *
+ * Seit Android 11 darf das keine App mehr ohne Weiteres. Die nötige Erlaubnis
+ * wird nicht in einem Dialog erteilt, sondern auf einer Seite der
+ * Systemeinstellungen, die die App aufrufen darf. Gefragt wird einmal je
+ * Installation: Wer ablehnt, soll nicht bei jedem Start dieselbe Seite vor
+ * sich haben. Robify arbeitet dann in seinem eigenen Ordner weiter.
+ *
+ * Erteilt der Nutzer sie, startet die App sich neu. Die Ordner stehen fest,
+ * seit der Rust-Teil hochgefahren ist; ihn nachträglich umzuhängen wäre
+ * aufwendiger und fehleranfälliger als ein Neustart, den man ohnehin nur
+ * einmal im Leben der Installation sieht.
+ *
+ * Auf Android 10 und älter gibt es diese Erlaubnis nicht. Dort bleibt es beim
+ * eigenen Ordner der App; der Rust-Teil merkt selbst, dass er im
+ * Gerätespeicher nicht schreiben darf, und weicht aus.
+ */
+function dateizugriffErbitten() {
+  const activity = readFileSync(MAIN_ACTIVITY, "utf8");
+  if (activity.includes("MANAGE_APP_ALL_FILES_ACCESS")) {
+    console.log("Dateizugriff: Frage schon in der Activity");
+  } else {
+    const felder = [
+      "  // Fester Speicherort, siehe scripts/android-nachruesten.mjs.",
+      "  private var durfteBeimStart = false",
+      "",
+      "  private fun darfAlleDateien(): Boolean =",
+      "    android.os.Build.VERSION.SDK_INT >= 30 &&",
+      "      android.os.Environment.isExternalStorageManager()",
+      "",
+      "  private fun dateizugriffErbitten() {",
+      "    durfteBeimStart = darfAlleDateien()",
+      "    if (durfteBeimStart || android.os.Build.VERSION.SDK_INT < 30) return",
+      "",
+      '    val merker = getSharedPreferences("robify", MODE_PRIVATE)',
+      '    if (merker.getBoolean("dateizugriff-gefragt", false)) return',
+      '    merker.edit().putBoolean("dateizugriff-gefragt", true).apply()',
+      "",
+      "    val seite =",
+      "      android.content.Intent(",
+      "        android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,",
+      '        android.net.Uri.parse("package:$packageName"),',
+      "      )",
+      "    // Nicht jedes Gerät kennt die Seite für eine einzelne App; dann die",
+      "    // allgemeine Liste, in der Robify zu finden ist.",
+      "    if (runCatching { startActivity(seite) }.isFailure) {",
+      "      runCatching {",
+      "        startActivity(",
+      "          android.content.Intent(",
+      "            android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION",
+      "          )",
+      "        )",
+      "      }",
+      "    }",
+      "  }",
+      "",
+      "  override fun onResume() {",
+      "    super.onResume()",
+      "    if (!durfteBeimStart && darfAlleDateien()) {",
+      "      durfteBeimStart = true",
+      "      val neu = packageManager.getLaunchIntentForPackage(packageName)",
+      "      if (neu != null) {",
+      "        neu.addFlags(",
+      "          android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK or",
+      "            android.content.Intent.FLAG_ACTIVITY_NEW_TASK",
+      "        )",
+      "        startActivity(neu)",
+      "      }",
+      "      Runtime.getRuntime().exit(0)",
+      "    }",
+      "  }",
+      "",
+      "  override fun onCreate(savedInstanceState: Bundle?) {",
+    ].join("\n");
+
+    writeFileSync(
+      MAIN_ACTIVITY,
+      activity
+        .replace("  override fun onCreate(savedInstanceState: Bundle?) {", felder)
+        .replace(
+          "    super.onCreate(savedInstanceState)",
+          ["    super.onCreate(savedInstanceState)", "", "    dateizugriffErbitten()"].join("\n"),
+        ),
+    );
+    console.log("Dateizugriff: Frage in die Activity getragen");
+  }
+
+  const manifest = readFileSync(MANIFEST, "utf8");
+  if (manifest.includes("MANAGE_EXTERNAL_STORAGE")) {
+    console.log("Dateizugriff: Recht schon im Manifest");
+    return;
+  }
+
+  writeFileSync(
+    MANIFEST,
+    manifest.replace(
+      '<uses-permission android:name="android.permission.INTERNET" />',
+      [
+        '<uses-permission android:name="android.permission.INTERNET" />',
+        '    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />',
+      ].join("\n"),
+    ),
+  );
+  console.log("Dateizugriff: Recht ins Manifest getragen");
+}
+
 zurueckKnopfAnschalten();
 zertifikatspruefungEinbinden();
 ytdlpEinbinden();
 systemplayerEinbinden();
 benachrichtigungenErbitten();
+dateizugriffErbitten();

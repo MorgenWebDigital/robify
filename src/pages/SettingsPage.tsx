@@ -196,24 +196,38 @@ export function SettingsPage() {
 
       <div className="space-y-6">
         <Section title={t("Bibliothek")}>
-          <Field
-            label={t("Zielordner")}
-            hint={t(
-              "Hierhin werden heruntergeladene Titel einsortiert (Künstler/Album/Titel).",
-            )}
-          >
-            <div className="flex gap-2">
-              <input
-                readOnly
-                value={settings.libraryDir}
-                className={inputClass}
-              />
-              <Button onClick={() => void chooseLibraryDir()} variant="outline">
-                <FolderIcon size={16} />
-                {t("Wählen")}
-              </Button>
-            </div>
-          </Field>
+          {/* Auf dem Telefon steht der Ordner fest, dort gibt es nichts zu
+              wählen. Statt eines Feldes, das nur seinen eigenen Pfad zeigt,
+              ein Satz, der sagt, wo die Musik liegt. */}
+          {settings.festeOrte ? (
+            <p className="text-sm text-mute">
+              {t(
+                "Die Titel liegen im Ordner „Robify“ im Gerätespeicher, alles Übrige im Ordner „.robify“ daneben.",
+              )}
+            </p>
+          ) : (
+            <Field
+              label={t("Zielordner")}
+              hint={t(
+                "Hierhin werden heruntergeladene Titel einsortiert (Künstler/Album/Titel).",
+              )}
+            >
+              <div className="flex gap-2">
+                <input
+                  readOnly
+                  value={settings.libraryDir}
+                  className={inputClass}
+                />
+                <Button
+                  onClick={() => void chooseLibraryDir()}
+                  variant="outline"
+                >
+                  <FolderIcon size={16} />
+                  {t("Wählen")}
+                </Button>
+              </div>
+            </Field>
+          )}
 
           <Toggle
             label={t("Downloads in die Bibliothek verschieben")}
@@ -377,8 +391,13 @@ export function SettingsPage() {
           </Field>
         </Section>
 
+        {/* Auf dem Telefon steht in diesem Abschnitt kein Ort mehr, sondern
+            nur noch die Sicherung der Datenbank. Dann soll er auch danach
+            heißen und nicht nach etwas, das dort nicht mehr steht. */}
         {paths && (
-          <Section title={t("Speicherorte")}>
+          <Section
+            title={settings.festeOrte ? t("Datenbank") : t("Speicherorte")}
+          >
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 onClick={() => void backup()}
@@ -393,12 +412,19 @@ export function SettingsPage() {
                 )}
               </span>
             </div>
-            <PathRow label={t("Datenbank")} value={paths.database} />
-            <PathRow
-              label={t("Download-Arbeitsordner")}
-              value={paths.downloads}
-            />
-            <PathRow label={t("Bibliothek")} value={paths.library} />
+            {/* Die Pfadzeilen nur dort, wo sie etwas nützen: Auf dem
+                Telefon stehen die Orte fest, „Öffnen“ führt zu keinem
+                Dateimanager, und der Pfad selbst steht schon oben. */}
+            {!settings.festeOrte && (
+              <>
+                <PathRow label={t("Datenbank")} value={paths.database} />
+                <PathRow
+                  label={t("Download-Arbeitsordner")}
+                  value={paths.downloads}
+                />
+                <PathRow label={t("Bibliothek")} value={paths.library} />
+              </>
+            )}
           </Section>
         )}
 

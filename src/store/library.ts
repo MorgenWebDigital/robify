@@ -24,10 +24,21 @@ interface LibraryStore {
   init: () => Promise<() => void>;
   refresh: () => Promise<void>;
   reloadPlaylists: () => Promise<void>;
-  saveSetting: (key: keyof Settings, value: string | boolean) => Promise<void>;
+  saveSetting: (
+    key: SpeicherbareEinstellung,
+    value: string | boolean,
+  ) => Promise<void>;
 }
 
-const SETTING_KEYS: Record<keyof Settings, string> = {
+/**
+ * Was sich speichern lässt.
+ *
+ * `festeOrte` gehört nicht dazu: Der Wert sagt, ob die Speicherorte des
+ * Systems feststehen, und wird vom Rust-Teil beantwortet, nicht eingestellt.
+ */
+export type SpeicherbareEinstellung = Exclude<keyof Settings, "festeOrte">;
+
+const SETTING_KEYS: Record<SpeicherbareEinstellung, string> = {
   libraryDir: "library_dir",
   downloadFormat: "download_format",
   downloadQuality: "download_quality",

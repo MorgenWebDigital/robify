@@ -17,7 +17,7 @@ pub mod tags;
 pub mod ytdlp;
 
 use state::AppState;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::http::{Response, StatusCode};
 use tauri::Manager;
@@ -59,7 +59,15 @@ fn alten_datenordner_uebernehmen(neu: &Path) {
     let Some(alt) = neu.parent().map(|eltern| eltern.join(ALTE_KENNUNG)) else {
         return;
     };
-    if !alt.is_dir() {
+    daten_uebernehmen(&alt, neu);
+}
+
+/// Holt Robifys eigene Daten von einem alten Ort an den heutigen.
+///
+/// Jedes Stück wandert nur, wenn am Ziel noch keines liegt. Ein vorhandener
+/// Bestand wird also unter keinen Umständen überschrieben.
+fn daten_uebernehmen(alt: &Path, neu: &Path) {
+    if !alt.is_dir() || alt == neu {
         return;
     }
 
@@ -70,9 +78,7 @@ fn alten_datenordner_uebernehmen(neu: &Path) {
         if !quelle.exists() || ziel.exists() {
             continue;
         }
-        // Beide liegen im selben Elternverzeichnis, das Umbenennen ist darum
-        // ein unteilbarer Schritt: Es gelingt ganz oder gar nicht.
-        match std::fs::rename(&quelle, &ziel) {
+        match verschieben(&quelle, &ziel) {
             Ok(()) => umgezogen += 1,
             Err(fehler) => eprintln!("{name} konnte nicht übernommen werden: {fehler}"),
         }
@@ -84,6 +90,92 @@ fn alten_datenordner_uebernehmen(neu: &Path) {
             alt.display()
         );
     }
+}
+
+/// Verschiebt eine Datei oder einen Ordner, auch über Dateisystemgrenzen.
+///
+/// Innerhalb eines Dateisystems ist das Umbenennen ein unteilbarer Schritt und
+/// darum der bessere Weg. Zwischen zweien scheitert es mit `EXDEV`: Auf
+/// Android liegt der eigene Ordner der App im inneren Speicher, der
+/// Gerätespeicher auf einer anderen Einhängung. Dann bleibt nur kopieren und
+/// hinterher wegräumen.
+fn verschieben(quelle: &Path, ziel: &Path) -> std::io::Result<()> {
+    if std::fs::rename(quelle, ziel).is_ok() {
+        return Ok(());
+    }
+
+    if quelle.is_dir() {
+        std::fs::create_dir_all(ziel)?;
+        for eintrag in std::fs::read_dir(quelle)? {
+            let eintrag = eintrag?;
+            verschieben(&eintrag.path(), &ziel.join(eintrag.file_name()))?;
+        }
+        // Erst wenn alles drüben ist. Bricht es mittendrin ab, bleibt der
+        // alte Bestand vollständig liegen.
+        std::fs::remove_dir_all(quelle)
+    } else {
+        std::fs::copy(quelle, ziel)?;
+        std::fs::remove_file(quelle)
+    }
+}
+
+/// Wo Robify seine Daten und wo es die Musik ablegt.
+///
+/// Auf dem Rechner liegen beide dort, wo das Betriebssystem sie erwartet, und
+/// der Zielordner für die Musik lässt sich in den Einstellungen ändern.
+///
+/// Auf dem Telefon nicht. Dort stehen zwei feste Ordner im Gerätespeicher:
+/// `Robify` für die Titel, `.robify` für Datenbank, Downloads und
+/// Sicherungen. Der Punkt vor dem zweiten hält ihn aus der Galerie und aus
+/// den Dateilisten heraus; es ist die übliche Schreibweise für „gehört der
+/// App, nicht dir“. Beide sind sichtbar und bleiben liegen, wenn Robify
+/// entfernt wird — anders als alles unter `Android/data`, das Android beim
+/// Deinstallieren mitlöscht und in das seit Android 11 ohnehin kein
+/// Dateimanager mehr hineinsieht.
+///
+/// Der Griff dorthin hängt an der Erlaubnis „Zugriff auf alle Dateien“, und
+/// die kann fehlen: beim allerersten Start, oder weil der Nutzer sie
+/// verweigert hat. Dann bleibt Robify im eigenen Ordner und arbeitet weiter,
+/// statt gar nicht zu starten. Der Wechsel geschieht beim nächsten Start von
+/// selbst, die Kotlin-Seite fragt danach und startet die App neu, sobald die
+/// Erlaubnis erteilt ist.
+fn speicherorte(handle: &tauri::AppHandle) -> tauri::Result<(PathBuf, PathBuf, bool)> {
+    #[cfg(target_os = "android")]
+    if let Some(stamm) = android::geraetespeicher() {
+        let daten = stamm.join(".robify");
+        let musik = stamm.join("Robify");
+        if beschreibbar(&daten) && beschreibbar(&musik) {
+            return Ok((daten, musik, true));
+        }
+        eprintln!(
+            "Kein Schreibrecht in {}, Robify bleibt in seinem eigenen Ordner.",
+            stamm.display()
+        );
+    }
+
+    let daten = handle.path().app_data_dir()?;
+    let musik = handle
+        .path()
+        .audio_dir()
+        .unwrap_or_else(|_| daten.join("Musik"))
+        .join("Robify");
+    Ok((daten, musik, false))
+}
+
+/// Lässt sich in diesem Ordner wirklich schreiben?
+///
+/// Dass er sich anlegen lässt, genügt nicht: Ein bereits vorhandener Ordner
+/// aus einem früheren Lauf bleibt lesbar, auch wenn die Erlaubnis inzwischen
+/// entzogen wurde. Nur der Versuch selbst gibt Auskunft.
+#[cfg(target_os = "android")]
+fn beschreibbar(ordner: &Path) -> bool {
+    if std::fs::create_dir_all(ordner).is_err() {
+        return false;
+    }
+    let probe = ordner.join(".schreibprobe");
+    let gelungen = std::fs::write(&probe, b"").is_ok();
+    let _ = std::fs::remove_file(&probe);
+    gelungen
 }
 
 /// Bedient `robify://localhost/cover/album/<id>` bzw. `/cover/track/<id>`.
@@ -168,11 +260,17 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
 
-            let data_dir = handle.path().app_data_dir()?;
+            let (data_dir, default_library_dir, feste_orte) = speicherorte(&handle)?;
+            std::fs::create_dir_all(&data_dir)?;
+
             // Vor allem anderen: Wer von einer älteren Fassung kommt, soll
             // seine Bibliothek wiederfinden.
             alten_datenordner_uebernehmen(&data_dir);
-            std::fs::create_dir_all(&data_dir)?;
+            // Und wer von der Fassung kommt, die auf dem Telefon noch im
+            // eigenen Ordner der App lag, ebenso.
+            if let Ok(eigener) = handle.path().app_data_dir() {
+                daten_uebernehmen(&eigener, &data_dir);
+            }
             let db_path = data_dir.join("robify.db");
             let work_dir = data_dir.join("downloads");
             std::fs::create_dir_all(&work_dir)?;
@@ -207,11 +305,20 @@ pub fn run() {
             // 4,2 MB Protokoll daneben.
             let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
 
-            let default_library_dir = handle
-                .path()
-                .audio_dir()
-                .unwrap_or_else(|_| data_dir.join("Musik"))
-                .join("Robify");
+            // Titel, die noch am alten Ort liegen, wandern mit — Zeile für
+            // Zeile, damit die Bibliothek zu keinem Zeitpunkt auf eine Datei
+            // zeigt, die dort nicht mehr ist.
+            #[cfg(target_os = "android")]
+            if let Ok(alte) = handle.path().audio_dir() {
+                let alte = alte.join("Robify");
+                let gewandert = library::bibliothek_umziehen(&conn, &alte, &default_library_dir);
+                if gewandert > 0 {
+                    eprintln!(
+                        "{gewandert} Titel nach {} geholt",
+                        default_library_dir.display()
+                    );
+                }
+            }
 
             let player = player::spawn(handle.clone(), db_path.clone())?;
 
@@ -220,6 +327,7 @@ pub fn run() {
                 db_path,
                 work_dir,
                 default_library_dir,
+                feste_orte,
                 player,
                 downloads: Arc::new(downloader::DownloadRegistry::default()),
             });

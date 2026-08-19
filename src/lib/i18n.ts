@@ -3310,6 +3310,15 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "تمت إضافة {0} إلى «{1}»",
     zh: "已将 {0} 添加到“{1}”",
   },
+  "Die Titel liegen im Ordner „Robify“ im Gerätespeicher, alles Übrige im Ordner „.robify“ daneben.":
+    {
+      en: "Tracks live in the “Robify” folder on the device storage, everything else in “.robify” beside it.",
+      es: "Las canciones están en la carpeta «Robify» del almacenamiento del dispositivo; todo lo demás, en «.robify» junto a ella.",
+      fr: "Les titres se trouvent dans le dossier « Robify » du stockage de l'appareil, le reste dans « .robify » à côté.",
+      ru: "Треки лежат в папке «Robify» во внутренней памяти устройства, всё остальное — в папке «.robify» рядом.",
+      ar: "المقاطع في مجلد «Robify» في ذاكرة الجهاز، وكل ما عدا ذلك في مجلد «robify.» بجواره.",
+      zh: "曲目存放在设备存储的“Robify”文件夹中，其余内容在旁边的“.robify”文件夹中。",
+    },
   "Titel kommen über das Plus in jeder Titelliste hinein, in der Bibliothek, auf einer Albumseite oder bei einem Künstler.":
     {
       en: "Tracks get in through the plus in any track list: in the library, on an album page or with an artist.",

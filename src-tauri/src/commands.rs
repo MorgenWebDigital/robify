@@ -1923,10 +1923,20 @@ pub struct Settings {
     pub accent_custom: String,
     /// Oberflächensprache: „system“, „de“ oder „en“.
     pub language: String,
+    /// Stehen die Speicherorte fest? Dann gibt es nichts einzustellen.
+    ///
+    /// Auf dem Telefon liegen die Titel in `Robify` und alles Übrige in
+    /// `.robify`, beides im Gerätespeicher. Die Oberfläche blendet die
+    /// Ordnerwahl daraufhin aus, statt eine Einstellung anzubieten, die
+    /// nichts bewirkt.
+    pub feste_orte: bool,
 }
 
 #[tauri::command]
 pub fn get_settings(state: State<'_, AppState>) -> CmdResult<Settings> {
+    // Vor dem Sperren: `library_dir()` greift selbst auf die Datenbank zu,
+    // und dieselbe Sperre zweimal zu nehmen legt den Aufruf still.
+    let library_dir = state.library_dir().to_string_lossy().into_owned();
     let conn = state.db.lock();
     let get = |key: &str, fallback: &str| {
         db::get_setting(&conn, key)
@@ -1938,10 +1948,9 @@ pub fn get_settings(state: State<'_, AppState>) -> CmdResult<Settings> {
     let flag = |key: &str, fallback: bool| get(key, if fallback { "1" } else { "0" }) == "1";
 
     Ok(Settings {
-        library_dir: get(
-            "library_dir",
-            &state.default_library_dir.to_string_lossy(),
-        ),
+        // Der Ordner, der wirklich gilt: Auf dem Telefon steht er fest, die
+        // Einstellung wird dort nicht gelesen.
+        library_dir,
         download_format: get("download_format", "best"),
         download_quality: get("download_quality", "0"),
         ytdlp_path: get("ytdlp_path", ""),
@@ -1962,6 +1971,7 @@ pub fn get_settings(state: State<'_, AppState>) -> CmdResult<Settings> {
         accent_custom: get("accent_custom", ""),
         // „system“ folgt der Einstellung des Betriebssystems.
         language: get("language", "system"),
+        feste_orte: state.feste_orte,
     })
 }
 

@@ -12,6 +12,13 @@ pub struct AppState {
     pub work_dir: PathBuf,
     /// Musikordner des Systems. Rückfallebene für die Bibliothek.
     pub default_library_dir: PathBuf,
+    /// Stehen die Ordner fest, oder darf der Nutzer sie wählen?
+    ///
+    /// Auf dem Telefon stehen sie fest — aber nur, wenn Robify im
+    /// Gerätespeicher auch schreiben darf. Fehlt die Erlaubnis, arbeitet es
+    /// im eigenen Ordner, und dann wäre „deine Titel liegen in Robify“ eine
+    /// Unwahrheit. Darum das gemessene Ergebnis und nicht `cfg!`.
+    pub feste_orte: bool,
     pub player: PlayerHandle,
     pub downloads: Arc<DownloadRegistry>,
 }
@@ -37,7 +44,16 @@ impl AppState {
     }
 
     /// Zielordner der Bibliothek. Einstellung, sonst der Musikordner.
+    ///
+    /// Auf dem Telefon gibt es die Einstellung nicht: Dort steht der Ordner
+    /// fest. Eine früher einmal gesetzte Angabe wird bewusst übergangen — sie
+    /// zeigte auf einen Ort, den seit Android 11 kein Dateimanager mehr
+    /// sieht, und niemand käme an sie heran, um sie zu ändern.
     pub fn library_dir(&self) -> PathBuf {
+        if self.feste_orte {
+            return self.default_library_dir.clone();
+        }
+
         let configured = {
             let conn = self.db.lock();
             crate::db::get_setting(&conn, "library_dir").ok().flatten()
