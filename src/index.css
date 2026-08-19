@@ -213,11 +213,18 @@
  */
 .app-rahmen {
   padding-top: env(safe-area-inset-top);
-  /* `--tastatur` ist null, solange keine ausgefahren ist. Steht sie im Weg,
-     rückt der ganze Rahmen darüber, und mit ihm der Player. */
-  padding-bottom: calc(
-    var(--unterleiste-hoehe) + env(safe-area-inset-bottom) +
-      var(--tastatur, 0px)
+  /*
+   * Unten wird freigehalten, was gerade mehr Platz braucht: die Leiste mit
+   * der Navigation oder die Tastatur.
+   *
+   * Sie addieren sich nicht. Fährt die Tastatur aus, liegt die Navigation
+   * ohnehin dahinter, und beides zusammengerechnet ließe den Player eine
+   * Leistenhöhe über der Tastatur schweben. `--tastatur` ist null, solange
+   * keine ausgefahren ist; dann bleibt es beim Maß der Leiste.
+   */
+  padding-bottom: max(
+    calc(var(--unterleiste-hoehe) + env(safe-area-inset-bottom)),
+    var(--tastatur, 0px)
   );
 }
 
@@ -996,7 +1003,10 @@ h4 {
 @utility unterleiste {
   position: fixed;
   inset-inline: 0;
-  bottom: var(--tastatur, 0px);
+  /* Bleibt unten stehen, auch wenn die Tastatur sie verdeckt: Wer tippt,
+     wechselt nicht die Seite, und der Player über der Tastatur ist der, den
+     man dabei noch bedienen will. */
+  bottom: 0;
   z-index: 30;
   display: flex;
   background: var(--canvas);
@@ -1036,10 +1046,7 @@ h4 {
 @utility unterleiste-blatt {
   position: fixed;
   inset-inline: 0;
-  bottom: calc(
-    var(--unterleiste-hoehe) + env(safe-area-inset-bottom) +
-      var(--tastatur, 0px)
-  );
+  bottom: calc(var(--unterleiste-hoehe) + env(safe-area-inset-bottom));
   z-index: 40;
   background: var(--surface);
   border-top: 1px solid var(--border);
