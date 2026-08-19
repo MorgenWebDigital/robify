@@ -646,12 +646,12 @@ h4 {
     transform 0.12s ease,
     box-shadow 0.12s ease;
 
-  /* Vier Zeilen Vorschau, mehr nicht: Die Kachel ist ein Hinweis, keine
-     Textfläche. Der ganze Text steht ein Antippen weiter. */
+  /* Acht Zeilen Vorschau: genug, um mitzulesen, ohne dass die Kachel zur
+     Textfläche wird. Der ganze Text steht ein Antippen weiter. */
   & > span:last-child {
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 4;
+    -webkit-line-clamp: 8;
     overflow: hidden;
     white-space: pre-line;
   }

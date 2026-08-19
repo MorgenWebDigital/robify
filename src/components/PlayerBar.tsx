@@ -339,9 +339,21 @@ function MiniPlayer() {
   const toggle = usePlayer((s) => s.toggle);
   const next = usePlayer((s) => s.next);
   const setNowPlayingOpen = useUi((s) => s.setNowPlayingOpen);
+  const nowPlayingOpen = useUi((s) => s.nowPlayingOpen);
 
   const gesamt = durationMs || currentTrack?.durationMs || 0;
   const anteil = gesamt ? Math.min(positionMs / gesamt, 1) * 100 : 0;
+
+  /*
+   * Weg, sobald der Titel selbst offen ist.
+   *
+   * Die Leiste ist der Weg dorthin; steht man schon drin, zeigt sie dasselbe
+   * ein zweites Mal und nimmt dem Bildschirm eine Zeile — dort, wo ohnehin
+   * Cover, Steuerung und Songtext um Platz ringen. Auf dem Rechner stellt
+   * sich die Frage nicht, dort ist sie `md:hidden` und die Vollbildansicht
+   * lässt sie stehen.
+   */
+  if (nowPlayingOpen) return null;
 
   return (
     <footer className="sunken-panel z-30 mx-2 mb-2 shrink-0 overflow-hidden rounded-2xl bg-ink-950 md:hidden">

@@ -54,7 +54,7 @@ export function NowPlaying() {
    * Die ersten Zeilen für die Kachel.
    *
    * Ohne sie stünde dort nur „Songtext“, und man müsste tippen, um zu sehen,
-   * ob überhaupt einer hinterlegt ist. Vier Zeilen sagen das auf einen Blick
+   * ob überhaupt einer hinterlegt ist. Acht Zeilen sind schon ein Stück Text
    * und geben der Kachel genug Höhe, um neben dem Cover zu bestehen.
    * Der volle Text wird davon nicht doppelt geladen: Die Vollbildansicht holt
    * ihn selbst, und der Befehl liest aus der Datenbank, nicht aus dem Netz.
@@ -78,7 +78,7 @@ export function NowPlaying() {
             .split("\n")
             .map((zeile) => zeile.trim())
             .filter(Boolean)
-            .slice(0, 4),
+            .slice(0, 8),
         );
       });
     return () => {
@@ -317,32 +317,30 @@ export function NowPlaying() {
                   </span>
                 </button>
 
-                {/* Der Künstler zuletzt, als eigener Abschnitt.
-                    Das Bild groß und rund, der Name darunter: Eine Zeile mit
-                    Miniaturbild las sich wie ein Verweis unter vielen, dabei
-                    ist der Künstler das Einzige auf diesem Bildschirm, zu dem
-                    es überhaupt weitergeht. */}
-                <div className="surface w-full overflow-hidden">
+                {/* Der Künstler zuletzt, ohne eigene Fläche.
+                    Ein Kasten machte ihn zu einem Eintrag unter anderen; er
+                    steht aber für sich, so wie Cover und Titel oben. Das Bild
+                    trägt den Abschnitt, der Rahmen wäre nur Beiwerk. */}
+                <div className="w-full pt-2">
                   <Link
                     to={`/artist/${currentTrack.artistId}`}
                     onClick={() => setNowPlayingOpen(false)}
-                    className="flex flex-col items-center gap-2 px-4 pt-5 pb-4"
+                    className="flex flex-col items-center gap-3"
                   >
                     <Cover
                       src={artistImage(currentTrack.artistId)}
                       alt={currentTrack.artistName}
                       seed={currentTrack.artistName}
-                      className="h-28 w-28 shrink-0"
+                      className="raised-cover h-40 w-40 shrink-0"
                       rounded="rounded-full"
                     />
-                    <span className="eyebrow">{t("Künstler")}</span>
-                    <span className="max-w-full truncate text-lg font-semibold">
+                    <span className="max-w-full truncate text-2xl font-bold">
                       {currentTrack.artistName}
                     </span>
                   </Link>
 
                   {weitere.length > 0 && (
-                    <div className="border-t border-ink-700 px-3 pt-2 pb-3">
+                    <div className="mt-4">
                       <p className="mb-1 eyebrow">{t("Mehr davon")}</p>
                       <ul>
                         {weitere.map((titel) => (
@@ -356,7 +354,7 @@ export function NowPlaying() {
                                 src={albumCover(titel.albumId)}
                                 alt={titel.albumTitle}
                                 seed={titel.albumId}
-                                className="h-9 w-9 shrink-0"
+                                className="h-10 w-10 shrink-0"
                                 rounded="rounded-md"
                               />
                               <span className="min-w-0 flex-1 truncate text-sm">
