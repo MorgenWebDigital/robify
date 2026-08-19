@@ -137,19 +137,10 @@ export function NowPlaying() {
           Player-Pille unten, Cover und Lyrics liegen gemeinsam darauf. */}
       <div className="sunken-deep flex min-h-0 flex-1 flex-col rounded-3xl bg-ink-950">
         {/* Ohne Beschriftung, dass gerade gespielt wird, sieht man. */}
-        <div className="flex items-center justify-end gap-2 px-6 py-4">
-          {/* Nur am Telefon: Dort ist der kompakte Player unten auf das
-              Nötigste beschränkt, und ohne diesen Knopf käme man an die
-              Warteschlange gar nicht mehr heran. Am Rechner steht sie in der
-              Leiste unten, ein zweiter Knopf wäre dort doppelt. */}
-          <button
-            type="button"
-            onClick={() => setQueueOpen(true)}
-            aria-label={t("Warteschlange")}
-            className="pill-btn is-raised h-9 w-9 md:hidden"
-          >
-            <QueueIcon size={18} />
-          </button>
+        {/* Nur das Zuklappen, und links: Es ist der Weg zurück, und der steht
+            überall sonst in der App auch links. Die Warteschlange ist zu den
+            übrigen Handgriffen unter die Zeitleiste gewandert. */}
+        <div className="flex items-center px-6 py-4">
           <button
             type="button"
             onClick={() => setNowPlayingOpen(false)}
@@ -219,11 +210,15 @@ export function NowPlaying() {
                   </div>
                 </div>
 
-                {/* Zur Playlist: klein und links, unter der Zeitleiste.
-                    Bewusst neben und nicht in der Knopfreihe darunter — die
-                    trägt das Abspielen, und ein Ablegen gehört nicht in
-                    dieselbe Reihe wie Pause und Weiter. */}
-                <div className="mt-4 flex items-center lg:hidden">
+                {/* Ablegen und Warteschlange: klein und links, unter der
+                    Zeitleiste. Bewusst neben und nicht in der Knopfreihe
+                    darunter — die trägt das Abspielen, und was mit dem Titel
+                    geschehen soll, gehört nicht in dieselbe Reihe wie Pause
+                    und Weiter.
+
+                    Ab `md` steht beides in der Leiste unten, die dort immer
+                    sichtbar ist; hier wäre es doppelt. */}
+                <div className="mt-4 flex items-center gap-2 md:hidden">
                   <button
                     type="button"
                     onClick={() => openAddToPlaylist([currentTrack.id])}
@@ -233,11 +228,21 @@ export function NowPlaying() {
                   >
                     <PlusIcon size={16} />
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setQueueOpen(true)}
+                    aria-label={t("Warteschlange")}
+                    title={t("Warteschlange")}
+                    className="pill-btn is-raised h-8 w-8"
+                  >
+                    <QueueIcon size={16} />
+                  </button>
                 </div>
 
-                {/* Die Steuerung, nur am Telefon: Am Rechner steht sie unten
-                    in der Leiste, die dort immer sichtbar ist. */}
-                <div className="mt-3 flex items-center justify-center gap-2 lg:hidden">
+                {/* Die Steuerung, nur am Telefon: Ab `md` steht sie unten in
+                    der Leiste, die dort immer sichtbar ist — dieselbe Grenze,
+                    an der die Leiste erscheint. */}
+                <div className="mt-3 flex items-center justify-center gap-2 md:hidden">
                   <button
                     type="button"
                     onClick={() => void toggleShuffle()}
