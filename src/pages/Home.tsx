@@ -26,6 +26,16 @@ import type { Album, Track, WeeklyMixSummary } from "../types";
  */
 const VORSCHAU = 3;
 
+/**
+ * Wie viele Zeilen eine Vorschau als Liste zeigt.
+ *
+ * Mehr als bei den Kacheln, weil eine Zeile flacher ist: Fünf davon nehmen
+ * etwa so viel Platz wie eine Reihe Kacheln, und die Startseite bleibt in
+ * beiden Fällen ein Überblick. Vorher standen hier acht, und die zwei
+ * Abschnitte zusammen füllten mehr als einen Bildschirm.
+ */
+const VORSCHAU_ZEILEN = 5;
+
 export function Home() {
   const revision = useLibrary((s) => s.revision);
   const stats = useLibrary((s) => s.stats);
@@ -39,8 +49,12 @@ export function Home() {
     let cancelled = false;
     void Promise.all([
       api.weeklyMixes(12).catch(fallback([], t("Wochenmixe"))),
-      api.recentlyPlayed(8).catch(fallback([], t("Zuletzt gehört"))),
-      api.listTracks(undefined, 8).catch(fallback([], t("Titel"))),
+      api
+        .recentlyPlayed(VORSCHAU_ZEILEN)
+        .catch(fallback([], t("Zuletzt gehört"))),
+      api
+        .listTracks(undefined, VORSCHAU_ZEILEN)
+        .catch(fallback([], t("Titel"))),
       api.listAlbums().catch(fallback([], t("Releases"))),
     ]).then(([mixValue, playedValue, recentValue, albumValue]) => {
       if (cancelled) return;
