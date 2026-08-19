@@ -2,7 +2,12 @@ import { PlaylistMosaic, ZurueckKnopf } from "../components/Cards";
 import { t } from "../lib/i18n";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { PlayIcon, PlusIcon, ShuffleIcon } from "../components/Icons";
+import {
+  PlaylistIcon,
+  PlayIcon,
+  PlusIcon,
+  ShuffleIcon,
+} from "../components/Icons";
 import { TrackList } from "../components/TrackList";
 import { api, errorMessage, fallback } from "../lib/api";
 import { vollesDatum, zeitraum } from "../lib/datum";
@@ -129,33 +134,24 @@ export function WeeklyMixDetail() {
             {t("Die 30 meistgehörten Titel je Woche")}
           </p>
 
+          {/* Erst was den Mix aufbewahrt, dann was ihn hört. Alle vier klein,
+              wie auf den anderen Seiten: Beschriftet lief die Reihe 21
+              Bildpunkte über den Rand hinaus, und „In bestehende Playlist“
+              war auf 14 Punkte zusammengequetscht.
+
+              Der letzte Knopf hatte kein Zeichen. Zusammengefallen wäre er
+              ein leerer Kreis geworden; das Notenblatt steht auch sonst für
+              eine Playlist, das Plus für „neu anlegen“. */}
           <div className="aktionsreihe mt-4 gap-2">
-            <button
-              type="button"
-              onClick={() => play(false)}
-              disabled={!tracks.length}
-              className="pill-btn is-raised is-accent aktionsknopf shrink-0"
-            >
-              <PlayIcon size={16} />
-              {t("Abspielen")}
-            </button>
-            <button
-              type="button"
-              onClick={() => play(true)}
-              disabled={!tracks.length}
-              className="pill-btn is-raised aktionsknopf shrink-0"
-            >
-              <ShuffleIcon size={16} />
-              {t("Zufällig")}
-            </button>
             <button
               type="button"
               onClick={() => void save()}
               disabled={saving || !tracks.length}
-              className="pill-btn is-raised aktionsknopf aktionsknopf-weicht"
+              title={saving ? t("Wird übernommen…") : t("Zu meinen Playlists")}
+              className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
             >
               <PlusIcon size={16} />
-              <span className="truncate">
+              <span className="beschriftung truncate">
                 {saving ? t("Wird übernommen…") : t("Zu meinen Playlists")}
               </span>
             </button>
@@ -163,9 +159,33 @@ export function WeeklyMixDetail() {
               type="button"
               onClick={() => openAddToPlaylist(tracks.map((track) => track.id))}
               disabled={!tracks.length}
-              className="pill-btn is-raised aktionsknopf aktionsknopf-weicht"
+              title={t("In bestehende Playlist")}
+              className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
             >
-              <span className="truncate">{t("In bestehende Playlist")}</span>
+              <PlaylistIcon size={16} />
+              <span className="beschriftung truncate">
+                {t("In bestehende Playlist")}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => play(true)}
+              disabled={!tracks.length}
+              title={t("Zufällig")}
+              className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
+            >
+              <ShuffleIcon size={16} />
+              <span className="beschriftung truncate">{t("Zufällig")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => play(false)}
+              disabled={!tracks.length}
+              title={t("Abspielen")}
+              className="pill-btn is-raised is-accent aktionsknopf aktionsknopf-kurz"
+            >
+              <PlayIcon size={16} />
+              <span className="beschriftung truncate">{t("Abspielen")}</span>
             </button>
           </div>
         </div>

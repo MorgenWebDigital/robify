@@ -585,8 +585,11 @@ function AngabeZeile({ label, value }: { label: string; value: string }) {
 function PathRow({ label, value }: { label: string; value: string }) {
   const notify = useUi((s) => s.notify);
   return (
-    <div className="flex items-center gap-3">
-      <span className="w-52 shrink-0 text-sm text-mute">{label}</span>
+    /* Auf schmalen Anzeigen steht die Bezeichnung über dem Pfad. Nebenan
+       nahm sie feste 208 von 338 Bildpunkten ein; für den Pfad blieben
+       sechsunddreißig, und in der Zeile stand nur noch „/…“. */
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      <span className="w-full shrink-0 text-sm text-mute sm:w-52">{label}</span>
       <code
         className="min-w-0 flex-1 truncate rounded bg-ink-900 px-2 py-1 text-xs"
         title={value}

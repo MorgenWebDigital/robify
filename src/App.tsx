@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { t } from "./lib/i18n";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { AddToPlaylistDialog } from "./components/AddToPlaylistDialog";
@@ -27,6 +27,7 @@ import { useDownloader } from "./store/downloader";
 import { useLibrary } from "./store/library";
 import { usePlayer } from "./store/player";
 import { useUi } from "./store/ui";
+import { useSchliesstBeimSeitenwechsel } from "./lib/seitenwechsel";
 
 export function App() {
   const initPlayer = usePlayer((s) => s.init);
@@ -35,7 +36,27 @@ export function App() {
   // auch ankommen, während eine andere Seite offen ist.
   const initDownloader = useDownloader((s) => s.init);
   const { editingTrack, editTrack } = useUi();
+  const openAddToPlaylist = useUi((s) => s.openAddToPlaylist);
   const location = useLocation();
+
+  /**
+   * Was über der Seite liegt, geht mit der Seite.
+   *
+   * Diese beiden Dialoge hängen an der App, nicht an der Seite, die sie
+   * geöffnet hat. „Zu Playlist hinzufügen“ vom Album blieb darum stehen, wenn
+   * man unten auf Bibliothek tippte — ein Dialog über einer Seite, mit der er
+   * nichts zu tun hat. Dasselbe galt für den Metadaten-Editor.
+   *
+   * Beide Setzer kommen aus dem Zustandsspeicher und bleiben dieselben; das
+   * `useCallback` hält auch die Abhängigkeit dieses Aufrufs stabil, sonst
+   * schlösse er den Dialog beim nächsten Neuzeichnen gleich wieder.
+   */
+  useSchliesstBeimSeitenwechsel(
+    useCallback(() => {
+      openAddToPlaylist(null);
+      editTrack(null);
+    }, [openAddToPlaylist, editTrack]),
+  );
   const blaetterbereich = useRef<HTMLElement>(null);
 
   /**

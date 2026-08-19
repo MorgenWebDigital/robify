@@ -90,41 +90,50 @@ export function AlbumDetail() {
             {formatDuration(album.durationMs)}
           </p>
 
+          {/* Bearbeiten links, Abspielen rechts, wie bei Künstler und
+              Playlist. Alle vier klein: Vier beschriftete Knöpfe brauchten
+              510 Bildpunkte auf einer 411 breiten Anzeige — „Bearbeiten“ stand
+              vollständig außerhalb des Bildes, und die Seite ließ sich zur
+              Seite schieben. */}
           <div className="aktionsreihe mt-4 gap-2">
             <button
               type="button"
-              onClick={() => play(false)}
-              disabled={!tracks.length}
-              className="pill-btn is-raised is-accent aktionsknopf shrink-0"
+              onClick={() => setEditing(true)}
+              title={t("Bearbeiten")}
+              className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
             >
-              <PlayIcon size={16} />
-              {t("Abspielen")}
-            </button>
-            <button
-              type="button"
-              onClick={() => play(true)}
-              disabled={!tracks.length}
-              className="pill-btn is-raised aktionsknopf shrink-0"
-            >
-              <ShuffleIcon size={16} />
-              {t("Zufällig")}
+              <PencilIcon size={16} />
+              <span className="beschriftung truncate">{t("Bearbeiten")}</span>
             </button>
             <button
               type="button"
               onClick={() => openAddToPlaylist(tracks.map((t) => t.id))}
               disabled={!tracks.length}
-              className="pill-btn is-raised aktionsknopf aktionsknopf-weicht"
+              title={t("Zu Playlist")}
+              className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
             >
               <PlusIcon size={16} />
-              <span className="truncate">{t("Zu Playlist")}</span>
+              <span className="beschriftung truncate">{t("Zu Playlist")}</span>
             </button>
             <button
               type="button"
-              onClick={() => setEditing(true)}
-              className="pill-btn is-raised aktionsknopf shrink-0"
+              onClick={() => play(true)}
+              disabled={!tracks.length}
+              title={t("Zufällig")}
+              className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
             >
-              <PencilIcon size={16} />
-              {t("Bearbeiten")}
+              <ShuffleIcon size={16} />
+              <span className="beschriftung truncate">{t("Zufällig")}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => play(false)}
+              disabled={!tracks.length}
+              title={t("Abspielen")}
+              className="pill-btn is-raised is-accent aktionsknopf aktionsknopf-kurz"
+            >
+              <PlayIcon size={16} />
+              <span className="beschriftung truncate">{t("Abspielen")}</span>
             </button>
           </div>
         </div>

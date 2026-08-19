@@ -189,6 +189,14 @@
   .group-hover\:opacity-100 {
     opacity: 1;
   }
+
+  /* Dasselbe für den kleinen Sprung, den das Abspieldreieck beim Zeigen
+     macht: Sichtbar war es durch die Regel darüber schon, es stand aber
+     weiterhin acht Punkte tiefer, bündig mit der Unterkante des Covers. */
+  .group-hover\:translate-y-0 {
+    --tw-translate-y: 0px;
+    translate: var(--tw-translate-x) var(--tw-translate-y);
+  }
 }
 
 /*
@@ -310,6 +318,30 @@ h4 {
   ::-webkit-scrollbar {
     width: 0;
     height: 0;
+  }
+
+  /*
+   * Ein Daumen trifft gröber als ein Zeiger.
+   *
+   * Die Schalter in einer Leiste maßen 28 Punkte im Quadrat — Ansicht und
+   * Kachelgröße bei den Playlists, Zeitraum und Blättern im Rückblick,
+   * Erscheinungsbild in den Einstellungen. Sie füllen jetzt die Leiste bis
+   * auf deren Rand aus; die Leiste selbst wächst dabei nicht, neben ihr
+   * stehende Knöpfe bleiben also auf gleicher Höhe.
+   */
+  .pill-bar > .pill-btn {
+    height: calc(2.25rem - 2px);
+    min-width: calc(2.25rem - 2px);
+  }
+
+  /*
+   * Ein Kreuzchen mit einer Zeile daneben ist zwanzig Punkte hoch. Die Zeile
+   * daneben zählt zwar mit, weil das Kästchen in seiner Beschriftung steckt,
+   * zwischen zwei solchen Zeilen liegen aber nur acht Punkte — wer knapp
+   * daneben tippt, setzt den falschen Haken.
+   */
+  label:has(> .check-box) {
+    min-height: 2.25rem;
   }
 }
 

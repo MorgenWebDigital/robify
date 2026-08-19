@@ -362,7 +362,11 @@ export function DownloaderPage() {
                 }
               }}
               autoFocus
-              placeholder={t("Künstler und Titel suchen oder Link einfügen")}
+              /* Kurz gehalten: Auf einem Telefon ist das Feld gut zweihundert
+                 Punkte breit, und der lange Satz brach mitten im Wort ab —
+                 „Künstler und Titel suchen oder“. Was alles erkannt wird,
+                 steht ohnehin darunter. */
+              placeholder={t("Suchbegriff oder Link")}
               aria-label={t("Suchbegriff oder Link")}
               className="search-field ps-10"
             />

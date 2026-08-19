@@ -39,11 +39,11 @@ export function ArtistsPage() {
         subtitle={plural(artists?.length ?? 0, "Künstler in deiner Bibliothek")}
       />
 
-      {/* Gleicher Aufbau wie in der Bibliothek: eine Reihe, in der die Leiste
-          den freien Platz einnimmt. Kämen hier je Knöpfe dazu, rückten sie
-          von selbst an dieselbe Stelle wie dort. */}
-      <div className="aktionsreihe mb-5 gap-3">
-        <div className="aktionsfeld relative flex-1">
+      {/* Die Suche als Knopf am Ende der Reihe, wie in der Bibliothek. Über
+          die ganze Breite gezogen nahm sie auf einem Telefon eine Zeile für
+          sich, bevor der erste Künstler zu sehen war. */}
+      <div className="aktionsreihe mb-5 justify-end gap-3">
+        <div className="suchfeld-kurz relative">
           <SearchIcon
             size={16}
             className="pointer-events-none absolute top-1/2 start-3.5 -translate-y-1/2 text-mute"
@@ -52,6 +52,7 @@ export function ArtistsPage() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder={t("Künstler suchen")}
+            aria-label={t("Künstler suchen")}
             className="search-field ps-10"
           />
         </div>
