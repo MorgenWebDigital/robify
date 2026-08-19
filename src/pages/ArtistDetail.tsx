@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { t } from "../lib/i18n";
 import { useParams } from "react-router-dom";
-import { AlbumCard, Grid, PageHeader, ZurueckKnopf } from "../components/Cards";
+import {
+  AlbumCard,
+  Grid,
+  PageHeader,
+  SectionTitle,
+  ZurueckKnopf,
+} from "../components/Cards";
 import { ArtistAvatar, ArtistEditor } from "../components/ArtistEditor";
 import {
   DownloadIcon,
@@ -32,6 +38,17 @@ function abschnitte(): { type: ReleaseType; title: string }[] {
   ];
 }
 
+/**
+ * Wie viele Kacheln eine Art von Releases zeigt, bevor „Mehr anzeigen“ kommt.
+ *
+ * Dieselbe Zahl wie auf der Startseite: Drei passen auf einem Telefon
+ * nebeneinander, ohne dass etwas abgeschnitten wirkt.
+ */
+const VORSCHAU = 3;
+
+/** Wie viele Titel unter „Beliebt“ stehen. */
+const VORSCHAU_TITEL = 5;
+
 export function ArtistDetail() {
   const { id } = useParams();
   const artistId = Number(id);
@@ -44,6 +61,8 @@ export function ArtistDetail() {
   const [features, setFeatures] = useState<Track[]>([]);
   const [editing, setEditing] = useState(false);
   const [fetching, setFetching] = useState(false);
+  /** Welche Release-Arten alle ihre Kacheln zeigen. */
+  const [entfaltet, setEntfaltet] = useState<string[]>([]);
   const notify = useUi((s) => s.notify);
 
   useEffect(() => {
@@ -75,7 +94,9 @@ export function ArtistDetail() {
   }
 
   const totalMs = tracks.reduce((sum, track) => sum + track.durationMs, 0);
-  const topTracks = tracks.slice(0, 5);
+  // Nach Wiedergaben sortiert kommen sie schon aus dem Rust-Teil; die fünf
+  // vorderen sind damit die meistgehörten.
+  const topTracks = tracks.slice(0, VORSCHAU_TITEL);
 
   /** Holt Bild und Beschreibung in einem Schritt. */
   const fetchMetadata = async () => {
@@ -196,19 +217,45 @@ export function ArtistDetail() {
         </>
       )}
 
+      {/* Drei Kacheln je Art, der Rest auf Wunsch. Ein Künstler mit zwanzig
+          Singles schob seine Alben sonst weit nach unten, und zwischen den
+          Abschnitten ging der Überblick verloren.
+
+          Ausgeklappt gilt wieder die gewöhnliche Aufteilung: Die dreispaltige
+          ist für genau drei Kacheln gedacht, für zwanzig wäre sie zu grob. */}
       {abschnitte().map(({ type, title }) => {
         const items = releases.filter(
           (release) => release.releaseType === type,
         );
         if (items.length === 0) return null;
+        const offen = entfaltet.includes(type);
+        const sichtbar = offen ? items : items.slice(0, VORSCHAU);
         return (
           <section key={type}>
-            <h2 className="mt-8 mb-3 text-xl font-semibold tracking-tight">
+            <SectionTitle
+              action={
+                items.length > VORSCHAU ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEntfaltet((vorher) =>
+                        offen
+                          ? vorher.filter((eintrag) => eintrag !== type)
+                          : [...vorher, type],
+                      )
+                    }
+                    className="text-sm text-mute transition hover:text-fg hover:underline"
+                  >
+                    {offen ? t("Weniger anzeigen") : t("Mehr anzeigen")}
+                  </button>
+                ) : undefined
+              }
+            >
               {title}
-            </h2>
-            <Grid>
-              {items.map((album) => (
-                <AlbumCard key={album.id} album={album} />
+            </SectionTitle>
+            <Grid vorschau={!offen}>
+              {sichtbar.map((album) => (
+                <AlbumCard key={album.id} album={album} ohneAbspielen />
               ))}
             </Grid>
           </section>
