@@ -127,19 +127,26 @@ export function NowPlaying() {
   };
 
   /*
-   * Nach unten wischen legt den Titel zu.
+   * Wischen im Titel: zur Seite blättert, nach unten legt zu.
    *
-   * Nur von ganz oben aus: Weiter unten ist derselbe Zug das Blättern durch
-   * Songtext und Künstler, und der darf nicht bei jeder Bewegung die Ansicht
-   * schließen. Deshalb wird beim Aufsetzen des Fingers gemerkt, ob die Spalte
-   * schon oben stand.
+   * Welche der beiden Richtungen gilt, entscheidet die größere Strecke. Ohne
+   * diese Trennung löste jeder schräge Zug beides aus, und man landete beim
+   * nächsten Titel, obwohl man zuklappen wollte.
+   *
+   * Zuklappen zusätzlich nur von ganz oben: Weiter unten ist der Zug nach
+   * unten das Blättern durch Songtext und Künstler. Beim Aufsetzen des
+   * Fingers wird deshalb gemerkt, ob die Spalte schon oben stand. Für das
+   * seitliche Blättern gilt das nicht — waagerecht rollt hier nichts.
    */
-  const zugBeginn = useRef<{ y: number; oben: boolean } | null>(null);
-  /** Ab hier ist es ein Zuklappen und nicht mehr ein Verrutschen. */
+  const zugBeginn = useRef<{ x: number; y: number; oben: boolean } | null>(
+    null,
+  );
+  /** Ab hier ist es eine Geste und nicht mehr ein Verrutschen. */
   const ZUG_SCHWELLE = 90;
 
   const zugStart = (event: React.TouchEvent<HTMLDivElement>) => {
     zugBeginn.current = {
+      x: event.touches[0].clientX,
       y: event.touches[0].clientY,
       oben: event.currentTarget.scrollTop <= 0,
     };
@@ -148,9 +155,18 @@ export function NowPlaying() {
   const zugEnde = (event: React.TouchEvent<HTMLDivElement>) => {
     const start = zugBeginn.current;
     zugBeginn.current = null;
-    if (!start?.oben) return;
+    if (!start) return;
+    const dx = event.changedTouches[0].clientX - start.x;
     const dy = event.changedTouches[0].clientY - start.y;
-    if (dy > ZUG_SCHWELLE) setNowPlayingOpen(false);
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (Math.abs(dx) < ZUG_SCHWELLE) return;
+      // Nach links kommt das Nächste ins Bild, wie beim Umblättern.
+      void (dx < 0 ? next() : previous());
+      return;
+    }
+
+    if (start.oben && dy > ZUG_SCHWELLE) setNowPlayingOpen(false);
   };
 
   const artistId = currentTrack?.artistId ?? null;

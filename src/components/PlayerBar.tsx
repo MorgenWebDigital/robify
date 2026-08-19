@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { t } from "../lib/i18n";
 import { api, errorMessage } from "../lib/api";
 import { albumCover } from "../lib/cover";
@@ -345,6 +345,37 @@ function MiniPlayer() {
   const anteil = gesamt ? Math.min(positionMs / gesamt, 1) * 100 : 0;
 
   /*
+   * Hochwischen fährt den Titel aus.
+   *
+   * Die Leiste ist der Deckel über der Vollbildansicht; ihn hochzuschieben
+   * ist die Bewegung, die man ohnehin versucht. Antippen tut dasselbe und
+   * bleibt — die Geste ist eine Abkürzung, kein Ersatz.
+   *
+   * Nur nach oben und nur deutlich: Die Leiste ist zwei Fingerbreit hoch, ein
+   * Tippen wackelt darin leicht ein paar Pixel.
+   */
+  const hochBeginn = useRef<{ x: number; y: number } | null>(null);
+  const HOCH_SCHWELLE = 40;
+
+  const hochStart = (event: React.TouchEvent) => {
+    hochBeginn.current = {
+      x: event.touches[0].clientX,
+      y: event.touches[0].clientY,
+    };
+  };
+
+  const hochEnde = (event: React.TouchEvent) => {
+    const start = hochBeginn.current;
+    hochBeginn.current = null;
+    if (!start || !currentTrack) return;
+    const dx = event.changedTouches[0].clientX - start.x;
+    const dy = event.changedTouches[0].clientY - start.y;
+    if (dy < -HOCH_SCHWELLE && Math.abs(dy) > Math.abs(dx)) {
+      setNowPlayingOpen(true);
+    }
+  };
+
+  /*
    * Weg, sobald der Titel selbst offen ist.
    *
    * Die Leiste ist der Weg dorthin; steht man schon drin, zeigt sie dasselbe
@@ -356,7 +387,11 @@ function MiniPlayer() {
   if (nowPlayingOpen) return null;
 
   return (
-    <footer className="sunken-panel z-30 mx-2 mb-2 shrink-0 overflow-hidden rounded-2xl bg-ink-950 md:hidden">
+    <footer
+      onTouchStart={hochStart}
+      onTouchEnd={hochEnde}
+      className="sunken-panel z-30 mx-2 mb-2 shrink-0 overflow-hidden rounded-2xl bg-ink-950 md:hidden"
+    >
       {/* Ein Strich statt eines Reglers: Zum Spulen ist die Vollbildansicht
           da, hier geht es nur darum, zu sehen, wie weit der Titel ist. */}
       <div className="h-0.5 w-full bg-ink-700" aria-hidden="true">
