@@ -9,7 +9,15 @@
  *
  * Idempotent: Zweimal aufgerufen ändert es beim zweiten Mal nichts.
  */
-import { readFileSync, writeFileSync, existsSync, copyFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
 
@@ -25,6 +33,8 @@ const COMMONS_IO_FASSUNG = "2.16.1";
 const MANIFEST = "src-tauri/gen/android/app/src/main/AndroidManifest.xml";
 const DRAWABLE = "src-tauri/gen/android/app/src/main/res/drawable";
 const GRADLE_EIGENSCHAFTEN = "src-tauri/gen/android/gradle.properties";
+const SYMBOLE = "src-tauri/icons/android";
+const RES = "src-tauri/gen/android/app/src/main/res";
 /** Fassung von `androidx.media`; bringt MediaSession und die Medientasten mit. */
 const MEDIA_FASSUNG = "1.7.0";
 
@@ -318,11 +328,17 @@ function systemplayerEinbinden() {
   );
 
   // Macht aus einer Adresse der Dateiauswahl eine Datei mit Pfad.
-  copyFileSync("src-tauri/android/Dateien.kt", join(PAKET_ORDNER, "Dateien.kt"));
+  copyFileSync(
+    "src-tauri/android/Dateien.kt",
+    join(PAKET_ORDNER, "Dateien.kt"),
+  );
 
   // Das Zeichen für die Benachrichtigung. Ohne es stünde dort das Dreieck des
   // Systems, dasselbe wie bei jeder anderen App, die Ton abspielt.
-  copyFileSync("src-tauri/android/ic_notification.xml", join(DRAWABLE, "ic_notification.xml"));
+  copyFileSync(
+    "src-tauri/android/ic_notification.xml",
+    join(DRAWABLE, "ic_notification.xml"),
+  );
 
   const manifest = readFileSync(MANIFEST, "utf8");
   if (manifest.includes("Wiedergabedienst")) {
@@ -485,10 +501,17 @@ function dateizugriffErbitten() {
     writeFileSync(
       MAIN_ACTIVITY,
       activity
-        .replace("  override fun onCreate(savedInstanceState: Bundle?) {", felder)
+        .replace(
+          "  override fun onCreate(savedInstanceState: Bundle?) {",
+          felder,
+        )
         .replace(
           "    super.onCreate(savedInstanceState)",
-          ["    super.onCreate(savedInstanceState)", "", "    dateizugriffErbitten()"].join("\n"),
+          [
+            "    super.onCreate(savedInstanceState)",
+            "",
+            "    dateizugriffErbitten()",
+          ].join("\n"),
         ),
     );
     console.log("Dateizugriff: Frage in die Activity getragen");
@@ -552,6 +575,77 @@ function speicherZuegeln() {
   console.log("Speicher: Grenzen für Gradle und Kotlin gesetzt");
 }
 
+/**
+ * Legt unser Zeichen als Startsymbol ein.
+ *
+ * `tauri icon` erzeugt den ganzen Satz nach `src-tauri/icons/android`, aber
+ * `tauri android init` legt `gen/android` mit den Vorgabesymbolen von Tauri an
+ * — dem blau-gelben Kreis. Wer die Symbole vor der letzten Neuanlage erzeugt
+ * hat, findet sie danach nicht mehr im Bau wieder, und genau so stand auf dem
+ * Telefon ein fremdes Zeichen auf dem Startbildschirm.
+ *
+ * Kopiert wird alles, was zum anpassungsfähigen Symbol gehört: die Bilder in
+ * allen Auflösungen, die Beschreibung in `mipmap-anydpi-v26` und die Farbe des
+ * Hintergrunds.
+ */
+function startsymbolEinlegen() {
+  if (!existsSync(SYMBOLE)) {
+    console.log("Startsymbol: keine Vorlage, übersprungen");
+    return;
+  }
+
+  let gelegt = 0;
+  for (const ordner of readdirSync(SYMBOLE)) {
+    const quelle = join(SYMBOLE, ordner);
+    const ziel = join(RES, ordner);
+    mkdirSync(ziel, { recursive: true });
+    for (const datei of readdirSync(quelle)) {
+      copyFileSync(join(quelle, datei), join(ziel, datei));
+      gelegt += 1;
+    }
+  }
+  // Die Vorderseite als Vektor darüber: Das erzeugte Bild füllt die Fläche
+  // bis zum Rand, und im Kreis stünden die Notenköpfe angeschnitten. Die
+  // Bilddateien bleiben liegen, sie tragen die Fassung für Android 7 und
+  // älter, das noch kein anpassungsfähiges Symbol kennt.
+  copyFileSync(
+    "src-tauri/android/ic_launcher_foreground.xml",
+    join(DRAWABLE, "ic_launcher_foreground.xml"),
+  );
+  for (const dichte of ["hdpi", "mdpi", "xhdpi", "xxhdpi", "xxxhdpi"]) {
+    const alt = join(RES, `mipmap-${dichte}`, "ic_launcher_foreground.png");
+    if (existsSync(alt)) rmSync(alt);
+  }
+  // Und die Fassung von Tauri, die alles überstimmt: Ein `drawable-v24` gilt
+  // auf jedem Gerät ab Android 7 vor dem schlichten `drawable`. Sie blieb
+  // liegen, und auf dem Startbildschirm stand weiter der blau-gelbe Kreis.
+  //
+  // Überschrieben statt gelöscht: Gradle merkte das Löschen nicht und packte
+  // die Datei aus seinem Zwischenstand weiter ein. Dieselbe Zeichnung in
+  // beiden Ordnern ist ohnehin verlässlicher, als sich darauf zu verlassen,
+  // welcher Ordner gewinnt.
+  const v24 = join(RES, "drawable-v24");
+  if (existsSync(v24)) {
+    copyFileSync(
+      "src-tauri/android/ic_launcher_foreground.xml",
+      join(v24, "ic_launcher_foreground.xml"),
+    );
+  }
+  writeFileSync(
+    join(RES, "mipmap-anydpi-v26", "ic_launcher.xml"),
+    [
+      '<?xml version="1.0" encoding="utf-8"?>',
+      "<adaptive-icon xmlns:android=\"http://schemas.android.com/apk/res/android\">",
+      '  <foreground android:drawable="@drawable/ic_launcher_foreground"/>',
+      '  <background android:drawable="@color/ic_launcher_background"/>',
+      "</adaptive-icon>",
+      "",
+    ].join("\n"),
+  );
+
+  console.log(`Startsymbol: ${gelegt} Dateien eingelegt, Vorderseite als Vektor`);
+}
+
 zurueckKnopfAnschalten();
 zertifikatspruefungEinbinden();
 ytdlpEinbinden();
@@ -559,3 +653,4 @@ systemplayerEinbinden();
 benachrichtigungenErbitten();
 dateizugriffErbitten();
 speicherZuegeln();
+startsymbolEinlegen();

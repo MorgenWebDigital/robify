@@ -1864,6 +1864,12 @@ pub fn import_download(
             "UPDATE albums SET release_type = ?2, release_type_locked = 1 WHERE id = ?1",
             rusqlite::params![album_id, ReleaseType::parse(rt).as_str()],
         )?;
+    } else {
+        // Ohne Angabe aus dem Netz entscheidet die Titelzahl — genau wie beim
+        // Einlesen aus einem Ordner. Bisher lief das nur dort, und ein
+        // geladener Titel ohne erkannte Art blieb für immer ein „Album“,
+        // auch wenn er allein dastand.
+        library::refresh_release_types(&conn)?;
     }
     if let Some(cover) = metadata.cover_base64.as_deref().filter(|c| !c.is_empty()) {
         let data = base64::engine::general_purpose::STANDARD.decode(cover)?;

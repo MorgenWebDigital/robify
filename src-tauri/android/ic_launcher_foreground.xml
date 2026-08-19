@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Die Vorderseite des Startsymbols.
+
+    Android schneidet ein Startsymbol in die Form, die der Nutzer eingestellt
+    hat — Kreis, Quadrat, Tropfen. Sicher sichtbar bleibt nur der innere Kreis
+    von 72 der 108 Einheiten; alles weiter außen kann wegfallen. Das aus
+    `app-icon.png` erzeugte Bild füllt die Fläche bis zum Rand, und im Kreis
+    standen die Notenköpfe deshalb angeschnitten.
+
+    Dieselbe Zeichnung wie `icons/robify-logo.svg`, aber mit ausgerechneten
+    Koordinaten statt ineinandergelegter Gruppen: Verschachtelt kamen die
+    Notenköpfe als Punkte heraus und der Balken als Fläche. Ohne Gruppen zeigt
+    der Vektor genau das, was dasteht.
+
+    Die Zeichnung ist auf ihren eigenen Mittelpunkt bezogen und so weit
+    verkleinert, dass ihr äußerster Punkt 33 Einheiten vom Mittelpunkt
+    entfernt bleibt — drei innerhalb des sicheren Kreises, damit auch die runde
+    Maske nichts abschneidet.
+
+    Liegt hier und nicht unter `gen/android`, weil dieses Verzeichnis bei jedem
+    `tauri android init` neu entsteht; hineingelegt wird es von
+    scripts/android-nachruesten.mjs.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Balken über beiden Hälsen, ansteigend. -->
+    <path
+        android:fillColor="#FFA8A8B3"
+        android:pathData="M44.205,40.705 L78.542,31.939 L78.542,41.436 L44.205,50.203 z" />
+    <!-- Linker Hals. -->
+    <path
+        android:fillColor="#FFA8A8B3"
+        android:pathData="M44.205,40.705 L48.954,40.705 L48.954,68.101 L44.205,68.101 z" />
+    <!-- Rechter Hals. -->
+    <path
+        android:fillColor="#FFA8A8B3"
+        android:pathData="M73.793,33.151 L78.542,33.151 L78.542,59.335 L73.793,59.335 z" />
+    <!-- Linker Notenkopf, gekippt wie in der Notenschrift. -->
+    <path
+        android:fillColor="#FFA8A8B3"
+        android:pathData="M29.802,71.715 a9.497,7.306 -20 1,0 17.849,-6.497 a9.497,7.306 -20 1,0 -17.849,6.497 z" />
+    <!-- Rechter Notenkopf. -->
+    <path
+        android:fillColor="#FFA8A8B3"
+        android:pathData="M59.389,62.948 a9.497,7.306 -20 1,0 17.849,-6.497 a9.497,7.306 -20 1,0 -17.849,6.497 z" />
+</vector>

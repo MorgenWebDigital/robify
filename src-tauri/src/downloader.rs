@@ -791,6 +791,19 @@ const MAX_PARALLEL_YTDLP: usize = 2;
 // Suchen lassen sich gar nicht abbrechen, und die Ausgabeschleife eines
 // Downloads dreht sich endlos weiter, solange yt-dlp nichts schreibt.
 
+/// So viele Treffer holt eine Quelle höchstens vollständig.
+///
+/// YouTube Music nennt Laufzeiten nur bei vollständiger Abfrage, und die kostet
+/// eine Anfrage **je Treffer**. Auf dem Telefon waren das gemessene 6,8
+/// Sekunden pro Stück: Eine Suche über zwölf Treffer je Quelle brauchte 74
+/// Sekunden, dieselbe über drei nur 13. Die übrigen Quellen fragen flach ab und
+/// kosten unabhängig von der Zahl eine Anfrage.
+///
+/// Vier reichen für den Zweck der vollständigen Abfrage — eine Laufzeit zum
+/// Abgleichen zu haben. Die Breite der Trefferliste kommt ohnehin von den
+/// anderen Quellen, die davon unberührt bleiben.
+const VOLLE_ABFRAGE_MAX: usize = 4;
+
 /// Nach dieser Zeit gilt eine Suche als gescheitert.
 const SEARCH_TIMEOUT: Duration = Duration::from_secs(90);
 
@@ -1037,7 +1050,7 @@ async fn search_once(
         // Die Trefferseite ist selbst eine Liste, sie darf nicht als
         // einzelner Titel behandelt werden.
         args.push("--playlist-items".into());
-        args.push(format!("1-{limit}"));
+        args.push(format!("1-{}", limit.min(VOLLE_ABFRAGE_MAX)));
     } else {
         args.push("--flat-playlist".into());
         // Sammlungen nur aufklappen, wenn die Adresse wirklich auf eine zeigt.
