@@ -212,8 +212,13 @@ pub fn wrapped(conn: &Connection, period: &str, offset: i64) -> Result<Wrapped> 
         .collect::<rusqlite::Result<_>>()?;
     drop(stmt);
 
-    // --- Verlauf: Jahr in Monaten, Monat in Tagen.
-    let bucket_format = if period == "year" { "%Y-%m" } else { "%Y-%m-%d" };
+    // --- Verlauf: Monat in Tagen, Jahr und Gesamt in Monaten.
+    //
+    // „Gesamt“ reicht bis zum ersten gehörten Titel zurück. Nach Tagen
+    // gezählt wären das nach einem Jahr täglichen Hörens 365 Balken; in einer
+    // Reihe auf einem Telefon bleibt dann für jeden davon kein Bildpunkt mehr
+    // übrig, und die Karte steht leer da.
+    let bucket_format = if period == "month" { "%Y-%m-%d" } else { "%Y-%m" };
     let mut stmt = conn.prepare(
         "SELECT strftime(?3, datetime(played_at, 'unixepoch', 'localtime')) AS bucket,
                 SUM(ms_played)

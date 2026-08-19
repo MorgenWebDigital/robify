@@ -48,11 +48,17 @@ export function kurzerTag(datum: Date): string {
   }).format(datum);
 }
 
-/** Kurzer Monat ohne Tag, für den Jahresrückblick. */
-export function kurzerMonat(datum: Date): string {
-  return new Intl.DateTimeFormat(spracheJetzt(), { month: "short" }).format(
-    datum,
-  );
+/**
+ * Kurzer Monat ohne Tag, für den Jahresrückblick.
+ *
+ * Über mehrere Jahre hinweg mit Jahreszahl: Im Rückblick auf alles stehen
+ * sonst an beiden Enden des Verlaufs „Aug.“ und meinen zwei verschiedene.
+ */
+export function kurzerMonat(datum: Date, mitJahr = false): string {
+  return new Intl.DateTimeFormat(spracheJetzt(), {
+    month: "short",
+    ...(mitJahr ? { year: "numeric" } : {}),
+  }).format(datum);
 }
 
 /**
@@ -78,13 +84,13 @@ export function zeitraum(von: Date, bis: Date): string {
  * Die Auswertung liefert Schlüssel wie `2026-08-17` oder `2026-08`, weil
  * SQLite danach gruppiert. Sie sind zum Sortieren gedacht, nicht zum Lesen.
  */
-export function ausSchluessel(schluessel: string): string {
+export function ausSchluessel(schluessel: string, mitJahr = false): string {
   const teile = schluessel.split("-").map(Number);
   if (teile.length === 3 && teile.every(Number.isFinite)) {
     return kurzerTag(new Date(teile[0], teile[1] - 1, teile[2]));
   }
   if (teile.length === 2 && teile.every(Number.isFinite)) {
-    return kurzerMonat(new Date(teile[0], teile[1] - 1, 1));
+    return kurzerMonat(new Date(teile[0], teile[1] - 1, 1), mitJahr);
   }
   return schluessel;
 }

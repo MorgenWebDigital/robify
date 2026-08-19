@@ -14,12 +14,7 @@ import {
 import { api, fallback } from "../lib/api";
 import { albumCover } from "../lib/cover";
 import { ausSchluessel, monatUndJahr } from "../lib/datum";
-import {
-  formatDuration,
-  formatNumber,
-  formatTime,
-  plural,
-} from "../lib/format";
+import { formatDuration, formatNumber, plural } from "../lib/format";
 import { useLibrary } from "../store/library";
 import type { Wrapped } from "../types";
 
@@ -100,6 +95,12 @@ export function WrappedPage() {
     ...(data?.buckets.map((b) => b.msPlayed) ?? [1]),
   );
   const empty = !loading && (data?.totalPlays ?? 0) === 0;
+  /*
+   * „Gesamt“ und „Jahr“ zählen in Monaten, „Monat“ in Tagen. Über mehrere
+   * Jahre hinweg braucht ein Monat seine Jahreszahl, sonst steht an beiden
+   * Enden des Verlaufs „Aug.“ und meint zwei verschiedene.
+   */
+  const monatsbalken = data?.period === "all";
 
   return (
     <div>
@@ -192,7 +193,11 @@ export function WrappedPage() {
 
       {data && !loading && !empty && (
         <div className="space-y-8">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Zwei nebeneinander schon auf dem Handy. Untereinander nahmen
+              die vier Zahlen 388 von 914 Bildpunkten ein — der halbe
+              Bildschirm für vier Zeilen, und der Rückblick selbst begann
+              erst darunter. */}
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <BigStat
               label={t("Hörzeit gesamt")}
               value={formatDuration(data.totalMs)}
@@ -215,7 +220,15 @@ export function WrappedPage() {
           {data.buckets.length > 1 && (
             <section className="surface p-5">
               <h2 className="mb-4 text-sm font-semibold">{t("Verlauf")}</h2>
-              <div className="flex h-32 items-end gap-1">
+              {/* Der Abstand steht in Bildpunkten und nicht als Klasse, weil
+                  er bei vielen Balken weichen muss: Eine Lücke in einer
+                  Flex-Reihe schrumpft nicht mit. Bei 300 Balken fraßen die
+                  Lücken die ganze Breite auf, jeder Balken war null Bildpunkte
+                  breit und die Karte blieb leer. */}
+              <div
+                className="flex h-32 items-end"
+                style={{ gap: data.buckets.length > 31 ? 1 : 4 }}
+              >
                 {data.buckets.map((bucket) => (
                   <div
                     key={bucket.label}
@@ -226,57 +239,77 @@ export function WrappedPage() {
                       background: "var(--accent)",
                       opacity: 0.75,
                     }}
-                    title={`${ausSchluessel(bucket.label)}: ${formatDuration(bucket.msPlayed)}`}
+                    title={`${ausSchluessel(bucket.label, monatsbalken)}: ${formatDuration(bucket.msPlayed)}`}
                   />
                 ))}
               </div>
+              {/* Anfang und Ende außen, der stärkste Tag darunter. Zu dritt in
+                  einer Zeile standen sie auf einer Handbreite ohne Lücke
+                  aneinander; in einer Sprache mit längeren Monatsnamen
+                  überlappten sie. */}
               <div className="mt-2 flex justify-between text-xs text-mute">
-                <span>{ausSchluessel(data.buckets[0]?.label ?? "")}</span>
-                {data.busiestDay && (
-                  <span>
-                    {t(
-                      "Stärkster Tag: {0} ({1})",
-                      ausSchluessel(data.busiestDay.label),
-                      formatDuration(data.busiestDay.msPlayed),
-                    )}
-                  </span>
-                )}
+                <span>
+                  {ausSchluessel(data.buckets[0]?.label ?? "", monatsbalken)}
+                </span>
                 <span>
                   {ausSchluessel(
                     data.buckets[data.buckets.length - 1]?.label ?? "",
+                    monatsbalken,
                   )}
                 </span>
               </div>
+              {data.busiestDay && (
+                <p className="mt-1.5 text-center text-xs text-mute">
+                  {t(
+                    "Stärkster Tag: {0} ({1})",
+                    ausSchluessel(data.busiestDay.label),
+                    formatDuration(data.busiestDay.msPlayed),
+                  )}
+                </p>
+              )}
             </section>
           )}
 
           {data.topTracks.length > 0 && (
             <section>
-              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-3">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
                 <h2 className="text-xl font-semibold tracking-tight">
                   {t("Deine Top 5 Titel")}
                 </h2>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-mute">
+                {/* Als Aktionsreihe wie auf jeder anderen Seite: Wird es eng,
+                    fällt der Knopf auf sein Zeichen zusammen, statt die
+                    Überschrift in eine zweite Zeile zu drücken.
+
+                    `grow` ist hier keine Zierde. Eine Aktionsreihe ist ein
+                    Größenbehälter, und der zählt seinen Inhalt für die eigene
+                    Breite nicht mit — als Flex-Kind fiel sie deshalb auf null
+                    zusammen und die Zahl stand als schmale Säule am Rand.
+                    Wachsen darf sie den Rest der Zeile ausfüllen. */}
+                <div className="aktionsreihe grow justify-end gap-3">
+                  <span className="min-w-0 truncate text-sm text-mute">
                     {t("Zusammen {0}", formatDuration(data.topTracksTotalMs))}
                   </span>
                   {/* Entfernte Titel haben keine Datei mehr, sie würden die
-                      Wiedergabe nur abbrechen. */}
+                      Wiedergabe nur abbrechen. Die Laufvariable heißt nicht
+                      `t`: So hieße in diesem Baustein auch die Übersetzung. */}
                   <button
                     type="button"
                     onClick={() =>
                       void api.playTracks(
                         data.topTracks
-                          .filter((t) => !t.track.deleted)
-                          .map((t) => t.track.id),
+                          .filter((eintrag) => !eintrag.track.deleted)
+                          .map((eintrag) => eintrag.track.id),
                         0,
                       )
                     }
-                    disabled={data.topTracks.every((t) => t.track.deleted)}
-                    className="pill-btn is-raised is-accent h-9 px-4 text-sm font-semibold"
+                    disabled={data.topTracks.every(
+                      (eintrag) => eintrag.track.deleted,
+                    )}
+                    title={t("Abspielen")}
+                    className="pill-btn is-raised is-accent aktionsknopf aktionsknopf-kurz"
                   >
                     <PlayIcon size={16} />
-                    {t("Abspielen")}
+                    <span className="beschriftung">{t("Abspielen")}</span>
                   </button>
                 </div>
               </div>
@@ -396,8 +429,11 @@ export function WrappedPage() {
                             {album.artistName}
                           </p>
                         </div>
+                        {/* Wie bei Titeln und Künstlern: gehörte Zeit, nicht
+                            Laufzeit. „57:08“ neben „1 Std. 42 Min.“ las sich
+                            wie die Länge des Releases. */}
                         <span className="shrink-0 text-sm text-mute tabular-nums">
-                          {formatTime(album.msPlayed)}
+                          {formatDuration(album.msPlayed)}
                         </span>
                       </Link>
                     </li>
@@ -421,11 +457,16 @@ function BigStat({
   value: string;
   accent?: boolean;
 }) {
+  /*
+   * Auf dem Handy eine Stufe kleiner. In zwei Spalten bleiben 144 Bildpunkte
+   * für die Zahl; „234 Std. 12 Min.“ braucht in 1.5rem deren 168 und wäre
+   * abgeschnitten, in 1.25rem sind es 140.
+   */
   return (
-    <div className="surface px-5 py-4">
+    <div className="surface px-4 py-3.5 sm:px-5 sm:py-4">
       <p className="eyebrow">{label}</p>
       <p
-        className="mt-1.5 truncate text-2xl font-bold tracking-tight"
+        className="mt-1.5 truncate text-xl font-bold tracking-tight sm:text-2xl"
         style={accent ? { color: "var(--accent)" } : undefined}
         title={value}
       >
