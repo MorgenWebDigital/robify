@@ -147,6 +147,14 @@ CREATE TABLE IF NOT EXISTS recommendations (
         // Entfernte Playlists bleiben stehen, bis der Griff nicht mehr
         // zurückgenommen werden kann.
         ("playlists", "deleted_at", "INTEGER"),
+        // Wann der Titel zuletzt lief, unabhängig davon, ob er lang genug
+        // lief, um in der Statistik zu zählen.
+        //
+        // „Zuletzt gespielt“ auf der Startseite ist eine Erinnerung daran,
+        // was man gehört hat, keine Auswertung. Aus `plays` gelesen fehlte
+        // dort jeder Titel, den man nach zwanzig Sekunden weitergeschaltet
+        // hat — und das ist genau der Fall, in dem man ihn wiederfinden will.
+        ("tracks", "last_played_at", "INTEGER"),
         // Selbst gewählte Reihenfolge in der Sammlung.
         //
         // Der Vorgabewert ist mit Bedacht negativ und wird beim Nachrüsten
@@ -177,6 +185,17 @@ CREATE TABLE IF NOT EXISTS recommendations (
             [],
         )?;
     }
+
+    // Was bisher an Hörhistorie da ist, füllt die neue Spalte. Ohne diesen
+    // Schritt stünde „Zuletzt gespielt“ nach dem Aktualisieren leer da,
+    // obwohl die Einträge in `plays` unberührt daneben liegen.
+    conn.execute(
+        "UPDATE tracks SET last_played_at = (
+             SELECT MAX(played_at) FROM plays WHERE plays.track_id = tracks.id
+         )
+         WHERE last_played_at IS NULL",
+        [],
+    )?;
 
     // Bestände aus älteren Fassungen nachtragen: bisher hatte jeder Titel
     // genau einen Künstler.

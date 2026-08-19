@@ -21,6 +21,14 @@ const TICK: Duration = Duration::from_millis(250);
 const REMEMBER_EVERY: Duration = Duration::from_secs(5);
 /// Ab dieser Hördauer zählt ein Titel als "gehört" (analog zu gängigen Diensten).
 const MIN_PLAY_MS: u64 = 30_000;
+/// Ab dieser Hördauer merkt sich Robify einen Titel als zuletzt gespielt.
+///
+/// Viel weniger als für die Statistik, und mit Absicht: „Zuletzt gespielt“
+/// beantwortet die Frage „was lief gerade?“, nicht „was höre ich viel?“. Wer
+/// einen Titel anspielt und nach zwanzig Sekunden weiterschaltet, will ihn
+/// dort wiederfinden. Fünf Sekunden halten nur das draußen, was beim
+/// Durchtippen einer Liste entsteht.
+const VERLAUF_MS: u64 = 5_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -766,8 +774,22 @@ impl Engine {
         let listened = self.listened_ms;
         self.listened_ms = 0;
 
+        // Der Verlauf zuerst: Er hat seine eigene, viel niedrigere Schwelle
+        // und darf nicht daran hängen, ob der Titel für die Statistik zählt.
+        if listened >= VERLAUF_MS {
+            let _ = self.conn.execute(
+                "UPDATE tracks SET last_played_at = ?2 WHERE id = ?1",
+                params![track_id, db::now()],
+            );
+        }
+
         let completed = self.duration_ms > 0 && listened * 100 >= self.duration_ms * 90;
         if listened < MIN_PLAY_MS && !completed {
+            // Für die Auswertung zu kurz. Die Oberfläche erfährt es trotzdem,
+            // sonst bliebe die Startseite stehen, bis etwas lange genug lief.
+            if listened >= VERLAUF_MS {
+                let _ = self.app.emit("library:plays-changed", track_id);
+            }
             return;
         }
         let _ = self.conn.execute(

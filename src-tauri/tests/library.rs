@@ -240,6 +240,14 @@ fn playlists_und_auswertungen() {
             )
             .unwrap();
         }
+        // Der Verlauf steht am Titel und nicht in `plays`: Dort zählt nur,
+        // was lang genug lief für die Statistik, im Verlauf auch das Kurze.
+        // Der Player schreibt beides, hier tut es der Test.
+        conn.execute(
+            "UPDATE tracks SET last_played_at = ?2 WHERE id = ?1",
+            rusqlite::params![ids[index], now],
+        )
+        .unwrap();
     }
 
     let wrapped = stats::wrapped(&conn, "all", 0).unwrap();

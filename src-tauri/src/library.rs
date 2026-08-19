@@ -1226,12 +1226,14 @@ pub fn playlist_name_taken(conn: &Connection, name: &str) -> Result<bool> {
 
 /// Zuletzt gespielte Titel, jeder nur einmal und der jüngste zuerst.
 pub fn recently_played(conn: &Connection, limit: i64) -> Result<Vec<Track>> {
+    // Über `tracks.last_played_at` und nicht über `plays`: Dort steht nur,
+    // was lange genug lief, um in der Statistik zu zählen — dreißig Sekunden.
+    // Ein Titel, den man kurz angehört und dann weitergeschaltet hat, fehlte
+    // damit ausgerechnet an der Stelle, an der man ihn wiedersucht.
     let sql = format!(
         "{TRACK_SELECT}
-         JOIN (SELECT track_id, MAX(played_at) AS zuletzt FROM plays GROUP BY track_id) p
-              ON p.track_id = t.id
-         WHERE t.deleted_at IS NULL
-         ORDER BY p.zuletzt DESC
+         WHERE t.deleted_at IS NULL AND t.last_played_at IS NOT NULL
+         ORDER BY t.last_played_at DESC
          LIMIT ?1"
     );
     let mut stmt = conn.prepare(&sql)?;

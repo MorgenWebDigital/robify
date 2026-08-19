@@ -301,6 +301,10 @@ export function DownloaderPage() {
       await refresh();
       removeJob(review.job.id);
       setReview(null);
+      // Der Titel ist drin, die Eingabe hat ihren Zweck erfüllt. Stehen
+      // geblieben war sie ein Rest vom letzten Mal: Wer den nächsten Link
+      // einfügen wollte, musste erst den alten von Hand löschen.
+      setInput("");
       notify(t("In die Bibliothek übernommen"), "success");
     } catch (error) {
       notify(errorMessage(error), "error");
