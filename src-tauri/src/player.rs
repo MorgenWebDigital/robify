@@ -21,6 +21,9 @@ const TICK: Duration = Duration::from_millis(250);
 const REMEMBER_EVERY: Duration = Duration::from_secs(5);
 /// Ab dieser Hördauer zählt ein Titel als "gehört" (analog zu gängigen Diensten).
 const MIN_PLAY_MS: u64 = 30_000;
+/// Verstärkung bei vollem Ausschlag des Reglers.
+const OBERGRENZE: f32 = 0.85;
+
 /// Ab dieser Hördauer merkt sich Robify einen Titel als zuletzt gespielt.
 ///
 /// Viel weniger als für die Statistik, und mit Absicht: „Zuletzt gespielt“
@@ -449,13 +452,19 @@ impl Engine {
     /// zwanzig Prozent gestellt war es darum immer noch deutlich zu hören,
     /// und die untere Hälfte des Reglers tat fast nichts.
     ///
-    /// Die dritte Potenz bildet das nach: Bei halbem Ausschlag bleibt ein
-    /// Achtel der Verstärkung übrig, was etwa neun Dezibel unter voll liegt
-    /// und tatsächlich halb so laut klingt. Ganz oben und ganz unten ändert
-    /// sich nichts, eins bleibt eins und null bleibt null.
+    /// Die zweite Potenz bildet das nach: Bei halbem Ausschlag bleibt ein
+    /// Viertel der Verstärkung übrig, gut zwölf Dezibel unter voll. Die dritte
+    /// war zu viel des Guten, die untere Reglerhälfte wurde davon fast
+    /// unbrauchbar leise.
+    ///
+    /// Dazu ein Deckel: Ganz oben stehen 85 statt 100 Prozent. Voll
+    /// aufgedreht war es einen Tick zu laut, und der Kopfraum kostet nichts,
+    /// wo das System seine eigene Lautstärke darüberlegt.
+    ///
+    /// Null bleibt null; stumm ist stumm.
     fn apply_volume(&self) {
         let stand = if self.muted { 0.0 } else { self.volume };
-        self.player.set_volume((stand * stand * stand) as _);
+        self.player.set_volume((OBERGRENZE * stand * stand) as _);
     }
 
     // ------------------------------------------------------- Reihenfolge

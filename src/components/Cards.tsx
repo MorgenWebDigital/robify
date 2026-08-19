@@ -377,7 +377,11 @@ export function Grid({
   vorschau?: boolean;
 }) {
   const spalten = vorschau ? VORSCHAU_SPALTEN : GRID_COLUMNS[size];
-  return <div className={`grid gap-1 ${spalten}`}>{children}</div>;
+  // Mehr Luft in der Vorschau: Fünf Kacheln nebeneinander standen mit vier
+  // Bildpunkten Abstand fast aneinander, und die Cover wirkten gequetscht.
+  // Sechzehn geben jeder ihren Rand und machen sie nebenbei kleiner.
+  const luft = vorschau ? "gap-4" : "gap-1";
+  return <div className={`grid ${luft} ${spalten}`}>{children}</div>;
 }
 
 /** Playlist als Zeile, dieselben Angaben, nur platzsparend. */
