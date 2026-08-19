@@ -20,11 +20,20 @@ import type { Album, Track, WeeklyMixSummary } from "../types";
 /**
  * Wie viele Kacheln eine Vorschau auf der Startseite zeigt.
  *
- * Die Startseite ist ein Überblick, keine Liste. Drei Kacheln passen auf einem
- * Telefon nebeneinander, ohne dass etwas abgeschnitten wirkt, und darunter
- * beginnt sofort der nächste Abschnitt statt der fünften Reihe Alben.
+ * Die Startseite ist ein Überblick, keine Liste. Fünf passen am Rechner in
+ * eine Reihe, auf einem Telefon nur drei; die beiden hinteren bleiben dort
+ * verborgen, statt allein eine zweite Reihe anzufangen. Darunter beginnt so
+ * oder so gleich der nächste Abschnitt.
  */
-const VORSCHAU = 3;
+const VORSCHAU = 5;
+
+/** So viele davon sind auf einem Telefon zu sehen. */
+const VORSCHAU_SCHMAL = 3;
+
+/** Blendet die hinteren Kacheln aus, solange die Reihe nur drei fasst. */
+function nurBreit(stelle: number): string {
+  return stelle >= VORSCHAU_SCHMAL ? "max-lg:hidden" : "";
+}
 
 /**
  * Wie viele Zeilen eine Vorschau als Liste zeigt.
@@ -124,7 +133,7 @@ export function Home() {
               weiterging. */}
           <SectionTitle
             action={
-              mixes.length > VORSCHAU ? (
+              mixes.length > VORSCHAU_SCHMAL ? (
                 <Link
                   to="/mixes"
                   className="text-sm text-mute hover:text-fg hover:underline"
@@ -139,8 +148,10 @@ export function Home() {
 
           {mixes.length > 0 ? (
             <Grid vorschau>
-              {mixes.slice(0, VORSCHAU).map((mix) => (
-                <MixKachel key={mix.weekKey} mix={mix} ohneAbspielen />
+              {mixes.slice(0, VORSCHAU).map((mix, stelle) => (
+                <div key={mix.weekKey} className={nurBreit(stelle)}>
+                  <MixKachel mix={mix} ohneAbspielen />
+                </div>
               ))}
             </Grid>
           ) : (
@@ -153,7 +164,7 @@ export function Home() {
             <>
               <SectionTitle
                 action={
-                  albums.length > VORSCHAU ? (
+                  albums.length > VORSCHAU_SCHMAL ? (
                     <Link
                       to="/library"
                       className="text-sm text-mute hover:text-fg hover:underline"
@@ -166,8 +177,10 @@ export function Home() {
                 {t("Aus deiner Bibliothek")}
               </SectionTitle>
               <Grid vorschau>
-                {albums.slice(0, VORSCHAU).map((album) => (
-                  <AlbumCard key={album.id} album={album} ohneAbspielen />
+                {albums.slice(0, VORSCHAU).map((album, stelle) => (
+                  <div key={album.id} className={nurBreit(stelle)}>
+                    <AlbumCard album={album} ohneAbspielen />
+                  </div>
                 ))}
               </Grid>
             </>

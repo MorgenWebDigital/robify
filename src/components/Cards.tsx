@@ -362,7 +362,7 @@ const GRID_COLUMNS = {
  * Als eigene Angabe und nicht als vierte Größe: `GridSize` steht auch in den
  * Einstellungen für die Kachelgröße der Playlists, und dort gibt es nur drei.
  */
-const VORSCHAU_SPALTEN = "grid-cols-3 lg:grid-cols-4 xl:grid-cols-5";
+const VORSCHAU_SPALTEN = "grid-cols-3 lg:grid-cols-5";
 
 export type GridSize = keyof typeof GRID_COLUMNS;
 

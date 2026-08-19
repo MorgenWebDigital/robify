@@ -442,9 +442,20 @@ impl Engine {
         Ok(())
     }
 
+    /// Stellt die Lautstärke ein, gehörrichtig statt geradlinig.
+    ///
+    /// Der Regler steht linear, das Gehör hört aber logarithmisch: Halbe
+    /// Verstärkung klingt nicht halb so laut, sondern nur wenig leiser. Auf
+    /// zwanzig Prozent gestellt war es darum immer noch deutlich zu hören,
+    /// und die untere Hälfte des Reglers tat fast nichts.
+    ///
+    /// Die dritte Potenz bildet das nach: Bei halbem Ausschlag bleibt ein
+    /// Achtel der Verstärkung übrig, was etwa neun Dezibel unter voll liegt
+    /// und tatsächlich halb so laut klingt. Ganz oben und ganz unten ändert
+    /// sich nichts, eins bleibt eins und null bleibt null.
     fn apply_volume(&self) {
-        let effective = if self.muted { 0.0 } else { self.volume };
-        self.player.set_volume(effective as _);
+        let stand = if self.muted { 0.0 } else { self.volume };
+        self.player.set_volume((stand * stand * stand) as _);
     }
 
     // ------------------------------------------------------- Reihenfolge

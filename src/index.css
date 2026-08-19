@@ -554,6 +554,32 @@ h4 {
 }
 
 /*
+ * Immer nur das Zeichen, in jeder Fensterbreite.
+ *
+ * `aktionsknopf-kurz` fällt erst bei Enge zusammen; auf einem breiten
+ * Bildschirm stehen dort ausgeschriebene Knöpfe. Für eine Reihe von
+ * Werkzeugen ist das zu viel Text: „Aktualisieren“, „Importieren“ und „Von
+ * vorn hören“ nebeneinander lesen sich wie eine Ansage, während Pfeil, Ordner
+ * und Dreieck für sich sprechen.
+ *
+ * Der Name für Vorleseprogramme kommt aus `title` am Knopf; ein
+ * `display: none` nimmt die Beschriftung auch aus deren Baum.
+ */
+@utility aktionsknopf-symbol {
+  width: 2.25rem;
+  padding-inline: 0;
+  gap: 0;
+
+  & > .beschriftung {
+    display: none;
+  }
+
+  @container (max-width: 26rem) {
+    width: 2rem;
+  }
+}
+
+/*
  * Die Suche ist ein Knopf, der sich beim Benutzen öffnet.
  *
  * `search-field` bringt die runde Kante und die Höhe mit; auf 2.25rem Breite

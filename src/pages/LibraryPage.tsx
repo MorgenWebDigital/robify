@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { PageHeader } from "../components/Cards";
 import { EmptyState } from "../components/EmptyState";
 import {
-  ChevronDownIcon,
   FolderIcon,
   PlayIcon,
   PlusIcon,
@@ -262,14 +261,32 @@ export function LibraryPage() {
       )}
 
       <div className="aktionsreihe mb-5 gap-3">
-        <Auswahl
-          value={ordnung}
-          options={sortierungen()}
-          onChange={(wert) => void saveSetting("librarySort", wert)}
-          label={t("Sortierung")}
-          className="aktionsfeld w-52 shrink"
-        />
+        {/* Erst die Suche, dann die Werkzeuge, alle drei nur als Zeichen:
+            Pfeil, Ordner und Dreieck sprechen für sich, während
+            „Aktualisieren“, „Importieren“ und „Von vorn hören“
+            nebeneinander wie eine Ansage klingen.
 
+            Die Sortierung steht am anderen Ende: Sie ist keine Handlung,
+            sondern die Ordnung der Liste darunter, und mit ihrer Breite
+            stünde sie zwischen den Zeichen im Weg. */}
+        {/* Die Suche als Knopf, der beim Tippen ausfährt. Ohne
+            `aktionsfeld`: Dessen Mindestbreite sinkt bei Enge zwar mit, endet
+            aber bei 7rem und hielt das Feld genau dort fest, sodass der Kreis
+            nie zustande kam. Die Breite regelt `suchfeld-kurz` selbst, in
+            beiden Zuständen. */}
+        <div className="suchfeld-kurz relative">
+          <SearchIcon
+            size={16}
+            className="pointer-events-none absolute top-1/2 start-3.5 -translate-y-1/2 text-mute"
+          />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder={t("Titel, Künstler oder Album suchen")}
+            aria-label={t("Titel, Künstler oder Album suchen")}
+            className="search-field ps-10"
+          />
+        </div>
         {/* Die Werkzeuge stehen bei dem, worauf sie wirken: der Titelliste.
             Gleiche Bauweise wie die Schalter auf Playlists und Wrapped. */}
         <button
@@ -277,12 +294,11 @@ export function LibraryPage() {
           onClick={() => void runCheck()}
           disabled={importing}
           title={t("Aktualisieren")}
-          className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
+          className="pill-btn is-raised aktionsknopf aktionsknopf-symbol"
         >
           <RefreshIcon size={16} />
           <span className="beschriftung truncate">{t("Aktualisieren")}</span>
         </button>
-
         {/* Ein Knopf, zwei Wege: Ein ganzer Ordner ist der übliche Fall,
             einzelne Dateien braucht man trotzdem. Zwei Knöpfe nebeneinander
             wären dafür zu viel.
@@ -300,7 +316,7 @@ export function LibraryPage() {
             onClick={() => void importFiles()}
             disabled={importing}
             title={importing ? t("Importiere…") : t("Dateien wählen")}
-            className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
+            className="pill-btn is-raised aktionsknopf aktionsknopf-symbol"
           >
             <FolderIcon size={16} />
             <span className="beschriftung truncate">
@@ -328,41 +344,16 @@ export function LibraryPage() {
                 onClick={toggle}
                 disabled={importing}
                 title={importing ? t("Importiere…") : t("Importieren")}
-                className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
+                className="pill-btn is-raised aktionsknopf aktionsknopf-symbol"
               >
                 <FolderIcon size={16} />
                 <span className="beschriftung truncate">
                   {importing ? t("Importiere…") : t("Importieren")}
                 </span>
-                {/* Der Pfeil gehört zur Beschriftung: Im Kreis säße er neben
-                    dem Ordner und machte aus dem Zeichen ein Gedränge. */}
-                <ChevronDownIcon size={14} className="beschriftung" />
               </button>
             )}
           />
         )}
-
-        {/* Die Suche als Knopf, links neben dem Abspielen. Vorn stand sie im
-            Weg: Auf einem Telefon nahm sie die halbe Reihe und war trotzdem
-            zu schmal, um ihre eigene Beschriftung zu zeigen.
-
-            Ohne `aktionsfeld`: Dessen Mindestbreite sinkt bei Enge zwar mit,
-            endet aber bei 7rem und hielt das Feld genau dort fest — der Kreis
-            kam nie zustande. Die Breite regelt `suchfeld-kurz` selbst, in
-            beiden Zuständen. */}
-        <div className="suchfeld-kurz relative">
-          <SearchIcon
-            size={16}
-            className="pointer-events-none absolute top-1/2 start-3.5 -translate-y-1/2 text-mute"
-          />
-          <input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder={t("Titel, Künstler oder Album suchen")}
-            aria-label={t("Titel, Künstler oder Album suchen")}
-            className="search-field ps-10"
-          />
-        </div>
         {sortiert && sortiert.length > 0 && (
           <button
             type="button"
@@ -373,12 +364,19 @@ export function LibraryPage() {
               )
             }
             title={t("Von vorn hören")}
-            className="pill-btn is-raised is-accent aktionsknopf aktionsknopf-kurz shrink-0"
+            className="pill-btn is-raised is-accent aktionsknopf aktionsknopf-symbol shrink-0"
           >
             <PlayIcon size={16} />
             <span className="beschriftung">{t("Von vorn hören")}</span>
           </button>
         )}
+        <Auswahl
+          value={ordnung}
+          options={sortierungen()}
+          onChange={(wert) => void saveSetting("librarySort", wert)}
+          label={t("Sortierung")}
+          className="aktionsfeld ms-auto w-52 shrink"
+        />
       </div>
 
       {sortiert !== null && (
