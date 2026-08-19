@@ -213,7 +213,12 @@
  */
 .app-rahmen {
   padding-top: env(safe-area-inset-top);
-  padding-bottom: calc(var(--unterleiste-hoehe) + env(safe-area-inset-bottom));
+  /* `--tastatur` ist null, solange keine ausgefahren ist. Steht sie im Weg,
+     rückt der ganze Rahmen darüber, und mit ihm der Player. */
+  padding-bottom: calc(
+    var(--unterleiste-hoehe) + env(safe-area-inset-bottom) +
+      var(--tastatur, 0px)
+  );
 }
 
 @media (min-width: 48rem) {
@@ -991,7 +996,7 @@ h4 {
 @utility unterleiste {
   position: fixed;
   inset-inline: 0;
-  bottom: 0;
+  bottom: var(--tastatur, 0px);
   z-index: 30;
   display: flex;
   background: var(--canvas);
@@ -1031,7 +1036,10 @@ h4 {
 @utility unterleiste-blatt {
   position: fixed;
   inset-inline: 0;
-  bottom: calc(var(--unterleiste-hoehe) + env(safe-area-inset-bottom));
+  bottom: calc(
+    var(--unterleiste-hoehe) + env(safe-area-inset-bottom) +
+      var(--tastatur, 0px)
+  );
   z-index: 40;
   background: var(--surface);
   border-top: 1px solid var(--border);

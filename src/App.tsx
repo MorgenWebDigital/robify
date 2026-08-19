@@ -29,6 +29,7 @@ import { useLibrary } from "./store/library";
 import { usePlayer } from "./store/player";
 import { useUi } from "./store/ui";
 import { useSchliesstBeimSeitenwechsel } from "./lib/seitenwechsel";
+import { useTastaturhoehe } from "./lib/tastatur";
 
 export function App() {
   const initPlayer = usePlayer((s) => s.init);
@@ -58,6 +59,10 @@ export function App() {
       editTrack(null);
     }, [openAddToPlaylist, editTrack]),
   );
+  // Hält `--tastatur` aktuell, damit Player und Leiste über der Tastatur
+  // bleiben statt dahinter.
+  useTastaturhoehe();
+
   const blaetterbereich = useRef<HTMLElement>(null);
 
   /**

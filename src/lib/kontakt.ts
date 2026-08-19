@@ -17,7 +17,7 @@
  * nicht auffindbar. Eine öffentliche Stelle kommt ohne Namen und ohne Adresse
  * aus, und wer dasselbe erlebt, findet den Eintrag wieder.
  */
-export const MELDESTELLE = "";
+export const MELDESTELLE = "https://github.com/MorgenWebDigital/robify/issues";
 
 /** Eine Spendenadresse, wie sie in den Einstellungen erscheint. */
 export interface Spendenweg {
