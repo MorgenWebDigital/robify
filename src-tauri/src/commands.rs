@@ -26,7 +26,7 @@ fn b64(data: &[u8]) -> String {
 
 #[tauri::command]
 pub fn library_stats(state: State<'_, AppState>) -> CmdResult<LibraryStats> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::library_stats(&conn)?)
 }
 
@@ -77,7 +77,7 @@ pub fn scan_folders(
     // verhindert, dass eine große Bibliothek Hunderte Abfragen auslöst,
     // der Rest lässt sich weiterhin einzeln nachholen.
     let offen = {
-        let conn = state.db.lock();
+        let conn = state.db();
         if auto_fetch_artists(&conn) {
             library::all_artists_missing_metadata(&conn, 25).unwrap_or_default()
         } else {
@@ -89,7 +89,7 @@ pub fn scan_folders(
     // Fehlendes nachschlagen: unsichere Angaben, Cover, Lyrics. Obergrenze
     // wie oben, damit eine große Sammlung nicht Hunderte Abfragen auslöst.
     let offene_titel = {
-        let conn = state.db.lock();
+        let conn = state.db();
         if auto_fetch_import(&conn) {
             library::tracks_needing_lookup(&conn, 40).unwrap_or_default()
         } else {
@@ -121,7 +121,7 @@ pub struct LibraryCheck {
 /// oder eingelesen wird erst auf Bestätigung.
 #[tauri::command]
 pub fn check_library(state: State<'_, AppState>) -> CmdResult<LibraryCheck> {
-    let conn = state.db.lock();
+    let conn = state.db();
     let bekannt = library::known_paths(&conn)?;
     let fehlend = library::tracks_without_file(&conn)?;
     drop(conn);
@@ -161,7 +161,7 @@ pub fn check_library(state: State<'_, AppState>) -> CmdResult<LibraryCheck> {
 /// weiß, welche Einträge sie wiederholen soll.
 #[tauri::command]
 pub fn remove_missing_tracks(app: AppHandle, state: State<'_, AppState>) -> CmdResult<Vec<i64>> {
-    let conn = state.db.lock();
+    let conn = state.db();
     let fehlend = library::tracks_without_file(&conn)?;
     for (id, _) in &fehlend {
         library::delete_track(&conn, *id, false, None)?;
@@ -180,7 +180,7 @@ pub fn list_tracks(
     search: Option<String>,
     limit: Option<i64>,
 ) -> CmdResult<Vec<Track>> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::list_tracks(
         &conn,
         search.as_deref(),
@@ -190,25 +190,25 @@ pub fn list_tracks(
 
 #[tauri::command]
 pub fn get_track(state: State<'_, AppState>, id: i64) -> CmdResult<Track> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::get_track(&conn, id)?)
 }
 
 #[tauri::command]
 pub fn get_tracks(state: State<'_, AppState>, ids: Vec<i64>) -> CmdResult<Vec<Track>> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::get_tracks(&conn, &ids)?)
 }
 
 #[tauri::command]
 pub fn list_artists(state: State<'_, AppState>, search: Option<String>) -> CmdResult<Vec<Artist>> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::list_artists(&conn, search.as_deref())?)
 }
 
 #[tauri::command]
 pub fn get_artist(state: State<'_, AppState>, id: i64) -> CmdResult<Artist> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::get_artist(&conn, id)?)
 }
 
@@ -232,7 +232,7 @@ pub async fn apply_artist_metadata(
     };
 
     let artist = {
-        let conn = state.db.lock();
+        let conn = state.db();
         let current = library::get_artist(&conn, artist_id)?;
         // Der Name bleibt, wie er in der Bibliothek steht, nur die
         // Zusatzangaben kommen dazu.
@@ -316,7 +316,7 @@ pub async fn fetch_artist_metadata(
     artist_id: i64,
 ) -> CmdResult<Artist> {
     let (name, titel) = {
-        let conn = state.db.lock();
+        let conn = state.db();
         let name = library::get_artist(&conn, artist_id)?.name;
         let titel: Vec<String> = library::artist_tracks(&conn, artist_id)
             .unwrap_or_default()
@@ -372,7 +372,7 @@ fn enrich_tracks_in_background(app: &AppHandle, tracks: Vec<crate::models::Track
             let will_cover = !track.has_cover;
             let will_lyrics = {
                 let state = app.state::<AppState>();
-                let conn = state.db.lock();
+                let conn = state.db();
                 !track.has_lyrics && auto_fetch_lyrics(&conn)
             };
             if !unsicher && !will_cover && !will_lyrics {
@@ -426,7 +426,7 @@ fn enrich_tracks_in_background(app: &AppHandle, tracks: Vec<crate::models::Track
             let zusammengefuehrt = online::merge_match(vorlage, gefunden);
             {
                 let state = app.state::<AppState>();
-                let conn = state.db.lock();
+                let conn = state.db();
                 if apply_track_metadata(&conn, track.id, &zusammengefuehrt).is_ok() {
                     geaendert += 1;
                 }
@@ -466,7 +466,7 @@ fn fetch_artists_in_background(app: &AppHandle, artists: Vec<(i64, String, Vec<S
             // Erst nach allen Abfragen an die Datenbank, damit die Sperre
             // nicht über das Netz gehalten wird.
             let state = app.state::<AppState>();
-            let conn = state.db.lock();
+            let conn = state.db();
             let written = library::update_artist(
                 &conn,
                 artist_id,
@@ -501,7 +501,7 @@ pub fn update_artist(
     image_mime: Option<String>,
     remove_image: bool,
 ) -> CmdResult<Artist> {
-    let conn = state.db.lock();
+    let conn = state.db();
     let current = library::get_artist(&conn, artist_id)?;
     library::update_artist(
         &conn,
@@ -541,7 +541,7 @@ pub fn update_album(
     cover_mime: Option<String>,
     remove_cover: bool,
 ) -> CmdResult<Album> {
-    let conn = state.db.lock();
+    let conn = state.db();
     library::update_album(
         &conn,
         album_id,
@@ -569,50 +569,50 @@ pub fn update_album(
 
 #[tauri::command]
 pub fn artist_releases(state: State<'_, AppState>, artist_id: i64) -> CmdResult<Vec<Album>> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::artist_releases(&conn, artist_id)?)
 }
 
 #[tauri::command]
 pub fn artist_tracks(state: State<'_, AppState>, artist_id: i64) -> CmdResult<Vec<Track>> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::artist_tracks(&conn, artist_id)?)
 }
 
 /// Titel, bei denen der Künstler nur als Gast auftritt.
 #[tauri::command]
 pub fn artist_features(state: State<'_, AppState>, artist_id: i64) -> CmdResult<Vec<Track>> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::artist_features(&conn, artist_id)?)
 }
 
 #[tauri::command]
 pub fn list_albums(state: State<'_, AppState>, search: Option<String>) -> CmdResult<Vec<Album>> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::list_albums(&conn, search.as_deref())?)
 }
 
 #[tauri::command]
 pub fn get_album(state: State<'_, AppState>, id: i64) -> CmdResult<Album> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::get_album(&conn, id)?)
 }
 
 #[tauri::command]
 pub fn album_tracks(state: State<'_, AppState>, album_id: i64) -> CmdResult<Vec<Track>> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::album_tracks(&conn, album_id)?)
 }
 
 #[tauri::command]
 pub fn favorite_tracks(state: State<'_, AppState>) -> CmdResult<Vec<Track>> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::favorite_tracks(&conn)?)
 }
 
 #[tauri::command]
 pub fn set_favorite(state: State<'_, AppState>, track_id: i64, favorite: bool) -> CmdResult<()> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::set_favorite(&conn, track_id, favorite)?)
 }
 
@@ -625,7 +625,7 @@ pub fn delete_track(
 ) -> CmdResult<()> {
     let papierkorb = state.trash_dir();
     {
-        let conn = state.db.lock();
+        let conn = state.db();
         library::delete_track(&conn, track_id, delete_file, Some(&papierkorb))?;
     }
     let _ = app.emit("library:changed", ());
@@ -641,7 +641,7 @@ pub fn restore_track(
 ) -> CmdResult<()> {
     let papierkorb = state.trash_dir();
     {
-        let conn = state.db.lock();
+        let conn = state.db();
         library::restore_track(&conn, track_id, Some(&papierkorb))?;
     }
     let _ = app.emit("library:changed", ());
@@ -651,7 +651,7 @@ pub fn restore_track(
 /// Nimmt das Entfernen einer Playlist zurück.
 #[tauri::command]
 pub fn restore_playlist(state: State<'_, AppState>, id: i64) -> CmdResult<Playlist> {
-    let conn = state.db.lock();
+    let conn = state.db();
     library::restore_playlist(&conn, id)?;
     Ok(library::get_playlist(&conn, id)?)
 }
@@ -660,7 +660,7 @@ pub fn restore_playlist(state: State<'_, AppState>, id: i64) -> CmdResult<Playli
 
 #[tauri::command]
 pub fn get_track_metadata(state: State<'_, AppState>, track_id: i64) -> CmdResult<TrackMetadata> {
-    let conn = state.db.lock();
+    let conn = state.db();
     let track = library::get_track(&conn, track_id)?;
     let lyrics = library::get_lyrics(&conn, track_id)?;
     let cover = library::track_cover(&conn, track_id)?;
@@ -711,7 +711,7 @@ pub fn update_track_metadata(
     write_to_file: bool,
 ) -> CmdResult<Track> {
     let path = {
-        let conn = state.db.lock();
+        let conn = state.db();
         library::get_track(&conn, track_id)?.path
     };
 
@@ -719,7 +719,7 @@ pub fn update_track_metadata(
         tags::write(Path::new(&path), &metadata)?;
     }
 
-    let conn = state.db.lock();
+    let conn = state.db();
     let track = apply_track_metadata(&conn, track_id, &metadata)?;
     drop(conn);
 
@@ -840,7 +840,7 @@ pub async fn fetch_cover(url: String) -> CmdResult<RemoteImage> {
 
 #[tauri::command]
 pub fn get_lyrics(state: State<'_, AppState>, track_id: i64) -> CmdResult<Option<Lyrics>> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::get_lyrics(&conn, track_id)?)
 }
 
@@ -853,7 +853,7 @@ pub fn save_lyrics(
     write_to_file: bool,
 ) -> CmdResult<()> {
     let path = {
-        let conn = state.db.lock();
+        let conn = state.db();
         library::set_lyrics(
             &conn,
             track_id,
@@ -880,7 +880,7 @@ pub async fn fetch_lyrics_online(
     track_id: i64,
 ) -> CmdResult<Lyrics> {
     let (artist, title, album, duration_ms) = {
-        let conn = state.db.lock();
+        let conn = state.db();
         let track = library::get_track(&conn, track_id)?;
         (
             track.artist_name,
@@ -892,7 +892,7 @@ pub async fn fetch_lyrics_online(
 
     let found = online::get_lyrics(&artist, &title, Some(&album), Some(duration_ms)).await?;
 
-    let conn = state.db.lock();
+    let conn = state.db();
     library::set_lyrics(
         &conn,
         track_id,
@@ -913,13 +913,13 @@ pub async fn search_lyrics_online(query: String) -> CmdResult<Vec<LyricsCandidat
 
 #[tauri::command]
 pub fn list_playlists(state: State<'_, AppState>) -> CmdResult<Vec<Playlist>> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::list_playlists(&conn)?)
 }
 
 #[tauri::command]
 pub fn get_playlist(state: State<'_, AppState>, id: i64) -> CmdResult<Playlist> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::get_playlist(&conn, id)?)
 }
 
@@ -931,7 +931,7 @@ pub fn create_playlist(
     cover_base64: Option<String>,
     cover_mime: Option<String>,
 ) -> CmdResult<Playlist> {
-    let conn = state.db.lock();
+    let conn = state.db();
     let id = library::create_playlist(&conn, &name, description.as_deref())?;
     if let Some(encoded) = cover_base64.as_deref().filter(|value| !value.is_empty()) {
         let data = base64::engine::general_purpose::STANDARD.decode(encoded)?;
@@ -951,7 +951,7 @@ pub fn update_playlist(
     cover_mime: Option<String>,
     remove_cover: bool,
 ) -> CmdResult<Playlist> {
-    let conn = state.db.lock();
+    let conn = state.db();
     library::update_playlist(&conn, id, &name, description.as_deref())?;
 
     if remove_cover {
@@ -999,7 +999,7 @@ pub fn create_playlist_from_entries(
     name: String,
     entries: Vec<PlaylistEntry>,
 ) -> CmdResult<PlaylistFill> {
-    let conn = state.db.lock();
+    let conn = state.db();
     let name = name.trim().to_string();
 
     // Einmal die ganze Bibliothek als Schlüsselpaare, statt je Eintrag zu suchen.
@@ -1051,13 +1051,13 @@ pub fn create_playlist_from_entries(
 
 #[tauri::command]
 pub fn delete_playlist(state: State<'_, AppState>, id: i64) -> CmdResult<()> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::delete_playlist(&conn, id)?)
 }
 
 #[tauri::command]
 pub fn playlist_tracks(state: State<'_, AppState>, playlist_id: i64) -> CmdResult<Vec<Track>> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::playlist_tracks(&conn, playlist_id)?)
 }
 
@@ -1067,7 +1067,7 @@ pub fn playlists_containing(
     state: State<'_, AppState>,
     track_ids: Vec<i64>,
 ) -> CmdResult<Vec<(i64, i64)>> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::playlists_containing(&conn, &track_ids)?)
 }
 
@@ -1077,7 +1077,7 @@ pub fn add_to_playlist(
     playlist_id: i64,
     track_ids: Vec<i64>,
 ) -> CmdResult<()> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::add_to_playlist(&conn, playlist_id, &track_ids)?)
 }
 
@@ -1087,7 +1087,7 @@ pub fn remove_from_playlist(
     playlist_id: i64,
     track_id: i64,
 ) -> CmdResult<()> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::remove_from_playlist(&conn, playlist_id, track_id)?)
 }
 
@@ -1097,14 +1097,14 @@ pub fn reorder_playlist(
     playlist_id: i64,
     track_ids: Vec<i64>,
 ) -> CmdResult<()> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::reorder_playlist(&conn, playlist_id, &track_ids)?)
 }
 
 /// Reihenfolge der Favoriten, wie sie der Nutzer gezogen hat.
 #[tauri::command]
 pub fn reorder_favorites(state: State<'_, AppState>, track_ids: Vec<i64>) -> CmdResult<()> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::reorder_favorites(&conn, &track_ids)?)
 }
 
@@ -1115,7 +1115,7 @@ pub fn reorder_playlists(
     state: State<'_, AppState>,
     playlist_ids: Vec<i64>,
 ) -> CmdResult<()> {
-    let conn = state.db.lock();
+    let conn = state.db();
     library::reorder_playlists(&conn, &playlist_ids)?;
     drop(conn);
     // Die Seitenleiste zeigt dieselbe Ordnung und muss mitziehen.
@@ -1240,7 +1240,7 @@ pub fn set_sleep_timer(
 
 #[tauri::command]
 pub fn weekly_mix(state: State<'_, AppState>, offset: Option<i64>) -> CmdResult<WeeklyMix> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(stats::weekly_mix(&conn, offset.unwrap_or(0))?)
 }
 
@@ -1250,7 +1250,7 @@ pub fn weekly_mixes(
     state: State<'_, AppState>,
     limit: Option<usize>,
 ) -> CmdResult<Vec<stats::WeeklyMixSummary>> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(stats::weekly_mixes(&conn, limit.unwrap_or(12))?)
 }
 
@@ -1270,7 +1270,7 @@ pub fn save_weekly_mix(
     name: String,
     description: Option<String>,
 ) -> CmdResult<Playlist> {
-    let conn = state.db.lock();
+    let conn = state.db();
     let mix = stats::weekly_mix(&conn, offset.unwrap_or(0))?;
     if mix.items.is_empty() {
         return Err(Error(fehler!("Dieser Wochenmix ist noch leer.")));
@@ -1297,13 +1297,13 @@ pub fn save_weekly_mix(
 /// Zuletzt gespielte Titel, jeder nur einmal.
 #[tauri::command]
 pub fn recently_played(state: State<'_, AppState>, limit: Option<i64>) -> CmdResult<Vec<Track>> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(library::recently_played(&conn, limit.unwrap_or(20))?)
 }
 
 #[tauri::command]
 pub fn wrapped(state: State<'_, AppState>, period: String, offset: i64) -> CmdResult<Wrapped> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(stats::wrapped(&conn, &period, offset)?)
 }
 
@@ -1329,7 +1329,7 @@ pub struct DownloaderStatus {
 #[tauri::command]
 pub async fn downloader_status(state: State<'_, AppState>) -> CmdResult<DownloaderStatus> {
     let configured = {
-        let conn = state.db.lock();
+        let conn = state.db();
         db::get_setting(&conn, "ytdlp_path").ok().flatten()
     };
 
@@ -1377,7 +1377,7 @@ pub async fn downloader_status(state: State<'_, AppState>) -> CmdResult<Download
 #[tauri::command]
 pub async fn update_ytdlp(state: State<'_, AppState>) -> CmdResult<String> {
     let configured = {
-        let conn = state.db.lock();
+        let conn = state.db();
         db::get_setting(&conn, "ytdlp_path").ok().flatten()
     };
     let ytdlp = downloader::ensure_ytdlp(configured.as_deref(), &state.tools_dir()).await?;
@@ -1428,7 +1428,7 @@ pub async fn resolve_input(
     }
 
     let configured = {
-        let conn = state.db.lock();
+        let conn = state.db();
         db::get_setting(&conn, "ytdlp_path").ok().flatten()
     };
     let ytdlp = downloader::ensure_ytdlp(configured.as_deref(), &state.tools_dir()).await?;
@@ -1541,7 +1541,7 @@ async fn resolve_spotify(
     // Einmal alle vorhandenen Titel als Schlüsselpaare holen, statt für jeden
     // Eintrag der Playlist erneut in die Datenbank zu fassen.
     let bereits: std::collections::HashSet<(String, String)> = {
-        let conn = state.db.lock();
+        let conn = state.db();
         library::list_tracks(&conn, None, 100_000)
             .unwrap_or_default()
             .into_iter()
@@ -1699,7 +1699,7 @@ pub async fn start_download(
     options: DownloadOptions,
 ) -> CmdResult<DownloadOutcome> {
     let (configured, work_dir, registry, auto_cover, auto_lyrics) = {
-        let conn = state.db.lock();
+        let conn = state.db();
         let flag = |key: &str| db::get_setting(&conn, key).ok().flatten().as_deref() != Some("0");
         (
             db::get_setting(&conn, "ytdlp_path").ok().flatten(),
@@ -1851,7 +1851,7 @@ pub fn import_download(
         let _ = std::fs::remove_dir_all(job_dir);
     }
 
-    let conn = state.db.lock();
+    let conn = state.db();
     let track_id = scanner::import_file(&conn, &final_path, Some("download"))?;
 
     if let Some(url) = source_url {
@@ -1984,7 +1984,7 @@ pub fn get_settings(state: State<'_, AppState>) -> CmdResult<Settings> {
     // Vor dem Sperren: `library_dir()` greift selbst auf die Datenbank zu,
     // und dieselbe Sperre zweimal zu nehmen legt den Aufruf still.
     let library_dir = state.library_dir().to_string_lossy().into_owned();
-    let conn = state.db.lock();
+    let conn = state.db();
     let get = |key: &str, fallback: &str| {
         db::get_setting(&conn, key)
             .ok()
@@ -2027,7 +2027,7 @@ pub fn get_settings(state: State<'_, AppState>) -> CmdResult<Settings> {
 
 #[tauri::command]
 pub fn set_setting(state: State<'_, AppState>, key: String, value: String) -> CmdResult<()> {
-    let conn = state.db.lock();
+    let conn = state.db();
     Ok(db::set_setting(&conn, &key, &value)?)
 }
 
@@ -2063,7 +2063,7 @@ pub fn backup_database(state: State<'_, AppState>) -> CmdResult<String> {
     let ziel = dir.join(format!("robify-{stempel}.db"));
 
     {
-        let conn = state.db.lock();
+        let conn = state.db();
         // Der Pfad wird als Zeichenkette eingesetzt, weil VACUUM keine
         // Platzhalter erlaubt. Hochkommas verdoppeln, wie in SQL üblich.
         let pfad = ziel.to_string_lossy().replace('\'', "''");
@@ -2114,7 +2114,7 @@ pub fn reset_app(
     let _ = state.player.send(crate::player::Cmd::Stop);
 
     let papierkorb = state.trash_dir();
-    let conn = state.db.lock();
+    let conn = state.db();
 
     if delete_files {
         let pfade: Vec<String> = {

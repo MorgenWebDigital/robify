@@ -202,7 +202,7 @@ fn beschreibbar(ordner: &Path) -> bool {
 fn eigene_songs_einlesen(app: &tauri::AppHandle, ordner: &Path) -> usize {
     let state = app.state::<AppState>();
     let bekannt = {
-        let conn = state.db.lock();
+        let conn = state.db();
         library::known_paths(&conn).unwrap_or_default()
     };
 
@@ -215,7 +215,7 @@ fn eigene_songs_einlesen(app: &tauri::AppHandle, ordner: &Path) -> usize {
     for pfad in neue {
         // Die Sperre je Datei nehmen und wieder abgeben: Der Player und die
         // Oberfläche greifen währenddessen weiter auf dieselbe Datenbank zu.
-        let conn = state.db.lock();
+        let conn = state.db();
         match scanner::import_file(&conn, &pfad, Some("lokal")) {
             Ok(_) => gelesen += 1,
             Err(fehler) => eprintln!("{} nicht eingelesen: {fehler}", pfad.display()),
@@ -248,7 +248,7 @@ fn serve_cover(app: &tauri::AppHandle, path: &str) -> Response<Vec<u8>> {
     };
 
     let cover = {
-        let conn = state.db.lock();
+        let conn = state.db();
         match segments[1] {
             "album" => library::album_cover(&conn, id).ok().flatten(),
             "track" => library::track_cover(&conn, id).ok().flatten(),

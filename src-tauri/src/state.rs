@@ -24,6 +24,31 @@ pub struct AppState {
 }
 
 impl AppState {
+    /// Die Datenbank, mit einer Spur für den Fall, dass sie klemmt.
+    ///
+    /// `parking_lot::Mutex` wartet ohne Ende und ohne ein Wort. Stirbt ein
+    /// Befehl, während er die Sperre hält — in einer Testfassung reicht dafür
+    /// ein Überlauf beim Rechnen —, bleibt sie für immer zu: Jeder weitere
+    /// Aufruf hängt, die Oberfläche wartet auf Antworten, die nie kommen,
+    /// und nichts davon steht irgendwo. Genau dieses Bild trat einmal auf und
+    /// ließ sich hinterher nicht nachstellen.
+    ///
+    /// Behoben ist es damit nicht, aber sichtbar: Nach zehn Sekunden steht im
+    /// Systemprotokoll, dass die Datenbank blockiert, und beim nächsten Mal
+    /// gibt es etwas zu lesen statt nur eine stehende App.
+    pub fn db(&self) -> parking_lot::MutexGuard<'_, Connection> {
+        match self.db.try_lock_for(std::time::Duration::from_secs(10)) {
+            Some(griff) => griff,
+            None => {
+                eprintln!(
+                    "Die Datenbank ist seit zehn Sekunden gesperrt. \
+                     Ein Befehl hält sie fest oder ist unter ihr gestorben."
+                );
+                self.db.lock()
+            }
+        }
+    }
+
     /// Ablage für selbst beschaffte Hilfsprogramme (yt-dlp).
     pub fn tools_dir(&self) -> PathBuf {
         self.db_path
@@ -55,7 +80,7 @@ impl AppState {
         }
 
         let configured = {
-            let conn = self.db.lock();
+            let conn = self.db();
             crate::db::get_setting(&conn, "library_dir").ok().flatten()
         };
         match configured.filter(|p| !p.trim().is_empty()) {

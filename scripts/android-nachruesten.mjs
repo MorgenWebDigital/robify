@@ -549,6 +549,37 @@ function dateizugriffErbitten() {
  * gleichzeitige Arbeiter statt so vieler, wie der Rechner Kerne hat, kosten
  * ein paar Sekunden und sparen ein Vielfaches davon an Speicher.
  */
+/**
+ * Lässt das Fenster schrumpfen, wenn die Tastatur ausfährt.
+ *
+ * Ohne Angabe entscheidet Android selbst, und es entschied sich fürs
+ * Schieben: Die ganze Seite rutschte nach oben, die Titelzeile verschwand
+ * unter der Statusleiste. `adjustResize` verkleinert stattdessen das Fenster.
+ *
+ * Die Angabe in der `index.html` (`interactive-widget=resizes-content`) sagt
+ * dasselbe noch einmal an die WebView; beide zusammen decken alte wie neue
+ * Android-Fassungen ab.
+ */
+function tastaturVerhaltenSetzen() {
+  const manifest = readFileSync(MANIFEST, "utf8");
+  if (manifest.includes("windowSoftInputMode")) {
+    console.log("Tastatur: Verhalten schon gesetzt");
+    return;
+  }
+
+  writeFileSync(
+    MANIFEST,
+    manifest.replace(
+      '            android:launchMode="singleTask"',
+      [
+        '            android:launchMode="singleTask"',
+        '            android:windowSoftInputMode="adjustResize"',
+      ].join("\n"),
+    ),
+  );
+  console.log("Tastatur: Fenster schrumpft statt zu schieben");
+}
+
 function speicherZuegeln() {
   const alt = readFileSync(GRADLE_EIGENSCHAFTEN, "utf8");
   if (alt.includes("workers.max")) {
@@ -667,4 +698,5 @@ systemplayerEinbinden();
 benachrichtigungenErbitten();
 dateizugriffErbitten();
 speicherZuegeln();
+tastaturVerhaltenSetzen();
 startsymbolEinlegen();

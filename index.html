@@ -2,7 +2,17 @@
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!--
+      `interactive-widget=resizes-content`: Fährt die Tastatur aus, schrumpft
+      damit der Bereich, in dem die Seite rechnet. Ohne die Angabe bleibt er,
+      wie er war, und der Browser schiebt stattdessen die ganze Seite nach
+      oben — die Titelzeile verschwand dabei unter der Statusleiste des
+      Systems, und die Leiste unten lag hinter der Tastatur.
+    -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
     <title>Robify</title>
   </head>
   <body>
