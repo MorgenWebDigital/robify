@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Robify: Musikplayer, Bibliothek, Statistiken und Downloader",
   "author": "MorgenWebDigital - Rettungsreifen <info@morgenwebdigital.de>",
-  "license": "MIT",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/MorgenWebDigital/robify.git"

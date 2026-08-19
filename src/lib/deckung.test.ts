@@ -37,6 +37,7 @@ const FERTIG = [
   "components/LyricsPanel.tsx",
   "components/LyricsSync.tsx",
   "components/MetadataEditor.tsx",
+  "components/Mitmachen.tsx",
   "components/Modal.tsx",
   "components/NowPlaying.tsx",
   "components/PlayerBar.tsx",
@@ -93,7 +94,9 @@ function benutzteTexte(datei: string): string[] {
   // Der Rückblick verhindert Treffer wie `split(",")`, auch die enden auf `t(`.
   return [
     ...inhalt.matchAll(/(?<![A-Za-z0-9_$])t\(\s*"((?:[^"\\]|\\.)*)"/g),
-  ].map((m) => m[1]);
+    // Gelesen wird der Quelltext, nicht der Wert: Ein Zeilenumbruch steht dort
+    // als zwei Zeichen. Nachgeschlagen wird aber der Text, wie ihn `t` sieht.
+  ].map((m) => m[1].replace(/\\"/g, '"').replace(/\\n/g, "\n"));
 }
 
 describe("Übersetzungsdeckung", () => {

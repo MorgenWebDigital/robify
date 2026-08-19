@@ -501,7 +501,21 @@ an die Oberfläche ausgeliefert, statt sie als Base64 durch die IPC-Brücke zu s
 
 ## Lizenz
 
-Robify selbst steht unter MIT, siehe [LICENSE](LICENSE).
+Robify steht unter der **PolyForm Noncommercial 1.0.0**, siehe
+[LICENSE](LICENSE). In einem Satz: Benutzen, verändern und weitergeben ist
+jedem erlaubt, solange der Zweck nicht kommerziell ist — privat, in
+Forschung und Lehre, bei gemeinnützigen Trägern und Behörden. Verkaufen darf
+Robify niemand, und betrieblich einsetzen ebenfalls nicht.
+
+Wer es doch will, wendet sich an MorgenWebDigital. Die kommerziellen Rechte
+liegen vollständig dort; eine gesonderte Lizenz oder ein Verkauf ist jederzeit
+möglich, ohne dass jemand anderes gefragt werden müsste.
+
+Damit ist Robify quelloffen, aber nicht „Open Source“ im Sinne der OSI: Deren
+Definition verlangt, dass auch kommerzielle Nutzung erlaubt ist. Praktisch
+heißt das, dass F-Droid die App nicht aufnimmt und einige Distributionen sie
+nicht in ihre Paketquellen übernehmen. Eigene Veröffentlichungen, das
+Arch-Paket und die APK sind davon nicht berührt.
 
 ### Fremdbibliotheken
 
@@ -509,6 +523,11 @@ Robify wird mit rund 400 Fremdpaketen ausgeliefert (Rust und npm, ohne
 Bauwerkzeuge). Ganz überwiegend MIT und Apache-2.0; dazu MPL-2.0 für Symphonia
 und einige kleinere. **Kein GPL, AGPL, LGPL oder SSPL im Baum**, nichts zwingt
 also zur Offenlegung eigenen Quelltextes.
+
+Alle drei erlauben ausdrücklich, dass das Ganze unter anderen Bedingungen
+weitergegeben wird; die Lizenz von Robify darf also strenger sein als ihre.
+MPL-2.0 wirkt nur auf die Dateien von Symphonia selbst: Werden die geändert,
+bleiben genau diese Dateien unter MPL und ihr Quelltext muss offen bleiben.
 
 MIT und Apache-2.0 verlangen beide, dass Urheberrechtsvermerk und Lizenztext
 mitgeliefert werden. Das übernimmt `scripts/lizenzen.mjs`: Es sammelt die

@@ -7,6 +7,7 @@ import { AkzentWahl } from "../components/AkzentWahl";
 import { Auswahl } from "../components/Auswahl";
 import { t } from "../lib/i18n";
 import { SPRACHEN } from "../lib/sprachen";
+import { Mitmachen } from "../components/Mitmachen";
 import { RechtlichesFuss } from "../components/Rechtliches";
 import { api, errorMessage, fallback } from "../lib/api";
 import { formatDuration, plural } from "../lib/format";
@@ -457,6 +458,13 @@ export function SettingsPage() {
             />
           </Section>
         )}
+
+        {/* Nach den Werkzeugen, vor dem Zurücksetzen: Wer bis hierher
+            gelesen hat, hat die App eingerichtet und weiß, was ihm
+            fehlt. */}
+        <Section title={t("Mitmachen")}>
+          <Mitmachen ytdlp={werkzeuge?.ytdlpVersion} />
+        </Section>
 
         <Section title={t("Zurücksetzen")}>
           <div className="flex flex-wrap items-center gap-3">

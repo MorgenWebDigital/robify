@@ -14,7 +14,7 @@ pkgrel=1
 pkgdesc="Musikplayer mit Bibliothek, Statistiken und Downloader"
 arch=('x86_64' 'aarch64')
 url="https://github.com/MorgenWebDigital/robify"
-license=('MIT')
+license=('LicenseRef-PolyForm-Noncommercial-1.0.0')
 depends=('webkit2gtk-4.1' 'gtk3' 'alsa-lib' 'openssl')
 optdepends=(
   'yt-dlp: Titel über den Downloader laden'

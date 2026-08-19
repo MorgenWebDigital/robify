@@ -51,7 +51,9 @@ export function RechtlichesFuss() {
       <p className="text-xs text-mute">
         <span className="font-medium text-fg/70">Robify {version}</span>
         <Punkt />
-        {t("MIT-Lizenz")}
+        {/* Der Name der Lizenz, nicht übersetzt: Er ist einer, wie „Robify“
+            auch. Was sie bedeutet, steht in der LICENSE und im README. */}
+        PolyForm Noncommercial
         <Punkt />
         <button
           type="button"

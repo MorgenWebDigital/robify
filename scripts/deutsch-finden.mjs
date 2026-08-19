@@ -42,6 +42,8 @@ const EIGENNAMEN = new Set([
   "yt-dlp",
   "ffmpeg",
   "LRC",
+  // Der Name einer Lizenz, wie „MIT“ einer wäre.
+  "PolyForm Noncommercial",
   // In der Musik steht „feat.“ auch auf russischen und chinesischen Seiten so.
   "feat.",
 ]);
