@@ -11,8 +11,17 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   LyricsIcon,
+  NextIcon,
+  PauseIcon,
+  PlayIcon,
+  PlusIcon,
+  PrevIcon,
   QueueIcon,
+  RepeatIcon,
+  RepeatOneIcon,
+  ShuffleIcon,
 } from "./Icons";
+import type { Track } from "../types";
 import { LyricsPanel } from "./LyricsPanel";
 import { useAusblenden } from "../lib/ausblenden";
 
@@ -24,7 +33,16 @@ export function NowPlaying() {
   const currentTrack = usePlayer((s) => s.currentTrack);
   const positionMs = usePlayer((s) => s.positionMs);
   const durationMs = usePlayer((s) => s.durationMs);
-  const { nowPlayingOpen, setNowPlayingOpen, setQueueOpen } = useUi();
+  const playing = usePlayer((s) => s.playing);
+  const shuffle = usePlayer((s) => s.shuffle);
+  const repeat = usePlayer((s) => s.repeat);
+  const toggle = usePlayer((s) => s.toggle);
+  const next = usePlayer((s) => s.next);
+  const previous = usePlayer((s) => s.previous);
+  const toggleShuffle = usePlayer((s) => s.toggleShuffle);
+  const cycleRepeat = usePlayer((s) => s.cycleRepeat);
+  const { nowPlayingOpen, setNowPlayingOpen, setQueueOpen, openAddToPlaylist } =
+    useUi();
   const { sichtbar, schliesst } = useAusblenden(nowPlayingOpen, ZU_MS);
   /* Nur am Telefon: Dort steht der Text nicht daneben, sondern hinter einer
      Kachel. Am Rechner ist er ohnehin die ganze Zeit zu sehen. */
@@ -37,7 +55,8 @@ export function NowPlaying() {
    * Die ersten Zeilen für die Kachel.
    *
    * Ohne sie stünde dort nur „Songtext“, und man müsste tippen, um zu sehen,
-   * ob überhaupt einer hinterlegt ist. Zwei Zeilen sagen das auf einen Blick.
+   * ob überhaupt einer hinterlegt ist. Vier Zeilen sagen das auf einen Blick
+   * und geben der Kachel genug Höhe, um neben dem Cover zu bestehen.
    * Der volle Text wird davon nicht doppelt geladen: Die Vollbildansicht holt
    * ihn selbst, und der Befehl liest aus der Datenbank, nicht aus dem Netz.
    */
@@ -60,7 +79,7 @@ export function NowPlaying() {
             .split("\n")
             .map((zeile) => zeile.trim())
             .filter(Boolean)
-            .slice(0, 2),
+            .slice(0, 4),
         );
       });
     return () => {
@@ -70,6 +89,32 @@ export function NowPlaying() {
 
   // Beim Titelwechsel schließt sich der Vollbildtext: Er gehörte zum vorigen.
   useEffect(() => setTextOffen(false), [trackId]);
+
+  const artistId = currentTrack?.artistId ?? null;
+  const [weitere, setWeitere] = useState<Track[]>([]);
+
+  /*
+   * Mehr vom selben Künstler, unter der Künstlerkachel.
+   *
+   * Der laufende Titel fällt heraus — er steht ja oben — und mehr als eine
+   * Handvoll wäre keine Anregung mehr, sondern eine zweite Bibliothek.
+   */
+  useEffect(() => {
+    if (!artistId) {
+      setWeitere([]);
+      return;
+    }
+    let gilt = true;
+    void api
+      .artistTracks(artistId)
+      .catch(fallback([] as Track[], t("Künstler")))
+      .then((titel) => {
+        if (gilt) setWeitere(titel.filter((s) => s.id !== trackId).slice(0, 4));
+      });
+    return () => {
+      gilt = false;
+    };
+  }, [artistId, trackId]);
 
   if (!sichtbar) return null;
 
@@ -166,6 +211,83 @@ export function NowPlaying() {
                     <span>{formatTime(durationMs)}</span>
                   </div>
                 </div>
+
+                {/* Zur Playlist: klein und links, unter der Zeitleiste.
+                    Bewusst neben und nicht in der Knopfreihe darunter — die
+                    trägt das Abspielen, und ein Ablegen gehört nicht in
+                    dieselbe Reihe wie Pause und Weiter. */}
+                <div className="mt-4 flex items-center lg:hidden">
+                  <button
+                    type="button"
+                    onClick={() => openAddToPlaylist([currentTrack.id])}
+                    aria-label={t("Zu Playlist hinzufügen")}
+                    title={t("Zu Playlist hinzufügen")}
+                    className="pill-btn is-raised h-8 w-8"
+                  >
+                    <PlusIcon size={16} />
+                  </button>
+                </div>
+
+                {/* Die Steuerung, nur am Telefon: Am Rechner steht sie unten
+                    in der Leiste, die dort immer sichtbar ist. */}
+                <div className="mt-3 flex items-center justify-center gap-2 lg:hidden">
+                  <button
+                    type="button"
+                    onClick={() => void toggleShuffle()}
+                    aria-label={t("Zufallswiedergabe")}
+                    aria-pressed={shuffle}
+                    className={`pill-btn is-raised h-9 w-9 ${shuffle ? "is-on" : ""}`}
+                  >
+                    <ShuffleIcon size={18} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void previous()}
+                    aria-label={t("Vorheriger Titel")}
+                    className="pill-btn is-raised h-10 w-10"
+                  >
+                    <PrevIcon size={20} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void toggle()}
+                    aria-label={playing ? t("Pause") : t("Abspielen")}
+                    className="pill-btn is-raised is-accent h-14 w-14"
+                  >
+                    {playing ? (
+                      <PauseIcon size={22} />
+                    ) : (
+                      <PlayIcon size={22} className="ml-0.5" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void next()}
+                    aria-label={t("Nächster Titel")}
+                    className="pill-btn is-raised h-10 w-10"
+                  >
+                    <NextIcon size={20} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void cycleRepeat()}
+                    aria-label={
+                      repeat === "off"
+                        ? t("Wiederholen aus")
+                        : repeat === "all"
+                          ? t("Alle wiederholen")
+                          : t("Titel wiederholen")
+                    }
+                    aria-pressed={repeat !== "off"}
+                    className={`pill-btn is-raised h-9 w-9 ${repeat !== "off" ? "is-on" : ""}`}
+                  >
+                    {repeat === "one" ? (
+                      <RepeatOneIcon size={18} />
+                    ) : (
+                      <RepeatIcon size={18} />
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Zwei Kacheln, nur am Telefon: Dort ist neben dem Cover kein
@@ -188,26 +310,72 @@ export function NowPlaying() {
                   </span>
                 </button>
 
-                <Link
-                  to={`/artist/${currentTrack.artistId}`}
-                  onClick={() => setNowPlayingOpen(false)}
-                  className="surface flex w-full items-center gap-3 p-3"
-                >
-                  <Cover
-                    src={artistImage(currentTrack.artistId)}
-                    alt={currentTrack.artistName}
-                    seed={currentTrack.artistName}
-                    className="h-11 w-11 shrink-0"
-                    rounded="rounded-full"
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block eyebrow">{t("Künstler")}</span>
-                    <span className="block truncate text-sm font-medium">
-                      {currentTrack.artistName}
+                {/* Der Künstler zuletzt, als eigener Abschnitt: Bild und
+                    Name führen zu ihm, darunter steht, was es sonst noch von
+                    ihm gibt. Ein bloßer Verweis ließ die Frage „und was
+                    noch?“ offen, obwohl die Antwort schon in der Bibliothek
+                    liegt. */}
+                <div className="surface w-full overflow-hidden">
+                  <Link
+                    to={`/artist/${currentTrack.artistId}`}
+                    onClick={() => setNowPlayingOpen(false)}
+                    className="flex w-full items-center gap-3 p-3"
+                  >
+                    <Cover
+                      src={artistImage(currentTrack.artistId)}
+                      alt={currentTrack.artistName}
+                      seed={currentTrack.artistName}
+                      className="h-12 w-12 shrink-0"
+                      rounded="rounded-full"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block eyebrow">{t("Künstler")}</span>
+                      <span className="block truncate text-sm font-medium">
+                        {currentTrack.artistName}
+                      </span>
                     </span>
-                  </span>
-                  <ChevronRightIcon size={18} className="shrink-0 text-mute" />
-                </Link>
+                    <ChevronRightIcon
+                      size={18}
+                      className="shrink-0 text-mute"
+                    />
+                  </Link>
+
+                  {weitere.length > 0 && (
+                    <div className="border-t border-ink-700 px-3 pt-2 pb-3">
+                      {/* Mit dem Namen statt „mehr von ihm“: Nicht jeder
+                          Künstler ist ein Er, und der Name sagt ohnehin mehr
+                          als ein Fürwort. */}
+                      <p className="mb-1 truncate eyebrow">
+                        {t("Mehr von {0}", currentTrack.artistName)}
+                      </p>
+                      <ul>
+                        {weitere.map((titel) => (
+                          <li key={titel.id}>
+                            <button
+                              type="button"
+                              onClick={() => void api.playTracks([titel.id], 0)}
+                              className="flex w-full items-center gap-3 rounded-lg py-1.5 text-start"
+                            >
+                              <Cover
+                                src={albumCover(titel.albumId)}
+                                alt={titel.albumTitle}
+                                seed={titel.albumId}
+                                className="h-9 w-9 shrink-0"
+                                rounded="rounded-md"
+                              />
+                              <span className="min-w-0 flex-1 truncate text-sm">
+                                {titel.title}
+                              </span>
+                              <span className="shrink-0 text-xs tabular-nums text-mute">
+                                {formatTime(titel.durationMs)}
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

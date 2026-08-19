@@ -515,6 +515,14 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "إغلاق كلمات الأغنية",
     zh: "关闭歌词",
   },
+  "Mehr von {0}": {
+    en: "More from {0}",
+    es: "Más de {0}",
+    fr: "Plus de {0}",
+    ru: "Ещё от {0}",
+    ar: "المزيد من {0}",
+    zh: "更多来自 {0}",
+  },
   "Sicherung anlegen": {
     en: "Create backup",
     fr: "Créer une sauvegarde",
