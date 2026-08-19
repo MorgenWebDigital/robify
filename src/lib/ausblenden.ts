@@ -1,15 +1,15 @@
 import { useEffect, useState } from "react";
 
 /**
- * Hält ein Element nach dem Schließen kurz stehen, damit es ausblenden kann.
+ * keeps an element standing briefly after closing so it can fade out.
  *
- * React hängt ein Bauteil in dem Augenblick aus, in dem seine Bedingung
- * umspringt, für eine Abgangsbewegung bleibt dann keine Zeit. Dieser Haken
- * schiebt das Aushängen um die Dauer der Bewegung hinaus und meldet
- * währenddessen `schliesst`, damit die Hülle die passende Klasse tragen kann.
+ * react unmounts a component the moment its condition flips, which leaves no
+ * time for an exit animation. this hook pushes the unmount out by the
+ * duration of the animation and reports `schliesst` meanwhile, so the wrapper
+ * can carry the matching class.
  *
- * `dauer` muss zur Bewegung im Stylesheet passen; läuft sie länger, wird das
- * Element mitten in der Bewegung entfernt.
+ * `dauer` has to match the animation in the stylesheet. runs it longer, the
+ * element is removed mid-animation.
  */
 export function useAusblenden(offen: boolean, dauer: number) {
   const [sichtbar, setSichtbar] = useState(offen);

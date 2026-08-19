@@ -11,7 +11,7 @@ describe("parseLrc", () => {
   });
 
   it("gibt eine Zeile mit mehreren Marken mehrfach aus", () => {
-    // Refrains stehen in LRC oft nur einmal, mit allen Zeitpunkten davor.
+    // in lrc a chorus often stands once, with all of its times in front
     const lines = parseLrc("[00:10.00][01:10.00][02:10.00] Refrain");
     expect(lines.map((l) => l.timeMs)).toEqual([10_000, 70_000, 130_000]);
     expect(new Set(lines.map((l) => l.text))).toEqual(new Set(["Refrain"]));
@@ -28,8 +28,8 @@ describe("parseLrc", () => {
   });
 
   it("hält leere Zeilen als Pause fest", () => {
-    // Der Zwischenraum gehört dazu: Ohne ihn bliebe die letzte Zeile stehen,
-    // während längst nichts mehr gesungen wird.
+    // the gap belongs to it: without one the last line would stay standing
+    // long after nothing is being sung any more
     expect(parseLrc("[00:05.00]")).toEqual([{ timeMs: 5000, text: "" }]);
   });
 
@@ -79,7 +79,7 @@ describe("formatLrc", () => {
   });
 
   it("macht aus negativer Zeit keine kaputte Marke", () => {
-    // Beim eigenen Timen kann der Versatz eine Zeile vor den Anfang schieben.
+    // timing by hand, the offset can push a line before the start
     expect(formatLrc([{ timeMs: -400, text: "zu früh" }])).toBe(
       "[00:00.00] zu früh",
     );

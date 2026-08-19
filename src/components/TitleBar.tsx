@@ -1,12 +1,14 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { t } from "../lib/i18n";
 
-// Schlanke, eigene Titelleiste, wie im Comunicate-Projekt. Das native
-// GNOME/GTK-Fensterband ist ausgeschaltet (`decorations: false` in
-// tauri.conf.json), weil es dick und hell ist und nicht zum MorgenWeb-Design
-// passt. Diese Leiste ist bewusst flach (30 px), im App-Design gehalten und
-// zugleich Ziehfläche (`data-tauri-drag-region`) zum Verschieben. Die drei
-// Knöpfe rechts ersetzen die weggefallenen Fenster-Steuerungen.
+// a slim title bar of our own.
+//
+// the native gnome/gtk window band is switched off (`decorations: false` in
+// tauri.conf.json) because it is thick and light and does not match the
+// morgenweb design. this bar is deliberately flat (30 px), kept in the design
+// of the app and at the same time the drag area
+// (`data-tauri-drag-region`) for moving the window. the three buttons on the
+// right replace the window controls that fell away
 export function TitleBar() {
   const win = getCurrentWindow();
 

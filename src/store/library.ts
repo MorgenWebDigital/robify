@@ -6,14 +6,14 @@ import { akzentSchrift } from "../lib/farbe";
 import type { LibraryStats, Playlist, ScanProgress, Settings } from "../types";
 
 interface LibraryStore {
-  /** Wird bei jeder Änderung erhöht; Seiten laden daraufhin neu. */
+  /** raised on every change, and pages reload on it. */
   revision: number;
   /**
-   * Ob der erste Abruf durch ist.
+   * whether the first fetch is through.
    *
-   * Ohne diese Unterscheidung sähe eine leere Liste vor dem Laden genauso aus
-   * wie eine wirklich leere Sammlung, und die Seite meldete „nichts
-   * vorhanden“, bevor sie überhaupt nachgesehen hat.
+   * without this distinction an empty list before loading would look exactly
+   * like a truly empty collection, and the page would report nothing there
+   * before having looked at all.
    */
   geladen: boolean;
   stats: LibraryStats | null;
@@ -31,10 +31,11 @@ interface LibraryStore {
 }
 
 /**
- * Was sich speichern lässt.
+ * what can be stored.
  *
- * `festeOrte` gehört nicht dazu: Der Wert sagt, ob die Speicherorte des
- * Systems feststehen, und wird vom Rust-Teil beantwortet, nicht eingestellt.
+ * `festeOrte` does not belong to it: the value says whether the storage
+ * locations of the system are fixed, and it is answered by the rust side, not
+ * set.
  */
 export type SpeicherbareEinstellung = Exclude<keyof Settings, "festeOrte">;
 
@@ -60,41 +61,38 @@ const SETTING_KEYS: Record<SpeicherbareEinstellung, string> = {
   language: "language",
 };
 
-/**
- * Wo Akzent und Erscheinungsbild für den nächsten Start liegen.
- *
- * Die Einstellungen selbst stehen in der Datenbank, und die zu öffnen dauert
- * über die Prozessgrenze hinweg einen Moment. Bis dahin galt die Vorgabe aus
- * dem Stylesheet, ein Grau, und der geöffnete Navigationspunkt stand beim
- * Start grau statt in der gewählten Farbe da. Der Browserspeicher antwortet
- * ohne Warten und überbrückt genau diese Lücke.
- */
+// where accent and appearance lie for the next start.
+//
+// the settings themselves stand in the database, and opening that takes a
+// moment across the process boundary. until then the default from the
+// stylesheet applied, a grey, and the open navigation entry stood grey at
+// startup instead of in the chosen colour. local storage answers without a
+// wait and bridges exactly that gap
 const GEMERKT = { akzent: "robify:accent", erscheinung: "robify:theme" };
 
 function merken(schluessel: string, wert: string): void {
   try {
     localStorage.setItem(schluessel, wert);
   } catch {
-    // Ohne Browserspeicher bleibt es beim kurzen Grau. Kein Grund zu scheitern.
+    // without local storage the brief grey stays. no reason to fail
   }
 }
 
 export function applyAccent(accent: string): void {
   const wurzel = document.documentElement;
   wurzel.style.setProperty("--accent", accent);
-  // Die Schrift auf dem Akzent muss mit: Die Vorgaben reichen von hellem Grau
-  // bis Indigo, ein fester Ton wäre auf der einen Hälfte unlesbar.
+  // the type on the accent has to travel along: the presets range from light
+  // grey to indigo, and a fixed tone would be unreadable on one half
   wurzel.style.setProperty("--accent-ink", akzentSchrift(accent));
   merken(GEMERKT.akzent, accent);
 }
 
 /**
- * Stellt das zuletzt Gesehene her, noch bevor gezeichnet wird.
+ * restores what was last seen, before anything is painted.
  *
- * Wird in `main.tsx` vor dem Aufbau gerufen. Was hier steht, ist eine
- * Vermutung, kein Befund: Kommen die echten Einstellungen an, überschreiben
- * sie es. Bei der ersten Sitzung überhaupt ist nichts gemerkt, dann bleibt es
- * beim bisherigen Verhalten.
+ * called in `main.tsx` before the build-up. what stands here is a guess, not
+ * a finding: once the real settings arrive they overwrite it. in the very
+ * first session nothing is remembered, and the previous behaviour stays.
  */
 export function erscheinungWiederherstellen(): void {
   try {
@@ -103,13 +101,13 @@ export function erscheinungWiederherstellen(): void {
     const erscheinung = localStorage.getItem(GEMERKT.erscheinung);
     if (erscheinung) applyTheme(erscheinung);
   } catch {
-    // Siehe `merken`.
+    // see `merken`
   }
 }
 
 /**
- * Hell/Dunkel festlegen. Bei „System“ wird kein Merkmal gesetzt, dann
- * entscheidet der Schreibtisch über `prefers-color-scheme`.
+ * sets light or dark. with "system" no attribute is set and the desktop
+ * decides through `prefers-color-scheme`.
  */
 export function applyTheme(theme: string): void {
   if (theme === "light" || theme === "dark") {

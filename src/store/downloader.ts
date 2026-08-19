@@ -13,17 +13,18 @@ export interface Job {
   progress: DownloadProgress | null;
   outcome: DownloadOutcome | null;
   error: string | null;
-  /** Stapel-Downloads landen ohne Rückfrage in der Bibliothek. */
+  /** batch downloads land in the library without asking. */
   autoImport: boolean;
 }
 
 /**
- * Der Zustand des Downloaders lebt außerhalb der Seite.
+ * the state of the downloader lives outside the page.
  *
- * Sonst verschwindet beim Wechsel auf einen anderen Tab alles: React baut die
- * Seite ab, und mit ihr die Trefferliste und die laufenden Downloads. Die
- * Downloads selbst laufen im Rust-Teil weiter, nur ihre Anzeige wäre weg.
- * Auch die Fortschrittsmeldungen hört dieser Speicher, nicht die Seite.
+ * otherwise everything disappears on switching to another tab: react tears
+ * the page down and with it the result list and the running downloads. the
+ * downloads themselves keep running on the rust side, only their display
+ * would be gone. this store listens for the progress events as well, not the
+ * page.
  */
 interface DownloaderStore {
   input: string;
@@ -41,7 +42,7 @@ interface DownloaderStore {
   removeJob: (id: string) => void;
   clearJobs: () => void;
 
-  /** Einmal beim Start der App aufrufen. */
+  /** to be called once at the start of the app. */
   init: () => Promise<() => void>;
 }
 

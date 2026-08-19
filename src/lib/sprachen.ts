@@ -1,34 +1,31 @@
-/**
- * Die wählbaren Sprachen.
- *
- * Jede steht in ihrer eigenen Schreibweise da, wer die Oberfläche auf
- * Japanisch stellen will, sucht „日本語“ und nicht „Japanisch“. Aus demselben
- * Grund ist die Suche unten in `Auswahl` mehrgleisig: Sie greift auf den
- * Eigennamen, den deutschen Namen und das Kürzel.
- *
- * Die Flagge ist ein Emoji aus zwei Regionalzeichen. Das spart 30 Bilddateien
- * und folgt der Systemschrift; unter Linux zeichnet Noto Color Emoji sie
- * farbig. Ein Land ist dabei immer eine Vereinfachung, Arabisch wird nicht
- * nur in Saudi-Arabien gesprochen, aber als Wiedererkennungshilfe in einer
- * langen Liste schlägt es jedes Kürzel.
- */
+// the selectable languages.
+//
+// each one stands in its own spelling: whoever wants the ui in japanese looks
+// for 日本語 and not for "Japanisch". for the same reason the search in
+// `Auswahl` runs on several tracks, it takes the endonym, the german name and
+// the code.
+//
+// the flag is an emoji made of two regional indicators. that saves 30 image
+// files and follows the system font, and under linux noto color emoji draws
+// them in colour. a country is always a simplification, arabic is not spoken
+// in saudi arabia alone, but as a recognition aid in a long list it beats any
+// code
 export interface SprachEintrag {
-  /** ISO-639-1, dasselbe Kürzel wie in den Übersetzungstabellen. */
+  /** iso 639-1, the same code as in the translation tables. */
   id: string;
-  /** Eigenname, so wie ihn Sprecher dieser Sprache schreiben. */
+  /** endonym, the way speakers of this language write it. */
   name: string;
-  /** Deutscher Name, damit die Suche auch darauf anspringt. */
+  /** german name, so the search fires on it as well. */
   deutsch: string;
   flagge: string;
 }
 
 /**
- * Die wählbaren Sprachen, nach ihrem Eigennamen sortiert.
+ * the selectable languages, sorted by their endonym.
  *
- * Sieben Sprachen statt aller denkbaren: Eine Sprache in der Liste ist ein
- * Versprechen, dass die Oberfläche darin auch wirklich vorliegt. Dreißig
- * Einträge, von denen die meisten auf Englisch zurückfallen, wären eine
- * Enttäuschung mit Extraschritt.
+ * seven languages rather than every conceivable one: a language in this list
+ * is a promise that the ui really exists in it. thirty entries of which most
+ * fall back to english would be a disappointment with an extra step.
  */
 export const SPRACHEN: SprachEintrag[] = [
   { id: "de", name: "Deutsch", deutsch: "Deutsch", flagge: "🇩🇪" },
@@ -40,9 +37,10 @@ export const SPRACHEN: SprachEintrag[] = [
   { id: "zh", name: "中文", deutsch: "Chinesisch", flagge: "🇨🇳" },
 ].sort((a, b) => a.name.localeCompare(b.name, "de"));
 
-/** Sprachen, die von rechts nach links geschrieben werden. */
+/** languages written from right to left. */
 export const RECHTS_NACH_LINKS = new Set(["ar"]);
 
+/** the entry for a language code, `undefined` where it is unknown. */
 export function sprachEintrag(id: string): SprachEintrag | undefined {
   return SPRACHEN.find((eintrag) => eintrag.id === id);
 }

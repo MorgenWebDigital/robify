@@ -8,15 +8,15 @@ import { CloseIcon, PauseIcon, PlayIcon, PlusIcon, PrevIcon } from "./Icons";
 import { Button } from "./Modal";
 import type { Track } from "../types";
 
-/** Übliche Reaktionszeit beim Mittippen. Wird von jeder Marke abgezogen. */
+/** the usual reaction time when tapping along. subtracted from every mark. */
 const STANDARD_VERSATZ = -250;
 
 /**
- * Zeilen, die beim Kopieren von Lyrics-Seiten mitkommen, aber nicht gesungen
- * werden: Abschnittsmarken wie „[Refrain]“, Kopfzeilen mit dem Songnamen,
- * Beitragszähler und der Rest, den solche Seiten anhängen.
+ * lines that come along when copying from lyrics pages without being sung:
+ * section marks such as "[Chorus]", headers with the song name, contributor
+ * counts and the rest such pages append.
  *
- * Nur eine Vorauswahl, jede Zeile lässt sich von Hand wieder aufnehmen.
+ * a pre-selection only, every line can be taken back in by hand.
  */
 function wirktWieBeiwerk(zeile: string): boolean {
   const t = zeile.trim();
@@ -28,13 +28,12 @@ function wirktWieBeiwerk(zeile: string): boolean {
   return false;
 }
 
-/**
- * Macht aus reinem Text mitlaufende Lyrics, indem der Nutzer beim Hören
- * mittippt.
- *
- * Automatisch ginge das nur mit Spracherkennung. Tippen ist der ehrliche Weg:
- * Wer mitliest, weiß auf die Zehntelsekunde, wann eine Zeile beginnt.
- */
+// turns plain text into lyrics that follow along, by the user tapping while
+// listening.
+//
+// automatically that would take speech recognition. tapping is the honest
+// way: whoever reads along knows to the tenth of a second when a line
+// begins
 export function LyricsSync({
   track,
   plain,
@@ -43,7 +42,7 @@ export function LyricsSync({
 }: {
   track: Track;
   plain: string;
-  /** Bekommt den LRC-Text und den um das Beiwerk bereinigten Fließtext. */
+  /** receives the lrc text and the running text cleared of the trimmings. */
   onDone: (lrc: string, bereinigt: string) => void;
   onCancel: () => void;
 }) {
@@ -54,7 +53,7 @@ export function LyricsSync({
   const toggle = usePlayer((s) => s.toggle);
   const seek = usePlayer((s) => s.seek);
 
-  // Leerzeilen tragen keine Zeitmarke, sie trennen nur Strophen.
+  // empty lines carry no timestamp, they only separate verses
   const zeilen = useMemo(
     () =>
       plain
@@ -73,13 +72,13 @@ export function LyricsSync({
 
   const laeuftDieser = currentTrack?.id === track.id;
 
-  /** Nächste Zeile, die eine Marke braucht: nicht abgewählt, noch ohne Zeit. */
+  /** the next line needing a mark: not deselected, still without a time. */
   const dran = marken.findIndex((zeit, i) => zeit === null && !aus[i]);
   const fertig = dran === -1;
   const gesetzt = marken.filter((z, i) => z !== null && !aus[i]).length;
   const offen = aus.filter((a) => !a).length;
 
-  // Die Zeile, die als Nächstes drankommt, bleibt in der Mitte.
+  // the line coming up next stays in the middle
   useEffect(() => {
     aktiveZeile.current?.scrollIntoView({
       block: "center",
@@ -96,7 +95,7 @@ export function LyricsSync({
 
   const zurueck = () => {
     setMarken((bisher) => {
-      // Die zuletzt gesetzte Zeile ist die letzte mit Zeit vor der aktuellen.
+      // the line last set is the last one with a time before the current
       const letzte = bisher.reduce<number>(
         (merker, zeit, i) => (zeit !== null && !aus[i] ? i : merker),
         -1,
@@ -112,7 +111,7 @@ export function LyricsSync({
     });
   };
 
-  /** Zeile abwählen oder wieder aufnehmen. Abgewählte verlieren ihre Marke. */
+  /** deselect a line or take it back in. deselected ones lose their mark. */
   const umschalten = (index: number) => {
     setAus((bisher) => bisher.map((wert, i) => (i === index ? !wert : wert)));
     setMarken((bisher) => bisher.map((zeit, i) => (i === index ? null : zeit)));
@@ -124,8 +123,8 @@ export function LyricsSync({
     if (!playing) await toggle();
   };
 
-  // Leertaste stempelt. Der Player hört sie sonst als Abspielen/Pause, deshalb
-  // wird sie abgefangen, solange dieser Bereich offen ist.
+  // the space bar stamps. the player would otherwise hear it as play/pause,
+  // so it is caught while this area is open
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === " " || event.key === "Enter") {
@@ -159,8 +158,8 @@ export function LyricsSync({
             text: z.text,
           })),
       ),
-      // Der Fließtext verliert das Beiwerk ebenfalls: Ohne Zeitmarken zeigt
-      // der Player ihn, und dort hätte es genauso wenig verloren.
+      // the running text loses the trimmings as well: without timestamps the
+      // player shows it, and they would have no business there either
       behalten.map((z) => z.text).join("\n"),
     );
   };
@@ -210,7 +209,7 @@ export function LyricsSync({
         )}
       </p>
 
-      {/* Der ganze Text, die nächste Zeile mittig. So sieht man, was kommt. */}
+      {/* the whole text, the next line centred. that way one sees what is coming. */}
       <ol className="h-56 space-y-1 overflow-y-auto rounded-xl border border-ink-700 bg-ink-950 px-3 py-3 text-sm">
         {zeilen.map((text, index) => {
           const abgewaehlt = aus[index];
@@ -258,8 +257,8 @@ export function LyricsSync({
         })}
       </ol>
 
-      {/* Wo im Stück wir sind. Klicken springt, falls eine Stelle wiederholt
-          werden soll. */}
+      {/* where in the piece we are. clicking jumps, should a passage be
+          repeated. */}
       <div>
         <div
           className="h-1.5 w-full cursor-pointer overflow-hidden rounded-full bg-ink-700"
@@ -284,7 +283,7 @@ export function LyricsSync({
         </div>
       </div>
 
-      {/* Die eine Taste, um die es geht. */}
+      {/* the one key it is all about. */}
       <button
         type="button"
         onClick={setzen}
@@ -317,8 +316,8 @@ export function LyricsSync({
         </Button>
       </div>
 
-      {/* Getippt wird immer ein Stück zu spät. Statt jede Marke einzeln zu
-          korrigieren, verschiebt dieser Wert alle zusammen. */}
+      {/* one always taps a little too late. instead of correcting every mark
+          separately, this value shifts all of them together. */}
       <div className="flex flex-wrap items-center gap-2 text-sm text-mute">
         <span>{t("Feinjustierung")}</span>
         <Button onClick={() => setVersatz((v) => v - 100)} variant="outline">

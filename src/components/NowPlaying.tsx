@@ -28,10 +28,10 @@ import { activeLineIndex, parseLrc, type LyricLine } from "../lib/lrc";
 import { useAusblenden } from "../lib/ausblenden";
 import { useSchliesstBeimSeitenwechsel } from "../lib/seitenwechsel";
 
-/** Muss zur Dauer von `.animate-stage-out` im Stylesheet passen. */
+/** has to match the duration of `.animate-stage-out` in the stylesheet. */
 const ZU_MS = 280;
 
-/** Vollbildansicht mit großem Cover und mitlaufenden Lyrics. */
+// the full screen view with a large cover and lyrics running along
 export function NowPlaying() {
   const currentTrack = usePlayer((s) => s.currentTrack);
   const positionMs = usePlayer((s) => s.positionMs);
@@ -54,25 +54,24 @@ export function NowPlaying() {
   const refreshLibrary = useLibrary((s) => s.refresh);
   const { sichtbar, schliesst } = useAusblenden(nowPlayingOpen, ZU_MS);
   useSchliesstBeimSeitenwechsel(setNowPlayingOpen);
-  /* Nur am Telefon: Dort steht der Text nicht daneben, sondern hinter einer
-     Kachel. Am Rechner ist er ohnehin die ganze Zeit zu sehen. */
+  // on a phone only: the lyrics do not stand next to it there but behind a
+  // tile. on a desktop they are visible the whole time anyway
   const [textOffen, setTextOffen] = useState(false);
-  /** Die Vorschau als Text, wenn keine zeitsynchrone Fassung vorliegt. */
+  /** the preview as plain text where no time-synced version is on hand. */
   const [anfang, setAnfang] = useState<string[]>([]);
-  /** Die zeitsynchrone Fassung, sofern es eine gibt. */
+  /** the time-synced version, where there is one. */
   const [synchron, setSynchron] = useState<LyricLine[]>([]);
 
   const trackId = currentTrack?.id ?? null;
 
-  /*
-   * Die ersten Zeilen für die Kachel.
-   *
-   * Ohne sie stünde dort nur „Songtext“, und man müsste tippen, um zu sehen,
-   * ob überhaupt einer hinterlegt ist. Acht Zeilen sind schon ein Stück Text
-   * und geben der Kachel genug Höhe, um neben dem Cover zu bestehen.
-   * Der volle Text wird davon nicht doppelt geladen: Die Vollbildansicht holt
-   * ihn selbst, und der Befehl liest aus der Datenbank, nicht aus dem Netz.
-   */
+  // the first lines for the tile.
+  //
+  // without them only "Songtext" would stand there and one would have to tap
+  // to see whether any is stored at all. eight lines are a piece of text
+  // already and give the tile enough height to hold its own next to the
+  // cover. the full text is not loaded twice over it: the full screen view
+  // fetches it itself, and the command reads from the database, not from the
+  // net
   useEffect(() => {
     if (!trackId) {
       setAnfang([]);
@@ -89,7 +88,7 @@ export function NowPlaying() {
         const roh = lyrics?.plain || lyrics?.synced || "";
         setAnfang(
           roh
-            // Zeitmarken einer synchronen Fassung gehören nicht in die Vorschau.
+            // the timestamps of a synced version do not belong in the preview
             .replace(/\[\d{1,2}:\d{2}(?:[.:]\d{1,3})?\]/g, "")
             .split("\n")
             .map((zeile) => zeile.trim())
@@ -102,18 +101,16 @@ export function NowPlaying() {
     };
   }, [trackId]);
 
-  /*
-   * Der Ausschnitt, der in der Kachel steht.
-   *
-   * Liegt der Text zeitsynchron vor, wandert er mit: Die gerade gesungene
-   * Zeile steht in der zweiten von acht, davor zwei zum Nachlesen, dahinter
-   * fünf zum Vorauslesen. Vorher standen dort immer dieselben acht Zeilen vom
-   * Anfang, und beim dritten Refrain hatte das mit dem, was zu hören war,
-   * nichts mehr zu tun.
-   *
-   * Ohne Zeitmarken bleibt es beim Anfang: Etwas mitlaufen zu lassen, das
-   * nicht weiß, wo es steht, wäre geraten.
-   */
+  // the excerpt standing in the tile.
+  //
+  // where the text is time-synced it travels along: the line being sung
+  // stands in the second of eight, two before it to read back and five behind
+  // it to read ahead. the same eight lines from the start used to stand there
+  // always, and by the third chorus that had nothing to do with what could be
+  // heard any more.
+  //
+  // without timestamps it stays at the start: letting something run along
+  // that does not know where it stands would be guesswork
   const SICHTBAR = 8;
   const VORLAUF = 2;
   const vorschau: { text: string; jetzt: boolean }[] = (() => {
@@ -134,17 +131,15 @@ export function NowPlaying() {
       .filter((zeile) => zeile.text);
   })();
 
-  // Beim Titelwechsel schließt sich der Vollbildtext: Er gehörte zum vorigen.
+  // the full screen lyrics close on a track change, they belonged to the previous one
   useEffect(() => setTextOffen(false), [trackId]);
 
-  /*
-   * Der Favoritenstand hier, nicht nur im geladenen Titel.
-   *
-   * `currentTrack` wird beim Titelwechsel einmal geholt und danach nicht mehr;
-   * ein Druck auf das Herz änderte die Datenbank, das Herz selbst bliebe aber
-   * leer. Der eigene Stand springt sofort um und geht zurück, falls das
-   * Speichern scheitert.
-   */
+  // the favourite state here, not in the loaded track alone.
+  //
+  // `currentTrack` is fetched once on a track change and not again, so a
+  // press on the heart changed the database while the heart itself stayed
+  // empty. a state of its own flips at once and goes back should the saving
+  // fail
   const [favorit, setFavorit] = useState(false);
   useEffect(
     () => setFavorit(Boolean(currentTrack?.favorite)),
@@ -164,38 +159,34 @@ export function NowPlaying() {
     }
   };
 
-  /*
-   * Wischen im Titel: zur Seite blättert, nach unten legt zu.
-   *
-   * Welche der beiden Richtungen gilt, entscheidet die größere Strecke. Ohne
-   * diese Trennung löste jeder schräge Zug beides aus, und man landete beim
-   * nächsten Titel, obwohl man zuklappen wollte.
-   *
-   * Zuklappen zusätzlich nur von ganz oben: Weiter unten ist der Zug nach
-   * unten das Blättern durch Songtext und Künstler. Beim Aufsetzen des
-   * Fingers wird deshalb gemerkt, ob die Spalte schon oben stand. Für das
-   * seitliche Blättern gilt das nicht — waagerecht rollt hier nichts.
-   */
+  // swiping on the track: sideways moves on, downwards closes.
+  //
+  // which of the two directions applies is decided by the longer distance.
+  // without that separation every diagonal drag triggered both, and one
+  // landed on the next track although one wanted to close.
+  //
+  // closing additionally only from the very top: further down the downward
+  // drag is the scrolling through lyrics and artist. whether the column stood
+  // at the top is therefore remembered when the finger lands. that does not
+  // hold for moving sideways, nothing scrolls horizontally here
   const zugBeginn = useRef<{ x: number; y: number; oben: boolean } | null>(
     null,
   );
-  /** Ab hier ist es eine Geste und nicht mehr ein Verrutschen. */
+  /** from here on it is a gesture and no longer a slip. */
   const ZUG_SCHWELLE = 90;
 
-  /*
-   * Wohin gerade geblättert wird, für die kurze Bewegung dabei.
-   *
-   * Der Wechsel selbst kommt aus dem Rust-Teil und braucht einen Augenblick;
-   * ohne Bewegung stünde in dieser Zeit einfach der alte Titel da, und der
-   * Wisch sähe aus, als sei er ins Leere gegangen.
-   */
+  // where the move is going, for the brief animation along with it.
+  //
+  // the change itself comes from the rust side and takes a moment, and
+  // without an animation the old track would simply stand there during that
+  // time, making the swipe look as if it had gone nowhere
   const [blaettert, setBlaettert] = useState<"vor" | "zurueck" | null>(null);
   const blaetterUhr = useRef<number | null>(null);
 
   const blaettern = (richtung: "vor" | "zurueck") => {
     if (blaetterUhr.current) window.clearTimeout(blaetterUhr.current);
     setBlaettert(richtung);
-    // Muss zur Dauer von `blaettern-vor` im Stylesheet passen.
+    // has to match the duration of `blaettern-vor` in the stylesheet
     blaetterUhr.current = window.setTimeout(() => setBlaettert(null), 260);
   };
 
@@ -223,7 +214,7 @@ export function NowPlaying() {
 
     if (Math.abs(dx) > Math.abs(dy)) {
       if (Math.abs(dx) < ZUG_SCHWELLE) return;
-      // Nach links kommt das Nächste ins Bild, wie beim Umblättern.
+      // to the left the next one comes into view, as when turning a page
       blaettern(dx < 0 ? "vor" : "zurueck");
       void (dx < 0 ? next() : previous());
       return;
@@ -235,14 +226,12 @@ export function NowPlaying() {
   const artistId = currentTrack?.artistId ?? null;
   const [weitere, setWeitere] = useState<Track[]>([]);
 
-  /*
-   * Mehr vom selben Künstler, unter dem Künstlerbild.
-   *
-   * Nach Gehörtem sortiert, nicht nach Titel: Was man ohnehin oft hört, ist
-   * die bessere Anregung als das, was zufällig vorn im Alphabet steht. Der
-   * laufende Titel fällt heraus — er steht ja oben — und fünf sind genug;
-   * mehr wäre keine Anregung, sondern eine zweite Bibliothek.
-   */
+  // more from the same artist, under the artist image.
+  //
+  // sorted by what has been heard, not by title: what one listens to often
+  // anyway is the better suggestion than what happens to stand first in the
+  // alphabet. the running track drops out, it stands above already, and five
+  // are enough, more would be no suggestion but a second library
   useEffect(() => {
     if (!artistId) {
       setWeitere([]);
@@ -276,13 +265,13 @@ export function NowPlaying() {
         schliesst ? "animate-stage-out" : "animate-stage"
       }`}
     >
-      {/* Eine einzige Fläche hinter allem: Hintergrund und Schimmer wie bei der
-          Player-Pille unten, Cover und Lyrics liegen gemeinsam darauf. */}
+      {/* one single surface behind everything: background and sheen as on
+          the player pill below, cover and lyrics lie on it together. */}
       <div className="sunken-deep flex min-h-0 flex-1 flex-col rounded-3xl bg-ink-950">
-        {/* Ohne Beschriftung, dass gerade gespielt wird, sieht man. */}
-        {/* Nur das Zuklappen, und links: Es ist der Weg zurück, und der steht
-            überall sonst in der App auch links. Die Warteschlange ist zu den
-            übrigen Handgriffen unter die Zeitleiste gewandert. */}
+        {/* no label saying something is playing, one can see that. */}
+        {/* closing alone, and on the left: it is the way back, and that
+            stands on the left everywhere else in the app too. the queue has
+            travelled to the other handles under the timeline. */}
         <div className="flex items-center px-6 py-4">
           <button
             type="button"
@@ -296,11 +285,10 @@ export function NowPlaying() {
 
         {currentTrack ? (
           <div className="grid min-h-0 flex-1 gap-8 overflow-hidden px-6 pb-8 lg:grid-cols-2 lg:px-12">
-            {/* Am Telefon die einzige Spalte, und sie rollt.
-                Vorher teilte das Gitter die Höhe fest zwischen Cover und Text
-                auf: 383 zu 178 Pixel. Das Cover bekam davon 224 statt seiner
-                339 und stand als breiter Streifen da, der Text als leerer
-                Kasten darunter. */}
+            {/* on a phone the only column, and it scrolls. the grid used to
+                split the height between cover and text at a fixed 383 to 178
+                pixels. the cover got 224 of that instead of its 339 and stood
+                there as a wide strip, the text as an empty box below. */}
             <div
               onTouchStart={zugStart}
               onTouchEnd={zugEnde}
@@ -361,14 +349,14 @@ export function NowPlaying() {
                   </div>
                 </div>
 
-                {/* Ablegen und Warteschlange: klein und links, unter der
-                    Zeitleiste. Bewusst neben und nicht in der Knopfreihe
-                    darunter — die trägt das Abspielen, und was mit dem Titel
-                    geschehen soll, gehört nicht in dieselbe Reihe wie Pause
-                    und Weiter.
+                {/* filing and queue: small and on the left, under the
+                    timeline. deliberately beside and not in the button row
+                    below, that one carries the playback, and what is to
+                    happen to the track does not belong in the same row as
+                    pause and next.
 
-                    Ab `md` steht beides in der Leiste unten, die dort immer
-                    sichtbar ist; hier wäre es doppelt. */}
+                    from `md` on both stand in the bar below, which is always
+                    visible there, and here it would be twice. */}
                 <div className="mt-4 flex items-center gap-2 md:hidden">
                   <button
                     type="button"
@@ -404,9 +392,9 @@ export function NowPlaying() {
                   </button>
                 </div>
 
-                {/* Die Steuerung, nur am Telefon: Ab `md` steht sie unten in
-                    der Leiste, die dort immer sichtbar ist — dieselbe Grenze,
-                    an der die Leiste erscheint. */}
+                {/* the controls, on a phone only: from `md` on they stand in
+                    the bar below, which is always visible there, the same
+                    breakpoint at which the bar appears. */}
                 <div className="mt-3 flex items-center justify-center gap-2 md:hidden">
                   <button
                     type="button"
@@ -467,9 +455,10 @@ export function NowPlaying() {
                 </div>
               </div>
 
-              {/* Zwei Kacheln, nur am Telefon: Dort ist neben dem Cover kein
-                  Platz für den Text, und die Künstlerseite liegt sonst drei
-                  Griffe entfernt. Am Rechner steht beides ohnehin da. */}
+              {/* two tiles, on a phone only: there is no room for the lyrics
+                  next to the cover there, and the artist page lies three
+                  reaches away otherwise. on a desktop both stand there
+                  anyway. */}
               <div className="w-full max-w-sm shrink-0 space-y-3 pb-2 lg:hidden">
                 <button
                   type="button"
@@ -480,11 +469,11 @@ export function NowPlaying() {
                     <LyricsIcon size={14} />
                     {t("Songtext")}
                   </span>
-                  {/* Jede Zeile als eigenes Stück, damit die laufende in der
-                      Akzentfarbe stehen kann. Die Umbrüche bleiben eigene
-                      Zeichen: Die Kachel begrenzt ihre Höhe über
-                      `-webkit-line-clamp`, und das zählt Zeilen im Textfluss,
-                      keine Blöcke. */}
+                  {/* every line as a piece of its own so the running one can
+                      stand in the accent colour. the breaks stay characters
+                      of their own: the tile bounds its height through
+                      `-webkit-line-clamp`, and that counts lines in the text
+                      flow, not blocks. */}
                   <span className="mt-2 block text-base leading-snug">
                     {vorschau.length > 0
                       ? vorschau.map((zeile, stelle) => (
@@ -505,10 +494,10 @@ export function NowPlaying() {
                   </span>
                 </button>
 
-                {/* Der Künstler zuletzt, ohne eigene Fläche.
-                    Ein Kasten machte ihn zu einem Eintrag unter anderen; er
-                    steht aber für sich, so wie Cover und Titel oben. Das Bild
-                    trägt den Abschnitt, der Rahmen wäre nur Beiwerk. */}
+                {/* the artist last, without a surface of their own. a box
+                    made them an entry among others while they stand for
+                    themselves, as cover and title do above. the image carries
+                    the section, the frame would be trimming. */}
                 <div className="w-full pt-2">
                   <Link
                     to={`/artist/${currentTrack.artistId}`}
@@ -561,9 +550,9 @@ export function NowPlaying() {
               </div>
             </div>
 
-            {/* Am Rechner steht der Text neben dem Cover; dort ist Platz, und
-                er ist das, worauf der Blick am Ende ruht. Am Telefon führt der
-                Weg über die Kachel ins Vollbild. */}
+            {/* on a desktop the lyrics stand next to the cover, there is room
+                there and they are what the eye rests on in the end. on a
+                phone the way leads through the tile into full screen. */}
             <div
               className={`surface hidden min-h-0 overflow-hidden p-5 lg:block ${schliesst ? "" : "animate-content-late"}`}
             >
@@ -576,10 +565,10 @@ export function NowPlaying() {
           </div>
         )}
 
-        {/* Der Text im Vollbild, über allem.
-            Innerhalb derselben Fläche, nicht als eigenes Fenster: So bleibt
-            die Pille unten bedienbar, und der Weg zurück ist derselbe Griff
-            wie überall — ein Pfeil oben rechts. */}
+        {/* the lyrics in full screen, over everything. inside the same
+            surface and not as a window of its own: that keeps the pill below
+            operable, and the way back is the same reach as everywhere, an
+            arrow at the top right. */}
         {textOffen && currentTrack && (
           <div className="absolute inset-0 z-30 flex flex-col rounded-3xl bg-ink-950 p-5 animate-stage">
             <div className="mb-2 flex shrink-0 items-center justify-between gap-3">

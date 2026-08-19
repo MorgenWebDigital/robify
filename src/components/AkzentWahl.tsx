@@ -6,11 +6,11 @@ import { applyAccent, useLibrary } from "../store/library";
 import { akzentSchrift, eigeneFarben, normalisiereHex } from "../lib/farbe";
 
 /**
- * Vorgabefarben. Die erste ist die Werkseinstellung.
+ * the preset colours. the first one is the factory setting.
  *
- * Ausgesucht aus den CSS-Standardfarben: ein neutrales Grau, dann je ein
- * kräftiger, dunkler Ton pro Richtung. Die Schrift darauf wird gerechnet,
- * nicht festgelegt, vier der sechs sind zu dunkel für dunklen Text.
+ * picked from the css standard colours: a neutral grey, then one strong dark
+ * tone per direction. the type on them is calculated, not fixed, four of the
+ * six being too dark for dark text.
  */
 const VORGABEN = [
   "#a8a8b3", // Grau
@@ -29,19 +29,19 @@ export function AkzentWahl() {
   if (!settings) return null;
 
   const eigene = eigeneFarben(settings.accentCustom);
-  // Eine selbst gemischte Farbe, die schon als Vorgabe existiert, wäre ein
-  // zweites gleiches Feld in derselben Reihe.
+  // a colour mixed by hand that exists as a preset already would be a second
+  // identical swatch in the same row
   const alle = [
     ...VORGABEN,
     ...eigene.filter((farbe) => !VORGABEN.includes(farbe)),
   ];
 
   /**
-   * Entfernt eine selbst gemischte Farbe.
+   * removes a colour mixed by hand.
    *
-   * Ist sie gerade in Gebrauch, fällt die App auf die Werkseinstellung
-   * zurück, sonst bliebe eine Farbe aktiv, die in keiner Reihe mehr steht
-   * und sich nicht wiederfinden ließe.
+   * where it is in use, the app falls back to the factory setting, otherwise
+   * a colour would stay active that stands in no row any more and could not
+   * be found again.
    */
   const loeschen = async (farbe: string) => {
     await saveSetting(
@@ -59,8 +59,9 @@ export function AkzentWahl() {
           const gewaehlt = settings.accent.toLowerCase() === farbe;
           const eigen = !VORGABEN.includes(farbe);
           return (
-            // Der Löschknopf sitzt am Feld und braucht darum einen eigenen
-            // Bezugsrahmen; ohne ihn säße er am Rand der ganzen Reihe.
+            // the delete button sits on the swatch and therefore needs a
+            // reference frame of its own, without it it would sit at the edge
+            // of the whole row
             <span key={farbe} className="group relative inline-flex">
               <button
                 type="button"
@@ -80,8 +81,8 @@ export function AkzentWahl() {
               </button>
 
               {eigen && (
-                // Erst beim Zeigen sichtbar, damit die Reihe ruhig bleibt,
-                // aber mit der Tastatur jederzeit erreichbar.
+                // visible on hover only so the row stays calm, but reachable
+                // by keyboard at any time
                 <button
                   type="button"
                   onClick={() => void loeschen(farbe)}
@@ -119,8 +120,8 @@ function FarbDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [entwurf, setEntwurf] = useState("#a8a8b3");
   const [text, setText] = useState("#a8a8b3");
 
-  // Beim Öffnen an der aktuellen Farbe anknüpfen: Meist will man sie
-  // nachjustieren, nicht bei Grau von vorn anfangen.
+  // tie into the current colour when opening: usually one wants to adjust it,
+  // not start over at grey
   useEffect(() => {
     if (!open || !settings) return;
     const start = normalisiereHex(settings.accent) ?? "#a8a8b3";
@@ -129,11 +130,10 @@ function FarbDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   }, [open, settings?.accent]);
 
   /**
-   * Der Entwurf färbt die App sofort ein, ohne ihn zu speichern.
+   * the draft colours the app right away, without storing it.
    *
-   * Eine Akzentfarbe beurteilt man nicht an einem Farbfeld, sondern an den
-   * Knöpfen und Balken, auf denen sie später liegt. Beim Schließen ohne
-   * Speichern wird die gespeicherte Farbe wiederhergestellt.
+   * an accent colour is not judged on a swatch but on the buttons and bars it
+   * will later lie on. closing without saving restores the stored colour.
    */
   useEffect(() => {
     if (!open) return;
@@ -151,8 +151,8 @@ function FarbDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const uebernehmen = async () => {
     const farbe = normalisiereHex(text);
     if (!farbe) return;
-    // Doppelte Einträge und solche, die es schon als Vorgabe gibt, bringen
-    // nichts, die Reihe soll übersichtlich bleiben.
+    // duplicates and ones that exist as a preset already bring nothing, the
+    // row is to stay clear
     if (!VORGABEN.includes(farbe) && !eigene.includes(farbe)) {
       await saveSetting("accentCustom", [...eigene, farbe].join(","));
     }

@@ -13,7 +13,7 @@ describe("normalisiereHex", () => {
   });
 
   it("vereinheitlicht Schreibweise und Leerraum", () => {
-    // Aus der Zwischenablage kommt selten etwas Sauberes.
+    // what comes out of the clipboard is rarely clean
     expect(normalisiereHex("  #A8A8B3  ")).toBe("#a8a8b3");
     expect(normalisiereHex("FFF")).toBe("#ffffff");
   });
@@ -44,8 +44,8 @@ describe("eigeneFarben", () => {
   });
 
   it("wirft kaputte Einträge weg, statt an ihnen zu scheitern", () => {
-    // Die Liste liegt als Text in der Datenbank; ein halb geschriebener Wert
-    // darf nicht die ganze Farbwahl lahmlegen.
+    // the list lies in the database as text, and a half-written value must
+    // not paralyse the whole colour picker
     expect(eigeneFarben("#ff0000,,quatsch,#abc")).toEqual([
       "#ff0000",
       "#aabbcc",
@@ -72,8 +72,9 @@ describe("akzentSchrift", () => {
   });
 
   it("wiegt Grün schwerer als Blau", () => {
-    // Gleiche Zahl, andere Wirkung: Reines Grün ist hell genug für dunkle
-    // Schrift, reines Blau nicht. Eine Rechnung ohne Gewichtung übersähe das.
+    // the same number, a different effect: pure green is light enough for
+    // dark type, pure blue is not. a calculation without weighting would miss
+    // that
     expect(akzentSchrift("#00ff00")).toBe("#16161a");
     expect(akzentSchrift("#0000ff")).toBe("#ffffff");
   });

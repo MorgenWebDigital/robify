@@ -25,7 +25,7 @@ export function SleepTimerMenu() {
     <div className="flex items-center gap-1.5">
       <Menu
         align="right"
-        // Der Player sitzt ganz unten, nach unten wäre kein Platz.
+        // the player sits at the very bottom, there would be no room below
         side="top"
         items={[
           ...PRESETS.map((minutes) => ({
@@ -60,10 +60,10 @@ export function SleepTimerMenu() {
             title={active ? t("Sleeptimer aktiv") : t("Sleeptimer")}
             aria-pressed={active}
             aria-expanded={open}
-            // Zwei Anlässe zu leuchten: solange ein Timer läuft, und solange
-            // die Liste offen steht. Das zweite fehlte, ohne gesetzten Timer
-            // gab der Knopf beim Antippen keinerlei Rückmeldung, anders als
-            // Warteschlange und Lyrics daneben.
+            // two reasons to light up: while a timer is running, and while
+            // the menu stands open. the second one was missing, and without a
+            // timer set the button gave no feedback at all on a tap, unlike
+            // queue and lyrics next to it
             className={`pill-btn is-raised h-9 w-9 ${active || open ? "is-on" : ""}`}
           >
             <MoonIcon size={18} />

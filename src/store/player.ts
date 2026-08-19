@@ -89,9 +89,9 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
       ),
       listen<PlayerTick>("player:tick", (event) => {
         const tick = event.payload;
-        // Nur schreiben, wenn sich wirklich etwas geändert hat: Jedes `set`
-        // benachrichtigt alle Abnehmer, und an der Position hängen Player,
-        // Vollbild und die mitlaufenden Lyrics.
+        // write only where something actually changed: every `set` notifies
+        // all subscribers, and player, full screen and the running lyrics
+        // hang off the position
         const jetzt = get();
         if (
           jetzt.playing !== tick.playing ||

@@ -2,21 +2,21 @@ import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 
 /**
- * Schließt eine Überlagerung, sobald die Seite wechselt.
+ * closes an overlay as soon as the page changes.
  *
- * Die Vollbildansicht und die Warteschlange liegen über dem Seiteninhalt,
- * nicht in ihm. Ein Druck auf die Leiste unten führte darum zwar zur neuen
- * Seite, sichtbar blieb aber der laufende Titel — man stand im Downloader und
- * sah ihn nicht. Wer wegnavigiert, will die Überlagerung nicht mehr sehen.
+ * the full screen view and the queue lie over the page content, not inside
+ * it. a press on the bottom bar therefore did lead to the new page while the
+ * running track stayed visible: one stood in the downloader and could not see
+ * it. whoever navigates away does not want to see the overlay any more.
  *
- * Beim ersten Durchlauf passiert nichts. Die Bauteile hängen für die gesamte
- * Laufzeit der App im Baum und zeigen sich nur, wenn sie offen sind; ohne
- * diese Ausnahme schlösse der Aufruf beim Start etwas, das noch niemand
- * geöffnet hat. Das Öffnen selbst wechselt die Seite nicht, es löst also
- * nichts aus.
+ * nothing happens on the first pass. the components hang in the tree for the
+ * whole runtime of the app and show themselves only while open, and without
+ * this exception the call would close something at startup that nobody has
+ * opened yet. opening itself does not change the page, so it triggers
+ * nothing.
  *
- * `setzen` kommt aus dem Zustandsspeicher und bleibt derselbe; die
- * Abhängigkeitsliste ist damit stabil.
+ * `setzen` comes out of the store and stays the same, which keeps the
+ * dependency list stable.
  */
 export function useSchliesstBeimSeitenwechsel(
   setzen: (offen: boolean) => void,

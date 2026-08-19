@@ -10,7 +10,7 @@ import { Button } from "./Modal";
 import { useAusblenden } from "../lib/ausblenden";
 import { useSchliesstBeimSeitenwechsel } from "../lib/seitenwechsel";
 
-/** Muss zur Dauer von `.animate-slide-out` im Stylesheet passen. */
+/** has to match the duration of `.animate-slide-out` in the stylesheet. */
 const AUSFAHREN_MS = 240;
 
 export function QueuePanel() {
@@ -24,20 +24,18 @@ export function QueuePanel() {
   const { sichtbar, schliesst } = useAusblenden(queueOpen, AUSFAHREN_MS);
   useSchliesstBeimSeitenwechsel(setQueueOpen);
 
-  /**
-   * Der laufende Titel und alles danach, in der Reihenfolge des Abspielens.
-   *
-   * Was schon lief, verschwindet aus der Liste: Wer einen Titel überspringt,
-   * will ihn dort nicht weiter stehen sehen. Aus der Warteschlange entfernt
-   * wird er dabei nicht, nur aus der Anzeige, und der Rückwärtsschritt holt
-   * ihn wieder hervor.
-   *
-   * Gegangen wird über `order`, nicht über die Warteschlange selbst: Bei
-   * Zufallswiedergabe steht das Kommende nicht hinter dem laufenden Titel,
-   * sondern über die ganze Liste verstreut. Läuft nichts, steht alles bevor.
-   */
-  // Rückfall auf die Warteschlangenreihenfolge, falls noch keine Abspielfolge
-  // steht: Besser die Liste in der falschen Reihenfolge als eine leere.
+  // the running track and everything after it, in playback order.
+  //
+  // what has already run disappears from the list: whoever skips a track does
+  // not want to keep seeing it there. it is not removed from the queue in
+  // doing so, only from the display, and the step backwards brings it out
+  // again.
+  //
+  // it walks `order` and not the queue itself: under shuffle the coming
+  // tracks do not stand behind the running one but lie scattered over the
+  // whole list. where nothing is running, everything lies ahead
+  // falls back to the queue order where no playback order stands yet: better
+  // the list in the wrong order than an empty one
   const folge = order.length > 0 ? order : queue.map((_, stelle) => stelle);
   const kommend = (orderPos === null ? folge : folge.slice(orderPos))
     .map((stelle) => ({ stelle, track: queueTracks[stelle] }))
@@ -45,29 +43,29 @@ export function QueuePanel() {
 
   if (!sichtbar) return null;
 
-  // Der laufende Titel zählt nicht zur Restzeit, er ist ja angebrochen.
+  // the running track does not count towards the time left, it is under way
   const remaining = kommend
     .slice(orderPos === null ? 0 : 1)
     .reduce((summe, eintrag) => summe + eintrag.track.durationMs, 0);
 
   return (
-    // Die Hülle trägt die Bewegung und wächst in der Breite; der Inhalt darin
-    // behält seine festen 20rem, damit er beim Fahren nicht umbricht.
+    // the wrapper carries the animation and grows in width, while the content
+    // inside keeps its fixed 20rem so it does not reflow while sliding
     <aside
       className={`shrink-0 overflow-hidden ${
         schliesst ? "animate-slide-out" : "animate-slide-in"
       } max-md:absolute max-md:inset-0 max-md:z-40 max-md:!w-auto`}
     >
-      {/* Abstände liegen innerhalb der Hülle, nicht an ihr: Sie beschneidet,
-          und ein äußerer Rand bliebe beim Einfahren als Lücke stehen. */}
+      {/* the spacing lies inside the wrapper, not on it: it clips, and an
+          outer margin would stay standing as a gap while sliding in. */}
       <div className="h-full pt-2 pe-3 pb-3 ps-px max-md:p-0">
-        {/* Dieselbe Bauweise wie der Seiteninhalt daneben: eine abgerundete
-            Insel im Rahmen, vertieft und im Inselton. Vorher war es eine
-            flache Fläche mit einer Linie links, die neben den abgerundeten
-            Nachbarn wie ein Fremdkörper wirkte. */}
-        {/* Am Telefon nimmt die Warteschlange das ganze Fenster ein: Eine
-            Spalte von zwanzig Zeichen Breite neben einem Inhalt von zehn
-            wäre für beides zu wenig. */}
+        {/* the same build as the page content next to it: a rounded island in
+            the frame, sunken and in the island tone. before it was a flat
+            surface with a line on the left, which looked like a foreign body
+            next to its rounded neighbours. */}
+        {/* on a phone the queue takes the whole window: a column twenty
+            characters wide next to a content of ten would be too little for
+            either. */}
         <div className="sunken-panel flex h-full w-80 flex-col overflow-hidden rounded-xl bg-ink-950 max-md:w-full max-md:rounded-none">
           <header className="flex items-center justify-between border-b border-ink-700 px-4 py-3">
             <div>

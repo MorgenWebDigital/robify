@@ -2,12 +2,12 @@ import { t } from "./i18n";
 import type { Track } from "../types";
 
 /**
- * Auswahl für die Bibliotheksseite, in der Reihenfolge des Aufklappmenüs.
+ * the choices for the library page, in the order of the dropdown.
  *
- * Als Funktion, nicht als feste Liste: Eine Liste auf Modulebene entsteht
- * einmal beim Laden. Wechselt der Nutzer danach die Sprache, baut die App sich
- * zwar neu auf, das Modul aber nicht, und die Beschriftungen blieben in der
- * Anfangssprache stehen.
+ * a function rather than a fixed list: a list at module level comes into
+ * being once at load time. does the user switch language afterwards, the app
+ * rebuilds itself but the module does not, and the labels would stay in the
+ * starting language.
  */
 export function sortierungen() {
   return [
@@ -20,15 +20,15 @@ export function sortierungen() {
 }
 
 /**
- * Vergleicht zwei Titel nach der gewählten Ordnung.
+ * compares two tracks by the chosen order.
  *
- * Jede Ordnung hat Folgeschlüssel, sonst stünden die Titel eines Künstlers in
- * zufälliger Reihenfolge untereinander: nach Künstler kommt das Album, darin
- * die Titelnummer. Verglichen wird mit deutschen Regeln, damit Umlaute richtig
- * einsortiert werden und nicht hinter „Z“ landen.
+ * every order carries follow-up keys, otherwise the tracks of one artist
+ * would stand under each other at random: after the artist comes the album,
+ * and inside it the track number. the comparison runs under german rules so
+ * umlauts sort where they belong instead of landing behind "Z".
  *
- * Steht hier statt in der Seite, damit sich die Ordnung ohne Browser prüfen
- * lässt, sie ist reine Rechnung und braucht kein React.
+ * lives here instead of in the page so the order can be checked without a
+ * browser, it is pure calculation and needs no react.
  */
 export function vergleicheTitel(a: Track, b: Track, ordnung: string): number {
   const text = (x: string, y: string) =>
@@ -41,13 +41,11 @@ export function vergleicheTitel(a: Track, b: Track, ordnung: string): number {
     zahl(a.trackNo, b.trackNo) ||
     text(a.title, b.title);
 
-  /**
-   * Releases eines Künstlers nach Erscheinen, neueste oben, nicht
-   * alphabetisch: Wer die Titel eines Künstlers durchgeht, sucht nach Zeit,
-   * nicht nach Anfangsbuchstaben. Ohne Jahresangabe ans Ende, danach der
-   * Albumname als fester Anker, sonst zerfielen gleichjährige Releases
-   * ineinander. Innerhalb eines Releases zählt die Titelnummer.
-   */
+  // releases of an artist by release date, newest on top, not
+  // alphabetically: whoever walks through the tracks of an artist is looking
+  // by time, not by initial letter. without a year they go to the end, then
+  // the album name as a fixed anchor, otherwise releases of the same year
+  // would fall into each other. inside a release the track number counts
   const nachErscheinen = () =>
     (b.year ?? 0) - (a.year ?? 0) ||
     text(a.albumTitle, b.albumTitle) ||
@@ -63,7 +61,7 @@ export function vergleicheTitel(a: Track, b: Track, ordnung: string): number {
     case "album":
       return nachAlbum() || text(a.artistName, b.artistName);
     case "year":
-      // Neueste zuerst; Titel ohne Jahr ans Ende.
+      // newest first, tracks without a year go to the end
       return (
         (b.year ?? 0) - (a.year ?? 0) ||
         text(a.artistName, b.artistName) ||

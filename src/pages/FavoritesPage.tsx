@@ -11,18 +11,16 @@ import { useLibrary } from "../store/library";
 import { useUi } from "../store/ui";
 import type { Track } from "../types";
 
-/**
- * Alle mit dem Herz markierten Titel.
- *
- * Keine Playlist in der Datenbank, sondern eine Sicht auf die Markierung
- * selbst: So gibt es nur eine Wahrheit, und ein entferntes Herz verschwindet
- * hier sofort mit.
- */
+// every track marked with the heart.
+//
+// no playlist in the database but a view onto the marking itself: that way
+// there is only one truth, and a heart taken away disappears from here at
+// once
 export function FavoritesPage() {
   const revision = useLibrary((s) => s.revision);
   const refresh = useLibrary((s) => s.refresh);
   const notify = useUi((s) => s.notify);
-  /** `null`, solange noch nicht geladen, sonst blitzt der Leerzustand auf. */
+  /** `null` while not loaded yet, otherwise the empty state flashes up. */
   const [tracks, setTracks] = useState<Track[] | null>(null);
 
   useEffect(() => {
@@ -32,13 +30,11 @@ export function FavoritesPage() {
       .catch((error) => setTracks(fallback([], t("Favoriten"))(error)));
   }, [revision]);
 
-  /**
-   * Neue Reihenfolge nach dem Ziehen sichern.
-   *
-   * Erst anzeigen, dann schreiben: Sonst springt die Zeile an ihren alten
-   * Platz zurück, während die Datenbank noch arbeitet. Geht das Schreiben
-   * schief, holt der Neuaufbau den wahren Stand zurück.
-   */
+  // stores the new order after dragging.
+  //
+  // show first, write afterwards: otherwise the row jumps back to its old
+  // place while the database is still working. does the write fail, the
+  // rebuild brings the true state back
   const neuOrdnen = async (ids: number[]) => {
     const vorher = tracks ?? [];
     setTracks(

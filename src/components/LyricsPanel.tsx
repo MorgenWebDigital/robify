@@ -14,15 +14,13 @@ interface LyricsPanelProps {
   compact?: boolean;
 }
 
-/**
- * Eine Lyric-Zeile.
- *
- * Als eigenes, gemerktes Bauteil, weil die Liste an der Wiedergabeposition
- * hängt und damit viermal je Sekunde neu bewertet wird. Ohne das glich React
- * bei jedem Takt sämtliche Zeilen ab, bei einem längeren Text über hundert
- * Knöpfe, für eine Änderung, die immer nur zwei davon betrifft. Sichtbar
- * wurde das als Stocken, sobald sich sonst noch etwas bewegte.
- */
+// one lyric line.
+//
+// a memoised component of its own, because the list hangs off the playback
+// position and is therefore re-evaluated four times a second. without it
+// react diffed every line on each tick, over a hundred buttons with a longer
+// text, for a change that only ever concerns two of them. it became visible
+// as stutter as soon as anything else moved
 const Zeile = memo(function Zeile({
   text,
   timeMs,
@@ -58,23 +56,23 @@ export function LyricsPanel({ track, compact = false }: LyricsPanelProps) {
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   /**
-   * Die Liste selbst, nicht die aktive Zeile.
+   * the list itself, not the active line.
    *
-   * Ein Verweis, der je nach Zustand an einer anderen Zeile hängt, zwänge
-   * genau diese Zeilen zum Neuzeichnen und machte das Merken zunichte. Über
-   * den Behälter findet sich die richtige Zeile ebenso, per Position.
+   * a ref hanging off a different line depending on state would force exactly
+   * those lines to re-render and undo the memoising. through the container
+   * the right line is found just as well, by position.
    */
   const listeRef = useRef<HTMLUListElement>(null);
   const aktiveZeile = () =>
     listeRef.current?.children[aktivRef.current] ?? null;
-  /** Der aktive Index, für die Suche oben ohne Neuzeichnen lesbar. */
+  /** the active index, readable for the lookup above without a re-render. */
   const aktivRef = useRef(0);
-  // Stabil, sonst bekäme jede Zeile bei jedem Takt eine neue Funktion und
-  // das Merken liefe ins Leere.
+  // stable, otherwise every line would get a new function on each tick and
+  // the memoising would come to nothing
   const springen = useCallback((timeMs: number) => void seek(timeMs), [seek]);
   /**
-   * Läuft die Ansicht der Wiedergabe hinterher? Wer selbst blättert, will
-   * lesen, nicht alle paar Sekunden weggerissen werden.
+   * whether the view follows the playback. whoever scrolls themselves wants
+   * to read, not to be torn away every few seconds.
    */
   const [folgt, setFolgt] = useState(true);
 
@@ -106,21 +104,20 @@ export function LyricsPanel({ track, compact = false }: LyricsPanelProps) {
     [lyrics?.synced],
   );
   const active = lines.length > 0 ? activeLineIndex(lines, positionMs) : -1;
-  // Beim Zeichnen mitgeschrieben, damit das Nachführen die Zeile findet, ohne
-  // dass ein Verweis an ihr hängt. Reine Ableitung, kein Zustand.
+  // written along while rendering so the follow-up finds the line without a
+  // ref hanging off it. pure derivation, no state
   aktivRef.current = Math.max(0, active);
 
   /**
-   * Ob schon einmal auf die laufende Zeile gesprungen wurde.
+   * whether the running line has been jumped to once already.
    *
-   * Das erste Mal geschieht ohne weichen Lauf: Es fällt mit dem Aufgehen der
-   * Vollbildansicht zusammen, und zwei Bewegungen zugleich, dazu die
-   * Neuberechnung, die jedes Scrollen erzwingt, ließen beide stocken. Später
-   * ist die Fläche in Ruhe, dann darf es gleiten.
+   * the first time happens without easing: it coincides with the full screen
+   * view opening, and two animations at once, plus the reflow every scroll
+   * forces, made both stutter. later the surface is at rest and it may glide.
    */
   const schonPositioniert = useRef(false);
 
-  // Aktive Zeile mittig halten, solange die Ansicht mitläuft.
+  // keep the active line centred while the view follows
   useEffect(() => {
     if (!folgt) return;
     aktiveZeile()?.scrollIntoView({
@@ -130,8 +127,8 @@ export function LyricsPanel({ track, compact = false }: LyricsPanelProps) {
     schonPositioniert.current = true;
   }, [active, folgt]);
 
-  // Ein neuer Titel fängt wieder von vorne an mitzulaufen, und springt
-  // wieder ohne Lauf, weil dabei die ganze Liste ausgetauscht wird.
+  // a new track starts following from the top again, and jumps without
+  // easing again because the whole list is exchanged in doing so
   useEffect(() => {
     setFolgt(true);
     schonPositioniert.current = false;
@@ -148,13 +145,13 @@ export function LyricsPanel({ track, compact = false }: LyricsPanelProps) {
 
   const hasContent = Boolean(lyrics?.synced || lyrics?.plain);
 
-  // Ohne eigene Fläche: Der Text liegt unmittelbar auf der großen Fläche der
-  // Vollbild-Ansicht. Ein eigener Kasten ergäbe dort einen zweiten Rahmen
-  // wenige Pixel neben dem vorhandenen.
+  // no surface of its own: the text lies straight on the large surface of the
+  // full screen view. a box of its own would make a second frame a few pixels
+  // next to the existing one
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Ohne Überschrift und Quellenzeile: Der Text soll für sich stehen.
-          Das Online-Holen ist in den Bearbeiten-Dialog gewandert. */}
+      {/* no heading and no source line: the text is to stand for itself.
+          fetching it online has travelled into the edit dialog. */}
       <div className="mb-1 flex shrink-0 justify-end">
         <Button
           onClick={() => setEditing(true)}
@@ -165,12 +162,12 @@ export function LyricsPanel({ track, compact = false }: LyricsPanelProps) {
         </Button>
       </div>
 
-      {/* Die Textfläche kippt nach hinten weg; die gerade gesungene Zeile
-          kommt wieder nach vorn.
+      {/* the text surface tips away to the back, and the line being sung
+          comes forward again.
 
-          Eigenes Blättern löst das Mitlaufen: Erkannt wird es an Mausrad,
-          Wischen und Ziehen der Bildlaufleiste, nicht am Blätter-Ereignis
-          selbst, das käme auch vom eigenen Nachführen. */}
+          scrolling by hand releases the following: it is recognised by wheel,
+          swipe and dragging the scrollbar, not by the scroll event itself,
+          which would come from the follow-up too. */}
       <div
         className="lyrics-stage relative min-h-0 flex-1 overflow-y-auto pe-1"
         onWheel={() => setFolgt(false)}
@@ -213,7 +210,7 @@ export function LyricsPanel({ track, compact = false }: LyricsPanelProps) {
         )}
       </div>
 
-      {/* Der Weg zurück. Steht über dem Text, damit er nicht mitblättert. */}
+      {/* the way back. stands above the text so it does not scroll along. */}
       {!folgt && lines.length > 0 && (
         <div className="pointer-events-none relative">
           <button
@@ -269,10 +266,8 @@ function LyricsEditor({
   const [saving, setSaving] = useState(false);
   const [fetching, setFetching] = useState(false);
 
-  /**
-   * Lyrics online suchen. Steht hier statt in der Anzeige: Dort soll nur
-   * der Text stehen, und wer nachhilft, ist ohnehin schon am Bearbeiten.
-   */
+  // search lyrics online. lives here rather than in the display: only the
+  // text is to stand there, and whoever helps along is editing anyway
   const fetchOnline = async () => {
     setFetching(true);
     try {
@@ -383,8 +378,8 @@ function LyricsEditor({
             />
           </Field>
 
-          {/* Der Weg vom Fließtext zu mitlaufenden Lyrics, wenn online nichts
-            Zeitsynchrones zu finden war. */}
+          {/* the way from running text to lyrics that follow along, where
+            nothing time-synced could be found online. */}
           <Button
             onClick={() => setTakten(true)}
             variant="outline"

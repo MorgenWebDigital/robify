@@ -1,7 +1,7 @@
 import { spracheJetzt, t } from "./i18n";
 import { mehrzahl } from "./mehrzahl";
 
-/** mm:ss bzw. h:mm:ss, für Laufzeiten im Player und in Listen. */
+/** mm:ss or h:mm:ss, for running times in the player and in lists. */
 export function formatTime(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) ms = 0;
   const total = Math.floor(ms / 1000);
@@ -15,12 +15,12 @@ export function formatTime(ms: number): string {
 }
 
 /**
- * Lesbare Gesamtdauer, z. B. „12 Std. 4 Min.“
+ * readable total duration, "12 Std. 4 Min." for instance.
  *
- * Die Einheiten laufen durch `t`, weil sie in jeder Sprache anders abgekürzt
- * werden, „Std.“ heißt auf Russisch „ч“, auf Chinesisch „小时“. Vorher stand
- * hier fester deutscher Text, und dadurch endete jede Zeitangabe der App auf
- * „Min.“, gleich welche Sprache eingestellt war.
+ * the units run through `t` because every language abbreviates them
+ * differently, "Std." is "ч" in russian and "小时" in chinese. fixed german
+ * text stood here before, which made every duration in the app end in "Min."
+ * whatever the language was set to.
  */
 export function formatDuration(ms: number): string {
   const totalMinutes = Math.round(ms / 60000);
@@ -36,16 +36,17 @@ export function formatDuration(ms: number): string {
 }
 
 /**
- * Zahl mit den Trennzeichen der eingestellten Sprache.
+ * a number with the separators of the selected language.
  *
- * Deutsch trennt Tausender mit Punkt, Englisch mit Komma, Französisch mit
- * schmalem Leerzeichen. Fest auf „de-DE“ gestellt, las sich „1.234“ für einen
- * englischen Leser wie eine Kommazahl.
+ * german separates thousands with a dot, english with a comma, french with a
+ * thin space. pinned to "de-DE", "1.234" read like a decimal to an english
+ * reader.
  */
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat(spracheJetzt()).format(value);
 }
 
+/** a byte count as b, kb, mb or gb. */
 export function formatBytes(bytes: number | null | undefined): string {
   if (!bytes || bytes <= 0) return t("unbekannt");
   const units = ["B", "KB", "MB", "GB"];
@@ -59,11 +60,11 @@ export function formatBytes(bytes: number | null | undefined): string {
 }
 
 /**
- * Art eines Releases als Wort.
+ * the type of a release as a word.
  *
- * Als Funktion und nicht als feste Tabelle: Eine Tabelle auf Modulebene
- * entstünde einmal beim Laden und bliebe nach einem Sprachwechsel in der
- * Anfangssprache stehen. „EP“ heißt überall gleich und braucht kein `t`.
+ * a function and not a fixed table: a table at module level would come into
+ * being once at load time and stay in the starting language after a language
+ * switch. "EP" is called the same everywhere and needs no `t`.
  */
 export function releaseLabel(type: string): string {
   if (type === "single") return t("Single");
@@ -72,16 +73,16 @@ export function releaseLabel(type: string): string {
 }
 
 /**
- * Anzahl samt gebeugtem Hauptwort, z. B. „7 Titel“.
+ * a count together with the inflected noun, "7 Titel" for instance.
  *
- * Das Stichwort ist das deutsche Wort in der Einzahl; die Beugung besorgt
- * `mehrzahl`. Früher nahm diese Funktion zwei fertige Wörter entgegen, das
- * reicht für Deutsch und Englisch, aber nicht für Russisch mit seinen vier
- * Formen, und in der App stand deshalb „7 Треки“ statt „7 треков“.
+ * the keyword is the german word in the singular, and `mehrzahl` handles the
+ * inflection. this function used to take two finished words, which does for
+ * german and english but not for russian with its four forms, and the app
+ * therefore read "7 Треки" instead of "7 треков".
  */
 export function plural(count: number, stichwort: string): string {
-  // Chinesisch setzt kein Leerzeichen zwischen Zahl und Zählwort: „7首曲目“,
-  // nicht „7 首曲目“. Ein Leerzeichen sähe dort aus wie ein Tippfehler.
+  // chinese sets no space between number and measure word: "7首曲目", not
+  // "7 首曲目". a space would look like a typo there
   const fuge = spracheJetzt() === "zh" ? "" : " ";
   return `${formatNumber(count)}${fuge}${mehrzahl(count, stichwort)}`;
 }

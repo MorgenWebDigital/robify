@@ -1,38 +1,35 @@
-/**
- * Wohin Rückmeldungen gehen und wo gespendet werden kann.
- *
- * Steht an einer Stelle und nicht verstreut in der Oberfläche, weil beides von
- * außen kommt: eine Adresse im Netz, die es erst gibt, wenn das Vorhaben
- * veröffentlicht ist, und Zahlungsadressen, die sich niemand ausdenken kann.
- *
- * Was hier leer bleibt, zeigt die App nicht an. Ein Knopf, der ins Leere
- * führt, ist schlechter als kein Knopf.
- */
+// where feedback goes and where donations can be sent.
+//
+// kept in one place instead of scattered through the ui because both come
+// from outside: an address on the net that exists only once the project is
+// published, and payment addresses nobody can invent.
+//
+// note: whatever stays empty here is not shown by the app. a button leading
+// nowhere is worse than no button.
 
 /**
- * Öffentliche Stelle für Fehler und Vorschläge, etwa ein Fehlermelder.
+ * public place for bugs and suggestions, an issue tracker for instance.
  *
- * Bewusst kein Briefkasten: Eine E-Mail verrät die Adresse des Absenders,
- * bleibt unter zweien hängen und ist für den nächsten mit demselben Problem
- * nicht auffindbar. Eine öffentliche Stelle kommt ohne Namen und ohne Adresse
- * aus, und wer dasselbe erlebt, findet den Eintrag wieder.
+ * deliberately no mailbox: an e-mail gives the address of the sender away,
+ * stays between two people and cannot be found by the next one with the same
+ * problem. a public place needs neither a name nor an address, and whoever
+ * runs into the same thing finds the entry again.
  */
 export const MELDESTELLE = "https://github.com/MorgenWebDigital/robify/issues";
 
-/** Eine Spendenadresse, wie sie in den Einstellungen erscheint. */
+/** a donation address as it appears in the settings. */
 export interface Spendenweg {
-  /** Was dort ankommt, z. B. „Bitcoin“ oder „Monero“. */
+  /** what arrives there, "Bitcoin" or "Monero" for instance. */
   name: string;
-  /** Die vollständige Adresse. Angezeigt wird sie gekürzt. */
+  /** the complete address. it is displayed shortened. */
   adresse: string;
 }
 
 /**
- * Spendenwege, in der Reihenfolge, in der sie erscheinen sollen.
+ * donation routes, in the order they are to appear in.
  *
- * Kryptowährungen und nicht ein Bezahldienst: Für eine Überweisung braucht es
- * weder ein Konto bei einem Dritten noch den Namen des Gebenden, und Robify
- * selbst bekommt von einer Spende nichts mit — es zeigt nur eine Zeichenkette
- * an, die man kopieren kann.
+ * cryptocurrencies rather than a payment service: a transfer needs neither an
+ * account with a third party nor the name of the giver, and robify itself
+ * learns nothing of a donation, it only shows a string that can be copied.
  */
 export const SPENDEN: Spendenweg[] = [];

@@ -3,9 +3,9 @@ import { t } from "../lib/i18n";
 
 interface Props {
   children: ReactNode;
-  /** Was ausgefallen ist, für die Überschrift: „Diese Seite“, „Robify“. */
+  /** what failed, for the heading: "this page", "Robify". */
   scope: string;
-  /** Wird beim Klick auf „Nochmal versuchen“ gerufen, bevor neu gerendert wird. */
+  /** called on a click on the retry button, before the re-render. */
   onReset?: () => void;
 }
 
@@ -13,16 +13,14 @@ interface State {
   error: Error | null;
 }
 
-/**
- * Fängt Fehler beim Zeichnen ab.
- *
- * Ohne dieses Netz reißt ein einziger Fehler in irgendeiner Seite die gesamte
- * Oberfläche auf Schwarz, React hängt den ganzen Baum aus, und übrig bleibt
- * ein leeres Fenster ohne jeden Hinweis. Genau dieses Bild hat uns beim
- * Versuch mit dem durchsichtigen Fenster eine Stunde gekostet.
- *
- * React bietet dafür bis heute nur Klassen an; Haken gibt es keine.
- */
+// catches errors thrown while rendering.
+//
+// without this net a single error on any page tears the whole ui to black,
+// react unmounts the entire tree, and an empty window without any hint is
+// left. exactly that picture cost an hour during the attempt with the
+// transparent window.
+//
+// react offers classes alone for this to this day, there are no hooks
 export class ErrorBoundary extends Component<Props, State> {
   state: State = { error: null };
 
@@ -31,7 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    // In die Konsole, damit die Entwicklerwerkzeuge den Ursprung zeigen.
+    // to the console, so the developer tools show the origin
     console.error("Robify: Fehler beim Zeichnen", error, info.componentStack);
   }
 
@@ -55,7 +53,7 @@ export class ErrorBoundary extends Component<Props, State> {
           )}
         </p>
 
-        {/* Der Wortlaut hilft beim Nachfragen; sperrig, aber nachvollziehbar. */}
+        {/* the wording helps when asking back: unwieldy but traceable. */}
         <code className="max-w-lg overflow-x-auto rounded bg-ink-800 px-3 py-2 text-start text-xs text-mute">
           {error.message || String(error)}
         </code>

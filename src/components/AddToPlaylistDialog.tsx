@@ -16,14 +16,14 @@ export function AddToPlaylistDialog() {
   const reloadPlaylists = useLibrary((s) => s.reloadPlaylists);
   const [anlegen, setAnlegen] = useState(false);
   const [busy, setBusy] = useState(false);
-  /** Playlist-Kennung → wie viele der gewählten Titel dort schon liegen. */
+  /** playlist id to how many of the chosen tracks already lie there. */
   const [enthalten, setEnthalten] = useState<Map<number, number>>(new Map());
 
   const trackIds = addToPlaylistIds ?? [];
   const close = () => openAddToPlaylist(null);
 
-  // Doppelte Einträge werden beim Einfügen stillschweigend übergangen,
-  // ohne Hinweis wundert man sich, warum nichts passiert.
+  // duplicate entries are skipped silently on insert, and without a hint one
+  // wonders why nothing happens
   useEffect(() => {
     if (addToPlaylistIds === null) return;
     let cancelled = false;
@@ -62,7 +62,7 @@ export function AddToPlaylistDialog() {
     }
   };
 
-  /** Nach dem Anlegen wandern die gewählten Titel gleich hinein. */
+  /** after creating it, the chosen tracks travel straight into it. */
   const einfuellen = async (playlist: { id: number; name: string }) => {
     try {
       await api.addToPlaylist(playlist.id, trackIds);
@@ -118,8 +118,8 @@ export function AddToPlaylistDialog() {
                       onClick={() => void addTo(playlist.id, playlist.name)}
                       className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-start transition hover:bg-ink-700 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
                     >
-                      {/* Dasselbe Bild wie in der Seitenleiste: Playlists
-                          erkennt man am Cover schneller als am Namen. */}
+                      {/* the same image as in the sidebar: a playlist is
+                          recognised faster by its cover than by its name. */}
                       <PlaylistMosaic
                         albumIds={playlist.coverAlbumIds}
                         name={playlist.name}
@@ -158,8 +158,8 @@ export function AddToPlaylistDialog() {
         </div>
       </Modal>
 
-      {/* Steht neben dem Dialog, nicht darin: So bleibt es sichtbar, während
-          der Hinzufügen-Dialog im Hintergrund geöffnet ist. */}
+      {/* stands next to the dialog, not inside it: that keeps it visible
+          while the add dialog is open in the background. */}
       <PlaylistCreateDialog
         open={anlegen}
         onClose={() => setAnlegen(false)}

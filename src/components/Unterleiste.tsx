@@ -5,21 +5,19 @@ import { UNTEN, UNTER_MEHR, istHier } from "../lib/navigation";
 import { useAusblenden } from "../lib/ausblenden";
 import { DotsIcon } from "./Icons";
 
-/** Muss zur Dauer von `.animate-out` im Stylesheet passen. */
+/** has to match the duration of `.animate-out` in the stylesheet. */
 const AUSBLENDEN_MS = 160;
 
-/**
- * Navigation am unteren Rand, für das Telefon.
- *
- * Eine Seitenleiste von 240 Punkten nimmt auf einer Handbreite von etwa 410
- * mehr als die Hälfte ein; für den Inhalt blieb ein Streifen, in dem jede
- * Überschrift nach zwei Wörtern umbrach. Unten kostet dieselbe Navigation
- * nichts von der Breite.
- *
- * Vier Ziele plus „Mehr“: Fünf Flächen nebeneinander sind auf dieser Breite
- * gerade noch sicher zu treffen. Was nicht hineinpasst, liegt hinter „Mehr“,
- * damit kein Abschnitt unerreichbar wird.
- */
+// navigation at the bottom edge, for the phone.
+//
+// a sidebar of 240 points takes more than half of a hand's width of about
+// 410, and a strip was left for the content in which every heading wrapped
+// after two words. at the bottom the same navigation costs nothing of the
+// width.
+//
+// four targets plus "more": five areas side by side are just about safe to
+// hit at this width. what does not fit sits behind "more" so no section
+// becomes unreachable
 export function Unterleiste() {
   const { pathname: pfad } = useLocation();
   const [mehrOffen, setMehrOffen] = useState(false);
@@ -31,7 +29,7 @@ export function Unterleiste() {
     <>
       {sichtbar && (
         <>
-          {/* Die Abdunklung fängt den Klick daneben ab. */}
+          {/* the scrim catches the click next to it. */}
           <button
             type="button"
             aria-label={t("Schließen")}
@@ -39,7 +37,7 @@ export function Unterleiste() {
             className={`fixed inset-0 z-40 backdrop-blur-sm ${schliesst ? "" : "animate-scrim"}`}
             style={{ background: "var(--scrim)" }}
           />
-          {/* Steigt von unten auf, also von dort, wo der Knopf steht. */}
+          {/* rises from the bottom, from where the button stands. */}
           <div
             className={`unterleiste-blatt ${schliesst ? "animate-out" : "animate-rise"}`}
           >

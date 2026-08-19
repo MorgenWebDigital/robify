@@ -9,16 +9,13 @@ import { ArtistAvatar } from "./ArtistEditor";
 import { ChevronLeftIcon, PlaylistIcon, PlayIcon } from "./Icons";
 import type { Album, Artist, Playlist, WeeklyMixSummary } from "../types";
 
-/**
- * Ein Release als Kachel.
- *
- * `ohneAbspielen` nimmt das Dreieck vom Cover. Auf einem Berührungsbildschirm
- * gibt es kein Zeigen, das etwas hervorholen könnte — dort steht das Dreieck
- * ständig auf dem Bild und verdeckt genau die Ecke, in der bei einem Cover
- * meist noch etwas zu sehen ist. Auf der Startseite, wo drei Kacheln nur ein
- * Ausschnitt sind und man ohnehin weitergeht, wiegt das schwerer als der
- * gesparte Antippen.
- */
+// a release as a tile.
+//
+// `ohneAbspielen` takes the triangle off the cover. on a touch screen there
+// is no hovering that could bring something out, so the triangle stands on
+// the image permanently and covers exactly the corner where a cover usually
+// still has something to show. on the home page, where three tiles are only
+// an excerpt and one moves on anyway, that weighs more than the tap saved
 export function AlbumCard({
   album,
   ohneAbspielen = false,
@@ -73,12 +70,10 @@ export function AlbumCard({
   );
 }
 
-/**
- * Ein Wochenmix als Kachel, in derselben Form wie ein Release.
- *
- * Steht in den Karten und nicht auf der Startseite, weil zwei Seiten sie
- * zeigen: die Startseite als Vorschau, die Übersicht als vollständige Liste.
- */
+// a weekly mix as a tile, in the same shape as a release.
+//
+// lives in the cards and not on the home page because two pages show it: the
+// home page as a preview, the overview as a complete list
 export function MixKachel({
   mix,
   ohneAbspielen = false,
@@ -111,7 +106,7 @@ export function MixKachel({
   );
 }
 
-/** Zeigt bis zu vier Cover als Kachel, wie bei Playlist-Vorschauen üblich. */
+// shows up to four covers as a tile, as is usual with playlist previews
 export function PlaylistMosaic({
   albumIds,
   name,
@@ -121,7 +116,7 @@ export function PlaylistMosaic({
   albumIds: number[];
   name: string;
   size?: string;
-  /** Eigenes Bild der Playlist. Ist eines da, entfällt das Mosaik. */
+  /** an image of the playlist's own. where there is one, the mosaic is dropped. */
   coverSrc?: string | null;
 }) {
   if (coverSrc) {
@@ -167,7 +162,7 @@ export function PlaylistMosaic({
   );
 }
 
-/** Playlists erscheinen wie Alben, gleiche Kachel, gleiche Bedienung. */
+// playlists appear like albums: the same tile, the same handling
 export function PlaylistCard({
   playlist,
   size = "md",
@@ -177,15 +172,15 @@ export function PlaylistCard({
 }) {
   return (
     <Link
-      // Ohne dies zieht der Browser den Verweis statt der Kachel: Ein
-      // Link ist von Haus aus ziehbar, und sein Zug überstimmt den der
-      // Hülle darum herum.
+      // without this the browser drags the link instead of the tile: a link
+      // is draggable out of the box, and its drag outvotes the one of the
+      // wrapper around it
       draggable={false}
       to={`/playlist/${playlist.id}`}
-      // `block` ausdrücklich: Ein `a` ist von Haus aus inline. Als direktes
-      // Kind des Gitters wurde es automatisch zum Block, seit es in einer
-      // Hülle zum Ziehen steckt, nicht mehr. Inline griff die Polsterung
-      // nicht, und die Hoverfläche zerfiel in Zeilenkästen.
+      // `block` explicitly: an `a` is inline out of the box. as a direct child
+      // of the grid it became a block automatically, and since it sits in a
+      // wrapper for dragging it no longer does. inline, the padding did not
+      // take hold and the hover area fell apart into line boxes
       className="group block rounded-xl p-3 transition hover:bg-ink-800"
     >
       <div className="relative">
@@ -195,9 +190,9 @@ export function PlaylistCard({
           size="aspect-square w-full"
           coverSrc={playlist.hasCover ? playlistCover(playlist.id) : null}
         />
-        {/* Kein Dreieck auf dem Bild. Ohne Zeigegerät steht es dort
-            ständig und verdeckt eine Ecke des Mosaiks; die Kachel führt in
-            die Playlist, wo das Abspielen als eigener Knopf steht. */}
+        {/* no triangle on the image. without a pointing device it stands
+            there permanently and covers a corner of the mosaic, and the tile
+            leads into the playlist where playing has a button of its own. */}
       </div>
       <p
         className={`mt-3 truncate font-medium ${size === "sm" ? "text-xs" : "text-sm"}`}
@@ -246,45 +241,45 @@ export function PageHeader({
   title: string;
   subtitle?: string;
   actions?: React.ReactNode;
-  /** Bedienung an den rechten Rand statt unter den Anfang der Überschrift. */
+  /** actions at the right edge instead of under the start of the heading. */
   actionsRechts?: boolean;
   /**
-   * Enger werden statt umbrechen.
+   * grow narrower instead of wrapping.
    *
-   * Steht die Bedienung neben einem Bild, bleibt ihr wenig Breite, und drei
-   * Knöpfe rutschten dort untereinander — auf der Künstlerseite war das eine
-   * Spalte statt einer Reihe. `aktionsreihe` macht die Reihe selbst zum
-   * Maßstab; die Knöpfe fallen dann auf ihr Zeichen zusammen, wie in der
-   * Bibliothek.
+   * where the actions stand next to an image little width is left to them,
+   * and three buttons slid under each other there: on the artist page that
+   * was a column instead of a row. `aktionsreihe` makes the row itself the
+   * yardstick, and the buttons then collapse onto their icon, as in the
+   * library.
    *
-   * Bewusst als Zusatz und nicht als neue Regel für alle: Ohne
-   * `aktionsknopf-kurz` an den Knöpfen liefen sie sonst über den Rand,
-   * statt umzubrechen.
+   * deliberately an addition and not a new rule for everyone: without
+   * `aktionsknopf-kurz` on the buttons they would run over the edge instead
+   * of wrapping.
    */
   actionsReihe?: boolean;
 }) {
   return (
-    // Feste Bauhöhe für jede Seite. Rubrik und Untertitel sind nicht überall
-    // gefüllt, die Einstellungen haben keinen, der Rückblick bekommt seinen
-    // erst nach dem Laden. Fehlten die Zeilen dann einfach, säße die
-    // Überschrift jeder Seite auf einer anderen Höhe, und beim Wechsel
-    // sprängen Suchleiste und Inhalt darunter mit.
+    // a fixed build height for every page. eyebrow and subtitle are not
+    // filled everywhere, the settings have none and the review gets its own
+    // only after loading. were the lines simply missing then, the heading of
+    // every page would sit at a different height, and search bar and content
+    // below would jump along on a change.
     //
-    // Darum werden beide Zeilen immer belegt, notfalls mit einem
-    // geschützten Leerzeichen. Für Vorleseprogramme bleiben sie dabei
-    // stumm, weil sie dann kein Wort enthalten.
+    // both lines are therefore always occupied, with a non-breaking space if
+    // need be. to screen readers they stay silent that way, because they hold
+    // no word then
     <header className="mb-6">
-      {/* Der Überschriftenblock allein trägt die feste Höhe. Die Bedienung
-          darunter darf umbrechen, ohne die Überschriften der Seiten
-          gegeneinander zu verschieben. */}
+      {/* the heading block alone carries the fixed height. the actions below
+          may wrap without shifting the headings of the pages against each
+          other. */}
       <div className="min-h-20 min-w-0">
         <p className="eyebrow">{eyebrow || "\u00a0"}</p>
         <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
         <p className="mt-1 text-sm text-mute">{subtitle || "\u00a0"}</p>
       </div>
-      {/* Bedienung steht unter der Überschrift, nicht daneben: So beginnt sie
-          auf jeder Seite an derselben Stelle, und lange Titel drängen sie
-          nicht mehr zusammen. Derselbe Abstand wie in den Suchzeilen. */}
+      {/* the actions stand under the heading, not next to it: that way they
+          start at the same place on every page, and long titles no longer
+          squeeze them together. the same spacing as in the search rows. */}
       {actions && (
         <div
           className={`mt-3 items-center gap-3 ${
@@ -299,16 +294,15 @@ export function PageHeader({
 }
 
 /**
- * Einen Schritt zurück im Verlauf.
+ * one step back in the history.
  *
- * Nötig auf Unterseiten, die man von überall her erreicht: Künstler und
- * Releases sind aus der Bibliothek, aus dem Rückblick, aus der laufenden
- * Wiedergabe und aus jeder Titelliste heraus anklickbar. Die Seitenleiste
- * führt zu keiner davon zurück.
+ * needed on sub-pages reachable from everywhere: artists and releases can be
+ * clicked from the library, from the review, from the running playback and
+ * from every track list. the sidebar leads back to none of them.
  *
- * Gibt es keinen Verlauf, etwa weil die Seite als erste geöffnet wurde,
- * führt der Knopf zum genannten Ziel. React Router zählt die Schritte in
- * `history.state` mit; steht dort die Null, ist dies der Anfang.
+ * where there is no history, because the page was opened first for instance,
+ * the button leads to the target named. react router counts the steps in
+ * `history.state`, and a zero there means this is the start.
  */
 export function ZurueckKnopf({ ziel }: { ziel: string }) {
   const navigate = useNavigate();
@@ -345,23 +339,22 @@ export function SectionTitle({
   );
 }
 
-/** Wie viele Kacheln nebeneinander passen, je größer, desto weniger. */
+/** how many tiles fit side by side, the larger the fewer. */
 const GRID_COLUMNS = {
   sm: "grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8",
   md: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
   lg: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
 } as const;
 
-/*
- * Aufteilung für eine Vorschau von genau drei Kacheln neben „Alle ansehen“.
- *
- * Wie `md`, nur auf dem Telefon dreispaltig statt zweispaltig: Zwei Spalten
- * ließen die dritte Kachel allein in einer zweiten Reihe stehen, und das sieht
- * nach einer abgeschnittenen Liste aus, nicht nach einer Auswahl.
- *
- * Als eigene Angabe und nicht als vierte Größe: `GridSize` steht auch in den
- * Einstellungen für die Kachelgröße der Playlists, und dort gibt es nur drei.
- */
+// layout for a preview of exactly three tiles next to "view all".
+//
+// like `md`, only three columns on a phone instead of two: two columns left
+// the third tile standing alone in a second row, and that looks like a
+// truncated list rather than a selection.
+//
+// a value of its own and not a fourth size: `GridSize` also stands in the
+// settings for the tile size of the playlists, and there are only three
+// there
 const VORSCHAU_SPALTEN = "grid-cols-3 lg:grid-cols-5";
 
 export type GridSize = keyof typeof GRID_COLUMNS;
@@ -373,18 +366,18 @@ export function Grid({
 }: {
   children: React.ReactNode;
   size?: GridSize;
-  /** Drei Kacheln als Ausschnitt, der Rest hinter „Alle ansehen“. */
+  /** three tiles as an excerpt, the rest behind "view all". */
   vorschau?: boolean;
 }) {
   const spalten = vorschau ? VORSCHAU_SPALTEN : GRID_COLUMNS[size];
-  // Mehr Luft in der Vorschau: Fünf Kacheln nebeneinander standen mit vier
-  // Bildpunkten Abstand fast aneinander, und die Cover wirkten gequetscht.
-  // Sechzehn geben jeder ihren Rand und machen sie nebenbei kleiner.
+  // more air in the preview: five tiles side by side stood almost against
+  // each other at four pixels apart, and the covers looked squeezed. sixteen
+  // give each of them an edge and make them smaller along the way
   const luft = vorschau ? "gap-4" : "gap-1";
   return <div className={`grid ${luft} ${spalten}`}>{children}</div>;
 }
 
-/** Playlist als Zeile, dieselben Angaben, nur platzsparend. */
+// a playlist as a row, the same details, only saving space
 export function PlaylistRow({
   playlist,
   size = "md",
@@ -396,9 +389,9 @@ export function PlaylistRow({
 
   return (
     <Link
-      // Ohne dies zieht der Browser den Verweis statt der Kachel: Ein
-      // Link ist von Haus aus ziehbar, und sein Zug überstimmt den der
-      // Hülle darum herum.
+      // without this the browser drags the link instead of the tile: a link
+      // is draggable out of the box, and its drag outvotes the one of the
+      // wrapper around it
       draggable={false}
       to={`/playlist/${playlist.id}`}
       className="flex items-center gap-4 rounded-xl p-2 transition hover:bg-ink-800"

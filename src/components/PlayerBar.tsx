@@ -46,7 +46,7 @@ export function PlayerBar() {
   const { nowPlayingOpen, setNowPlayingOpen, queueOpen, setQueueOpen, notify } =
     useUi();
 
-  // Beim Ziehen soll die Anzeige dem Finger folgen, nicht dem Backend.
+  // while dragging, the display is to follow the finger, not the backend
   const [scrubbing, setScrubbing] = useState<number | null>(null);
   const displayPosition = scrubbing ?? positionMs;
   const total = durationMs || currentTrack?.durationMs || 0;
@@ -54,7 +54,7 @@ export function PlayerBar() {
   const [favorite, setFavorite] = useState(false);
   useEffect(() => setFavorite(currentTrack?.favorite ?? false), [currentTrack]);
 
-  // Leertaste und Medientasten steuern die Wiedergabe.
+  // space and the media keys control the playback
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -91,7 +91,7 @@ export function PlayerBar() {
       <MiniPlayer />
 
       <footer className="sunken-panel z-30 mx-3 mb-3 hidden h-[5.5rem] shrink-0 items-center gap-4 rounded-full bg-ink-950 px-7 md:flex">
-        {/* Titelinformationen */}
+        {/* track details */}
         <div className="flex w-[30%] min-w-0 items-center gap-3">
           {currentTrack ? (
             <>
@@ -120,11 +120,11 @@ export function PlayerBar() {
                 </span>
               </button>
               <div className="min-w-0">
-                {/* Der Titel führt zur Lyrics-Ansicht, wie das Cover daneben.
-                  Er ist die größte Fläche im Player und der Ort, auf den man
-                  von selbst zeigt, wenn man wissen will, was da läuft. Die
-                  Künstlernamen darunter bleiben eigene Verweise, sonst käme
-                  man von hier nicht mehr zur Künstlerseite. */}
+                {/* the title leads to the lyrics view, as the cover next to
+                  it does. it is the largest area in the player and the place
+                  one points at by oneself when wanting to know what is
+                  running. the artist names below stay links of their own,
+                  otherwise the artist page could not be reached from here. */}
                 <button
                   type="button"
                   onClick={() => setNowPlayingOpen(!nowPlayingOpen)}
@@ -155,7 +155,7 @@ export function PlayerBar() {
           )}
         </div>
 
-        {/* Steuerung */}
+        {/* controls */}
         <div className="flex flex-1 flex-col items-center gap-1.5">
           <div className="flex items-center gap-2">
             <button
@@ -253,7 +253,7 @@ export function PlayerBar() {
           </div>
         </div>
 
-        {/* Zusatzfunktionen */}
+        {/* extras */}
         <div className="flex w-[30%] items-center justify-end gap-1.5">
           <SleepTimerMenu />
           <button
@@ -315,22 +315,20 @@ export function PlayerBar() {
   );
 }
 
-/**
- * Der Player am Telefon.
- *
- * Die Leiste vom Rechner trägt drei Spalten und vierzehn Bedienelemente; auf
- * einer Handbreite lief sie rechts aus dem Bild, die Lautstärke war gar nicht
- * mehr zu sehen. Hier bleibt, was man im Vorbeigehen braucht: sehen, was
- * läuft, und anhalten.
- *
- * Alles Übrige liegt eine Berührung entfernt in der Vollbildansicht, die sich
- * durch Tippen auf Cover oder Titel öffnet. Das ist am Telefon ohnehin der
- * gewohnte Griff.
- *
- * Als eigenes Bauteil und nicht als umgebaute Leiste: Die vom Rechner ist fein
- * austariert, und ein Dutzend Haltepunkte darin hätten beide Fassungen
- * unleserlich gemacht.
- */
+// the player on a phone.
+//
+// the desktop bar carries three columns and fourteen controls, and on a
+// hand's width it ran out of the picture to the right with the volume not
+// visible at all. what one needs in passing stays here: seeing what is
+// running, and stopping it.
+//
+// everything else lies one touch away in the full screen view, which opens by
+// tapping the cover or the title. on a phone that is the familiar reach
+// anyway.
+//
+// a component of its own and not a rebuilt bar: the desktop one is finely
+// balanced, and a dozen breakpoints inside it would have made both versions
+// unreadable
 function MiniPlayer() {
   const currentTrack = usePlayer((s) => s.currentTrack);
   const playing = usePlayer((s) => s.playing);
@@ -345,16 +343,14 @@ function MiniPlayer() {
   const gesamt = durationMs || currentTrack?.durationMs || 0;
   const anteil = gesamt ? Math.min(positionMs / gesamt, 1) * 100 : 0;
 
-  /*
-   * Hochwischen fährt den Titel aus.
-   *
-   * Die Leiste ist der Deckel über der Vollbildansicht; ihn hochzuschieben
-   * ist die Bewegung, die man ohnehin versucht. Antippen tut dasselbe und
-   * bleibt — die Geste ist eine Abkürzung, kein Ersatz.
-   *
-   * Nur nach oben und nur deutlich: Die Leiste ist zwei Fingerbreit hoch, ein
-   * Tippen wackelt darin leicht ein paar Pixel.
-   */
+  // swiping up opens the track.
+  //
+  // the bar is the lid over the full screen view, and pushing it up is the
+  // movement one tries anyway. tapping does the same and stays, the gesture
+  // is a shortcut and no replacement.
+  //
+  // upwards only and only clearly: the bar is two fingers high, and a tap
+  // wobbles a few pixels inside it easily
   const hochBeginn = useRef<{ x: number; y: number } | null>(null);
   const HOCH_SCHWELLE = 40;
 
@@ -376,15 +372,13 @@ function MiniPlayer() {
     }
   };
 
-  /*
-   * Weg, sobald der Titel selbst offen ist.
-   *
-   * Die Leiste ist der Weg dorthin; steht man schon drin, zeigt sie dasselbe
-   * ein zweites Mal und nimmt dem Bildschirm eine Zeile — dort, wo ohnehin
-   * Cover, Steuerung und Songtext um Platz ringen. Auf dem Rechner stellt
-   * sich die Frage nicht, dort ist sie `md:hidden` und die Vollbildansicht
-   * lässt sie stehen.
-   */
+  // gone as soon as the track itself is open.
+  //
+  // the bar is the way there, and standing inside already it shows the same
+  // thing a second time and takes a row from the screen, right where cover,
+  // controls and lyrics wrestle for room anyway. on a desktop the question
+  // does not arise, it is `md:hidden` there and the full screen view leaves
+  // it standing
   if (nowPlayingOpen) return null;
 
   return (
@@ -393,8 +387,8 @@ function MiniPlayer() {
       onTouchEnd={hochEnde}
       className="sunken-panel z-30 mx-2 mb-2 shrink-0 overflow-hidden rounded-2xl bg-ink-950 md:hidden"
     >
-      {/* Ein Strich statt eines Reglers: Zum Spulen ist die Vollbildansicht
-          da, hier geht es nur darum, zu sehen, wie weit der Titel ist. */}
+      {/* a line instead of a slider: the full screen view is there for
+          seeking, here it is only about seeing how far the track has got. */}
       <div className="h-0.5 w-full bg-ink-700" aria-hidden="true">
         <div
           className="h-full transition-[width] duration-200"
@@ -432,9 +426,9 @@ function MiniPlayer() {
           </p>
         )}
 
-        {/* Zurück gehört dazu: Ohne den Knopf war der Weg zum vorigen Titel
-            nur über die Vollbildansicht zu finden, während der nächste
-            gleich danebenstand. */}
+        {/* back belongs with it: without the button the way to the previous
+            track could only be found through the full screen view while the
+            next one stood right beside it. */}
         <button
           type="button"
           onClick={() => void previous()}

@@ -5,23 +5,21 @@ import { t } from "../lib/i18n";
 export interface AuswahlOption {
   id: string;
   label: string;
-  /** Kleines Zeichen links vom Namen, etwa eine Flagge. */
+  /** a small icon to the left of the name, a flag for instance. */
   symbol?: string;
-  /** Zusätzliche Wörter, auf die die Suche anspringt, ohne sichtbar zu sein. */
+  /** extra words the search fires on without being visible. */
   suchtext?: string;
 }
 
-/**
- * Auswahlfeld mit eigener Liste.
- *
- * Ein natives `select` gibt seinen aufgeklappten Teil an das Betriebssystem
- * ab, unter Linux zeichnet ihn GTK, und dorthin reicht kein CSS. Übrig blieb
- * ein Feld im Stil der App, aus dem eine fremd aussehende Liste fuhr.
- *
- * Darum hier ein eigener Aufbau: Knopf plus Liste, beide in derselben
- * Bauweise wie die Menüs. Die Tastatur bedient ihn wie ein echtes
- * Auswahlfeld, und für Vorleseprogramme meldet er sich als solches.
- */
+// a select field with a list of its own.
+//
+// a native `select` hands its unfolded part to the operating system, under
+// linux gtk draws it, and no css reaches in there. what was left was a field
+// in the style of the app out of which a foreign-looking list slid.
+//
+// hence a build of its own here: button plus list, both in the same build as
+// the menus. the keyboard operates it like a real select field, and to screen
+// readers it reports itself as one
 export function Auswahl({
   value,
   options,
@@ -32,15 +30,15 @@ export function Auswahl({
   value: string;
   options: AuswahlOption[];
   onChange: (value: string) => void;
-  /** Beschriftung für Vorleseprogramme. */
+  /** label for screen readers. */
   label: string;
   className?: string;
 }) {
   const [offen, setOffen] = useState(false);
   const [suche, setSuche] = useState("");
-  /** Eintrag unter der Tastatur-Markierung, unabhängig vom gewählten. */
+  /** the entry under the keyboard cursor, independent of the selected one. */
   const [markiert, setMarkiert] = useState(0);
-  /** Nach oben ausfahren, wenn unten kein Platz mehr ist. */
+  /** open upwards where there is no room left below. */
   const [nachOben, setNachOben] = useState(false);
   const huelle = useRef<HTMLDivElement>(null);
   const knopf = useRef<HTMLButtonElement>(null);
@@ -48,9 +46,9 @@ export function Auswahl({
   const gewaehlt = options.find((option) => option.id === value);
 
   /**
-   * Ab einer Handvoll Einträgen eine Suchleiste. Bei den Sprachen zahlt sie
-   * sich schon bei acht aus: Wer sein 中文 sucht, tippt lieber „chin“, als
-   * eine Schrift zu suchen, die er nicht kennt.
+   * a search bar from a handful of entries on. with the languages it pays off
+   * at eight already: whoever looks for their 中文 would rather type "chin"
+   * than search for a script they cannot read.
    */
   const mitSuche = options.length > 5;
   const gefiltert = useMemo(() => {
@@ -74,7 +72,7 @@ export function Auswahl({
 
   const oeffnen = () => {
     const kasten = knopf.current?.getBoundingClientRect();
-    // Grob geschätzte Listenhöhe genügt: Es geht nur um oben oder unten.
+    // a roughly estimated list height does, it is only about above or below
     if (kasten)
       setNachOben(
         window.innerHeight - kasten.bottom < Math.min(options.length * 38, 240),
@@ -115,7 +113,7 @@ export function Auswahl({
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       const schritt = event.key === "ArrowDown" ? 1 : -1;
-      // Am Ende umbrechen, wie es ein natives Auswahlfeld auch tut.
+      // wrap at the end, as a native select field does too
       setMarkiert(
         (alt) =>
           (alt + schritt + gefiltert.length) % Math.max(gefiltert.length, 1),
@@ -148,7 +146,7 @@ export function Auswahl({
         {gewaehlt?.label ?? ""}
       </button>
 
-      {/* Der Pfeil liegt über dem Knopf und nimmt keine Klicks an. */}
+      {/* the arrow lies over the button and takes no clicks. */}
       <ChevronDownIcon
         size={16}
         className={`pointer-events-none absolute top-1/2 end-3 text-mute transition-transform ${
@@ -159,8 +157,8 @@ export function Auswahl({
       />
 
       {offen && (
-        // Der Abstand zum Knopf liegt als Polsterung innerhalb der Hülle,
-        // damit auf dem Weg zur Liste keine tote Fläche entsteht.
+        // the distance to the button lies as padding inside the wrapper, so
+        // no dead area appears on the way to the list
         <div
           className={`absolute inset-x-0 z-50 ${nachOben ? "bottom-full pb-1" : "top-full pt-1"}`}
         >
@@ -213,11 +211,11 @@ export function Auswahl({
                           />
                         )}
                       </span>
-                      {/* Der Platz bleibt auch ohne Zeichen stehen: „System“
-                          trägt keine Flagge, und ohne den leeren Kasten
-                          begänne es weiter links als die Sprachen darunter.
-                          Nur die Liste braucht das; auf dem Knopf steht
-                          jeweils ein einziger Eintrag. */}
+                      {/* the room stays even without an icon: "system"
+                          carries no flag, and without the empty box it would
+                          start further left than the languages below. only
+                          the list needs that, the button carries a single
+                          entry at a time. */}
                       {options.some((eintrag) => eintrag.symbol) && (
                         <Zeichen wert={option.symbol ?? ""} />
                       )}
@@ -234,14 +232,12 @@ export function Auswahl({
   );
 }
 
-/**
- * Kleines Zeichen vor dem Namen, etwa eine Flagge.
- *
- * Der abgerundete Rahmen mit Überlauf-Beschnitt macht aus dem rechteckigen
- * Flaggen-Emoji ein Feld mit weichen Ecken, dieselbe Formensprache wie die
- * Knöpfe daneben. Ohne feste Größe ständen die Namen je nach Flagge
- * unterschiedlich weit eingerückt.
- */
+// a small icon before the name, a flag for instance.
+//
+// the rounded frame with overflow clipping turns the rectangular flag emoji
+// into a field with soft corners, the same formal language as the buttons
+// next to it. without a fixed size the names would be indented differently
+// depending on the flag
 function Zeichen({ wert }: { wert: string }) {
   return (
     <span

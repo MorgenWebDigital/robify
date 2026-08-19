@@ -8,9 +8,7 @@ import { ArtistIcon, DownloadIcon, SearchIcon } from "./Icons";
 import { Button, Field, inputClass, Modal } from "./Modal";
 import type { Artist, ArtistCandidate } from "../types";
 
-/**
- * Rundes Künstlerbild mit Rückfall auf ein Symbol.
- */
+/** a round artist image falling back to an icon. */
 export function ArtistAvatar({
   artist,
   className = "",
@@ -18,7 +16,7 @@ export function ArtistAvatar({
 }: {
   artist: Pick<Artist, "id" | "name" | "hasImage">;
   className?: string;
-  /** Vorschau beim Bearbeiten, noch nicht gespeichert. */
+  /** the preview while editing, not stored yet. */
   preview?: string | null;
 }) {
   const [failed, setFailed] = useState(false);
@@ -49,9 +47,9 @@ export function ArtistAvatar({
   }
 
   return (
-    // Platzhalter und Bild liegen übereinander; das Bild blendet darüber auf.
-    // Künstlerbilder kommen von Genius und sind groß, der harte Wechsel war
-    // hier am deutlichsten zu sehen.
+    // placeholder and image lie on top of each other, and the image fades in
+    // over it. artist images come from genius and are large, and the hard
+    // switch was most visible here
     <span
       className={`relative block overflow-hidden rounded-full ${className}`}
     >
@@ -117,7 +115,7 @@ export function ArtistEditor({
     }
   };
 
-  /** Übernimmt einen Vorschlag direkt, inklusive Bild. */
+  /** takes a suggestion over directly, image included. */
   const apply = async (candidate: ArtistCandidate) => {
     setSaving(true);
     try {

@@ -5,23 +5,25 @@ export interface Toast {
   id: number;
   message: string;
   tone: "info" | "success" | "error";
-  /** Zurücknehmen der eben ausgeführten Handlung. */
+  /** undoes the action just carried out. */
   undo?: () => void | Promise<void>;
 }
 
 interface UiStore {
   toasts: Toast[];
-  /** Titel, dessen Metadaten gerade bearbeitet werden. */
+  /** the track whose metadata is being edited. */
   editingTrack: Track | null;
-  /** Titel, die einer Playlist hinzugefügt werden sollen. */
+  /** tracks about to be added to a playlist. */
   addToPlaylistIds: number[] | null;
   nowPlayingOpen: boolean;
   queueOpen: boolean;
 
   notify: (message: string, tone?: Toast["tone"]) => void;
   /**
-   * Meldung mit Rückgängig-Knopf. Steht länger als eine gewöhnliche Meldung,
-   * weil man erst lesen und dann entscheiden muss.
+   * a message with an undo button.
+   *
+   * stands longer than an ordinary message because one has to read first and
+   * decide afterwards.
    */
   notifyUndo: (message: string, undo: () => void | Promise<void>) => void;
   dismiss: (id: number) => void;
@@ -63,14 +65,12 @@ export const useUi = create<UiStore>((set) => ({
     set((state) => ({ toasts: state.toasts.filter((t) => t.id !== id) })),
   editTrack: (track) => set({ editingTrack: track }),
   openAddToPlaylist: (trackIds) => set({ addToPlaylistIds: trackIds }),
-  /*
-   * Vollbild-Ansicht und Warteschlange schließen sich gegenseitig aus.
-   *
-   * In beide Richtungen: Die Lyrics legen sich über die ganze App, die
-   * Warteschlange fährt daneben ein. Beides zugleich hieße, dass die
-   * Warteschlange hinter den Lyrics läge, sichtbar geöffnet laut Schalter,
-   * aber verdeckt. Wer den einen Schalter drückt, meint immer den Wechsel.
-   */
+  // the full screen view and the queue exclude each other.
+  //
+  // in both directions: the lyrics lay themselves over the whole app while
+  // the queue slides in beside it. both at once would mean the queue lying
+  // behind the lyrics, open according to its switch but covered. whoever
+  // presses either switch always means the change
   setNowPlayingOpen: (open) =>
     set(
       open

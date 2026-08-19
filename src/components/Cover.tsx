@@ -6,7 +6,7 @@ interface CoverProps {
   alt: string;
   className?: string;
   rounded?: string;
-  /** Wird für das Platzhalter-Muster genutzt, damit es stabil bleibt. */
+  /** used for the placeholder pattern so it stays stable. */
   seed?: string | number;
 }
 
@@ -27,23 +27,19 @@ function gradientFor(seed: string | number | undefined): string {
   return GRADIENTS[hash % GRADIENTS.length];
 }
 
-/**
- * Meldet, ob ein Bild schon vollständig geladen ist.
- *
- * Kommt es aus dem Zwischenspeicher, ist es fertig, bevor React seinen
- * `load`-Empfänger anhängen kann, der Aufruf käme dann nie, und das Bild
- * bliebe für immer unsichtbar. Deshalb wird beim Anhängen zusätzlich `complete`
- * abgefragt.
- */
+// reports whether an image is fully loaded already.
+//
+// coming out of the cache it is finished before react can attach its `load`
+// listener, the call would then never come and the image would stay invisible
+// forever. `complete` is therefore asked for on attaching as well
 export function useBildFertig(src: string | null) {
   const [fertig, setFertig] = useState(false);
 
-  // Bewusst kein Zurücksetzen beim Wechsel der Adresse: Nach jeder Änderung an
-  // der Bibliothek hängt an allen Bildern eine neue Zählnummer, damit der
-  // Zwischenspeicher nicht das alte Bild zeigt. Würde hier zurückgesetzt,
-  // fiele jedes Bild dabei kurz auf den Platzhalter zurück. Ein `img` behält
-  // sein altes Einzelbild ohnehin, bis das neue entschlüsselt ist, der
-  // Wechsel bleibt also lückenlos, auch ohne Zutun.
+  // deliberately no reset when the address changes: after every change to the
+  // library a new counter hangs on all images so the cache does not show the
+  // old one. were it reset here, every image would fall back to the
+  // placeholder briefly. an `img` keeps its old frame until the new one is
+  // decoded anyway, so the change stays seamless without any help
   void src;
 
   return {
@@ -89,9 +85,9 @@ export function Cover({
   }
 
   return (
-    // Der Platzhalter bleibt darunter liegen, statt vom Bild abgelöst zu
-    // werden. Sonst klaffte für einen Moment eine Lücke, und das Bild schlug
-    // hart hinein, als Blitzen sichtbar.
+    // the placeholder stays lying underneath instead of being replaced by the
+    // image. otherwise a gap yawned for a moment and the image struck into it
+    // hard, visible as a flash
     <span className={`relative block overflow-hidden ${rounded} ${className}`}>
       {platzhalter}
       <img

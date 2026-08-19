@@ -23,13 +23,11 @@ import { formatDuration, plural } from "../lib/format";
 import { useLibrary } from "../store/library";
 import type { Album, Artist, ReleaseType, Track } from "../types";
 
-/**
- * Reihenfolge der Abschnitte auf der Künstlerseite.
- *
- * Als Funktion, nicht als feste Liste: Eine Liste auf Modulebene entsteht
- * einmal beim Laden, und die Überschriften blieben nach einem Sprachwechsel
- * in der Anfangssprache stehen.
- */
+// the order of the sections on the artist page.
+//
+// a function and not a fixed list: a list at module level comes into being
+// once at load time, and the headings would stay in the starting language
+// after a language switch
 function abschnitte(): { type: ReleaseType; title: string }[] {
   return [
     { type: "album", title: t("Alben") },
@@ -39,14 +37,14 @@ function abschnitte(): { type: ReleaseType; title: string }[] {
 }
 
 /**
- * Wie viele Kacheln eine Art von Releases zeigt, bevor „Mehr anzeigen“ kommt.
+ * how many tiles one kind of release shows before a show-more button comes.
  *
- * Dieselbe Zahl wie auf der Startseite: Drei passen auf einem Telefon
- * nebeneinander, ohne dass etwas abgeschnitten wirkt.
+ * the same number as on the home page: three fit side by side on a phone
+ * without anything looking cut off.
  */
 const VORSCHAU = 3;
 
-/** Wie viele Titel unter „Beliebt“ stehen. */
+/** how many tracks stand under the popular heading. */
 const VORSCHAU_TITEL = 5;
 
 export function ArtistDetail() {
@@ -61,7 +59,7 @@ export function ArtistDetail() {
   const [features, setFeatures] = useState<Track[]>([]);
   const [editing, setEditing] = useState(false);
   const [fetching, setFetching] = useState(false);
-  /** Welche Release-Arten alle ihre Kacheln zeigen. */
+  /** which release types show all of their tiles. */
   const [entfaltet, setEntfaltet] = useState<string[]>([]);
   const notify = useUi((s) => s.notify);
 
@@ -94,11 +92,11 @@ export function ArtistDetail() {
   }
 
   const totalMs = tracks.reduce((sum, track) => sum + track.durationMs, 0);
-  // Nach Wiedergaben sortiert kommen sie schon aus dem Rust-Teil; die fünf
-  // vorderen sind damit die meistgehörten.
+  // they come sorted by plays from the rust side already, so the first five
+  // are the most played
   const topTracks = tracks.slice(0, VORSCHAU_TITEL);
 
-  /** Holt Bild und Beschreibung in einem Schritt. */
+  /** fetches image and description in one step. */
   const fetchMetadata = async () => {
     setFetching(true);
     try {
@@ -143,10 +141,9 @@ export function ArtistDetail() {
             actionsReihe
             actions={
               <>
-                {/* Bearbeiten, Zufällig, Abspielen — dicht beieinander, das
-                    Abspielen als letztes. Ohne Lücke davor: Sie schob den
-                    Akzentknopf zwar an die Kante, riss die Reihe dabei aber
-                    auseinander. */}
+                {/* edit, shuffle, play, close together with play last. no gap
+                    in front of it: it did push the accent button to the edge
+                    but tore the row apart in doing so. */}
                 <button
                   type="button"
                   onClick={() => setEditing(true)}
@@ -217,12 +214,12 @@ export function ArtistDetail() {
         </>
       )}
 
-      {/* Drei Kacheln je Art, der Rest auf Wunsch. Ein Künstler mit zwanzig
-          Singles schob seine Alben sonst weit nach unten, und zwischen den
-          Abschnitten ging der Überblick verloren.
+      {/* three tiles per kind, the rest on request. an artist with twenty
+          singles pushed their albums far down otherwise, and the overview got
+          lost between the sections.
 
-          Ausgeklappt gilt wieder die gewöhnliche Aufteilung: Die dreispaltige
-          ist für genau drei Kacheln gedacht, für zwanzig wäre sie zu grob. */}
+          unfolded, the ordinary layout applies again: the three-column one is
+          meant for exactly three tiles and would be too coarse for twenty. */}
       {abschnitte().map(({ type, title }) => {
         const items = releases.filter(
           (release) => release.releaseType === type,
@@ -290,20 +287,18 @@ export function ArtistDetail() {
   );
 }
 
-/**
- * Lange Künstlerbeschreibungen schieben alles Weitere aus dem Bild. Darum
- * zunächst nur der Anfang, der Rest auf Wunsch.
- *
- * Gekürzt wird über die Zeilenhöhe, nicht über die Zeichenzahl: Wo der Text
- * abgeschnitten wird, hängt von der Fensterbreite ab, und ein nach Zeichen
- * gekürzter Text bricht mal nach zwei, mal nach fünf Zeilen um.
- */
+// long artist descriptions push everything else out of view, so the start
+// only at first and the rest on request.
+//
+// it is shortened by line height, not by character count: where the text is
+// cut depends on the window width, and a text shortened by characters wraps
+// after two lines one time and after five the next
 function Beschreibung({ text }: { text: string }) {
   const [offen, setOffen] = useState(false);
   const absatz = useRef<HTMLParagraphElement>(null);
   const [gekuerzt, setGekuerzt] = useState(false);
 
-  // Ob der Knopf überhaupt nötig ist, weiß erst der fertige Umbruch.
+  // whether the button is needed at all is known only to the finished layout
   useEffect(() => {
     const element = absatz.current;
     if (!element) return;
@@ -330,8 +325,8 @@ function Beschreibung({ text }: { text: string }) {
           type="button"
           onClick={() => setOffen((wert) => !wert)}
           className={`text-sm font-medium text-fg underline-offset-2 hover:underline ${
-            // Aufgeklappt gibt es keine abgeschnittene Zeile mehr, an deren
-            // Ende der Knopf sitzen könnte; dann steht er wieder darunter.
+            // unfolded there is no cut-off line left for the button to sit at
+            // the end of, and it stands below again then
             offen ? "mt-1.5" : "mehr-anzeigen"
           }`}
         >

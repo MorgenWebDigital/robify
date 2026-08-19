@@ -14,17 +14,15 @@ interface ModalProps {
   width?: string;
 }
 
-/** Was sich mit der Tabulatortaste ansteuern lässt. */
+/** what can be reached with the tab key. */
 const ANSTEUERBAR =
   'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
 
-/**
- * Die ansteuerbaren Elemente eines Dialogs, ohne die verborgenen.
- *
- * `offsetParent === null` heißt: nicht dargestellt. Ein `input[type=file]`,
- * das hinter einem gestalteten Knopf steckt, zählt sonst mit, und der Fokus
- * landete auf etwas, das niemand sieht.
- */
+// the reachable elements of a dialog, without the hidden ones.
+//
+// `offsetParent === null` means not rendered. an `input[type=file]` sitting
+// behind a styled button would count otherwise, and the focus landed on
+// something nobody sees
 function sichtbareFelder(wurzel: HTMLElement | null): HTMLElement[] {
   if (!wurzel) return [];
   return Array.from(wurzel.querySelectorAll<HTMLElement>(ANSTEUERBAR)).filter(
@@ -32,7 +30,7 @@ function sichtbareFelder(wurzel: HTMLElement | null): HTMLElement[] {
   );
 }
 
-/** Wie lange das Ausblenden dauert; muss zu `.animate-out` im CSS passen. */
+/** how long the fade-out takes, has to match `.animate-out` in the css. */
 const AUSBLENDEN_MS = 160;
 
 export function Modal({
@@ -45,40 +43,35 @@ export function Modal({
   width = "max-w-2xl",
 }: ModalProps) {
   const dialog = useRef<HTMLDivElement>(null);
-  // Bleibt nach dem Schließen kurz stehen, damit das Ausblenden zu sehen ist.
+  // stays standing briefly after closing so the fade-out can be seen
   const { sichtbar, schliesst } = useAusblenden(open, AUSBLENDEN_MS);
 
-  /*
-   * `onClose` liegt in einer Truhe, statt am Effekt zu hängen.
-   *
-   * Die Aufrufer geben dort fast immer eine frisch gebaute Funktion mit, und
-   * die ist bei jedem Zeichnen eine andere. Stünde sie in der Abhängigkeits-
-   * liste, liefe der Effekt nach jedem Tastendruck erneut und setzte den Fokus
-   * neu: Man tippte einen Buchstaben in den Playlist-Namen und musste danach
-   * wieder ins Feld klicken.
-   */
+  // `onClose` lies in a ref instead of hanging off the effect.
+  //
+  // the callers almost always hand a freshly built function over there, and
+  // that is a different one at every render. standing in the dependency list,
+  // the effect would run again after every keystroke and set the focus anew:
+  // one typed a letter into the playlist name and had to click back into the
+  // field afterwards
   const schliessRef = useRef(onClose);
   schliessRef.current = onClose;
 
-  /**
-   * Der Fokus gehört in den Dialog, solange er offen ist.
-   *
-   * Ohne das steht die Schreibmarke weiter auf der Seite dahinter: Wer mit der
-   * Tastatur arbeitet, tabbt durch eine Liste, die er gar nicht sieht, und
-   * landet irgendwann hinter dem Fenster. Beim Schließen geht der Fokus dorthin
-   * zurück, wo er herkam, sonst beginnt man nach jedem Dialog wieder von vorn.
-   */
+  // the focus belongs in the dialog while it is open.
+  //
+  // without that the caret stays on the page behind: whoever works by
+  // keyboard tabs through a list they cannot see at all and ends up behind
+  // the window at some point. on closing the focus goes back where it came
+  // from, otherwise one starts over after every dialog
   useEffect(() => {
     if (!open) return;
     const vorher = document.activeElement as HTMLElement | null;
 
-    // Nur was man auch sieht: Der Cover-Wähler bringt eine unsichtbare
-    // Dateiauswahl mit, und die stand im Playlist-Dialog an genau der Stelle,
-    // auf die der Fokus zielt. Dieselbe Prüfung wie beim Umbrechen mit der
-    // Tabulatortaste weiter unten.
+    // only what can be seen: the cover picker brings an invisible file input
+    // along, and in the playlist dialog it stood exactly where the focus
+    // aims. the same check as when wrapping with the tab key further down
     const felder = sichtbareFelder(dialog.current);
-    // Das erste Bedienelement, das kein Schließkreuz ist: Der Dialog soll seine
-    // eigentliche Handlung anbieten, nicht den Ausgang.
+    // the first control that is not the close cross: the dialog is to offer
+    // its actual action, not the exit
     const erstes = felder.length > 1 ? felder[1] : felder[0];
     erstes?.focus();
 
@@ -96,7 +89,7 @@ export function Modal({
       const letzt = liste[liste.length - 1];
       const aktiv = document.activeElement;
 
-      // Am Rand umbrechen statt hinausfallen.
+      // wrap at the edge instead of falling out
       if (
         event.shiftKey &&
         (aktiv === erst || !dialog.current.contains(aktiv))
@@ -121,15 +114,13 @@ export function Modal({
 
   if (!sichtbar) return null;
 
-  /*
-   * Am Körper gezeichnet, nicht dort, wo der Dialog im Baum steht.
-   *
-   * `fixed` bezieht sich auf das Fenster nur so lange, wie kein Vorfahr eine
-   * `transform` trägt. Der Seitenbereich hat eine: Sein Einfahren läuft mit
-   * `both` und behält darum seine Endstellung auch nach dem Ablauf. Damit
-   * wurde er zum Bezugsrahmen, und die Dialoge standen mittig über dem
-   * Seiteninhalt statt über dem Fenster, also zu weit rechts und zu hoch.
-   */
+  // drawn onto the body, not where the dialog stands in the tree.
+  //
+  // `fixed` refers to the window only as long as no ancestor carries a
+  // `transform`. the page area has one: its slide-in runs with `both` and
+  // therefore keeps its end position after it has finished. that made it the
+  // reference frame, and the dialogs stood centred over the page content
+  // instead of over the window, so too far right and too high
   return createPortal(
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${
@@ -170,10 +161,10 @@ export function Modal({
           {children}
         </div>
 
-        {/* `flex-wrap`: Steht links im Fuß noch etwas anderes als die Knöpfe,
-            ein Kästchen mit Beschriftung etwa, so drängelten sich auf einer
-            Handbreite alle drei in eine Zeile, und der Text brach mitten im
-            Wort um. Umgebrochen steht er in seiner eigenen. */}
+        {/* `flex-wrap`: where something other than the buttons stands on the
+            left of the footer, a checkbox with a label for instance, all
+            three squeezed into one line on a hand's width and the text broke
+            mid-word. wrapped it stands in a line of its own. */}
         {footer && (
           <footer className="animate-content flex flex-wrap items-center justify-end gap-3 border-t border-ink-700 px-6 py-4">
             {footer}
@@ -192,9 +183,9 @@ export function Button({
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "ghost" | "outline";
 }) {
-  // Dieselbe Bauweise wie überall sonst: Pille mit harter Unterkante, die
-  // beim Drücken darauf absinkt. `ghost` bleibt bewusst flach, ein Abbrechen
-  // soll nicht so aussehen, als wolle es gedrückt werden.
+  // the same build as everywhere else: a pill with a hard bottom edge that
+  // sinks onto it when pressed. `ghost` stays deliberately flat, a cancel is
+  // not to look as if it wanted to be pressed
   const styles = {
     primary: "is-raised is-accent font-semibold",
     ghost: "font-medium",

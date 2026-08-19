@@ -15,12 +15,10 @@ import { useLibrary } from "../store/library";
 import { useUi } from "../store/ui";
 import type { AppPaths, DownloaderStatus } from "../types";
 
-/**
- * Auswahllisten als Funktionen, nicht als feste Listen: Eine Liste auf
- * Modulebene entsteht einmal beim Laden. Wechselt der Nutzer danach die
- * Sprache, baut die App sich zwar neu auf, das Modul aber nicht, und die
- * Beschriftungen blieben in der Anfangssprache stehen.
- */
+// the choice lists as functions and not as fixed lists: a list at module
+// level comes into being once at load time. does the user switch language
+// afterwards, the app rebuilds itself but the module does not, and the labels
+// would stay in the starting language
 function rueckblickModi() {
   return [
     { id: "all", label: t("Alles") },
@@ -38,7 +36,7 @@ function erscheinungsbilder() {
   ];
 }
 
-/* Opus fehlt bewusst: Der eingebaute Player kann es nicht abspielen. */
+// opus is deliberately absent, the built-in player cannot play it
 function formate() {
   return [
     { id: "best", label: t("Beste Qualität") },
@@ -58,21 +56,20 @@ function qualitaeten() {
   ];
 }
 
-/**
- * Sprachen zur Auswahl: erst „System", dann alle in ihrer eigenen Schrift.
- *
- * Als Funktion, nicht als feste Liste: „System" ist der einzige Eintrag, der
- * übersetzt wird, und `t` steht erst fest, wenn die Sprache gesetzt ist. Eine
- * Liste auf Modulebene fröre den Wert beim Laden ein.
- *
- * Der Suchtext trägt zusätzlich den deutschen Namen und das Kürzel, wer
- * „Japanisch" oder „ja" tippt, findet 日本語, ohne es schreiben zu können.
- */
+// the languages to choose from: "system" first, then all of them in their own
+// script.
+//
+// a function and not a fixed list: "system" is the only entry that gets
+// translated, and `t` is settled only once the language is set. a list at
+// module level would freeze the value at load time.
+//
+// the search text carries the german name and the code as well, so whoever
+// types "Japanisch" or "ja" finds 日本語 without being able to write it
 function sprachOptionen() {
   return [
-    // Ohne Zeichen: Die Flaggen daneben stehen für je ein Land, die
-    // Weltkugel stünde für keins. Sie sah aus wie eine weitere Sprache
-    // und war doch nur die Abwesenheit einer Wahl.
+    // without an icon: the flags next to it each stand for one country while
+    // the globe would stand for none. it looked like another language and was
+    // only the absence of a choice
     { id: "system", label: t("System"), suchtext: "system automatisch" },
     ...SPRACHEN.map((eintrag) => ({
       id: eintrag.id,
@@ -129,15 +126,13 @@ export function SettingsPage() {
     }
   };
 
-  /*
-   * yt-dlp altert schneller als Robify.
-   *
-   * YouTube ändert seinen Abspieler laufend und weist alte Fassungen mit
-   * „403“ ab. Auf dem Rechner ist yt-dlp eine Datei, die sich selbst
-   * erneuert; auf Android steckt es in der Bibliothek und war dort im Stand
-   * vom November 2025 stehen geblieben, acht Monate hinter dem aktuellen.
-   * Genau daran scheiterten die Downloads von YouTube auf dem Telefon.
-   */
+  // yt-dlp ages faster than robify.
+  //
+  // youtube keeps changing its player and turns old versions away with a 403.
+  // on a desktop yt-dlp is a file that renews itself, on android it sits in
+  // the library and had stayed at the state of november 2025 there, eight
+  // months behind the current one. that is exactly what the youtube downloads
+  // on the phone failed on
   const werkzeugHolen = async () => {
     setHolt(true);
     try {
@@ -195,9 +190,9 @@ export function SettingsPage() {
 
       <div className="space-y-6">
         <Section title={t("Bibliothek")}>
-          {/* Auf dem Telefon steht der Ordner fest, dort gibt es nichts zu
-              wählen. Statt eines Feldes, das nur seinen eigenen Pfad zeigt,
-              ein Satz, der sagt, wo die Musik liegt. */}
+          {/* on a phone the folder is fixed and there is nothing to choose.
+              instead of a field showing nothing but its own path, a sentence
+              saying where the music lies. */}
           {settings.festeOrte ? (
             <div className="space-y-1.5 text-sm text-mute">
               <p>
@@ -343,8 +338,8 @@ export function SettingsPage() {
         </Section>
 
         <Section title={t("Sicherheitsabfragen")}>
-          {/* Der Weg zurück: Im Löschdialog lässt sich die Rückfrage abstellen,
-              hier kommt sie wieder. */}
+          {/* the way back: the confirmation can be turned off in the delete
+              dialog, and here it comes back. */}
           <Toggle
             label={t("Vor dem Löschen nachfragen")}
             hint={t(
@@ -397,9 +392,9 @@ export function SettingsPage() {
           </Field>
         </Section>
 
-        {/* Auf dem Telefon steht in diesem Abschnitt kein Ort mehr, sondern
-            nur noch die Sicherung der Datenbank. Dann soll er auch danach
-            heißen und nicht nach etwas, das dort nicht mehr steht. */}
+        {/* on a phone no location stands in this section any more, only the
+            backup of the database. it is then to be named after that and not
+            after something that no longer stands there. */}
         {paths && (
           <Section
             title={settings.festeOrte ? t("Datenbank") : t("Speicherorte")}
@@ -418,9 +413,9 @@ export function SettingsPage() {
                 )}
               </span>
             </div>
-            {/* Die Pfadzeilen nur dort, wo sie etwas nützen: Auf dem
-                Telefon stehen die Orte fest, „Öffnen“ führt zu keinem
-                Dateimanager, und der Pfad selbst steht schon oben. */}
+            {/* the path rows only where they are of use: on a phone the
+                locations are fixed, opening leads to no file manager, and the
+                path itself stands above already. */}
             {!settings.festeOrte && (
               <>
                 <PathRow label={t("Datenbank")} value={paths.database} />
@@ -457,9 +452,8 @@ export function SettingsPage() {
           </Section>
         )}
 
-        {/* Nach den Werkzeugen, vor dem Zurücksetzen: Wer bis hierher
-            gelesen hat, hat die App eingerichtet und weiß, was ihm
-            fehlt. */}
+        {/* after the tools, before the reset: whoever has read this far has
+            set the app up and knows what they are missing. */}
         <Section title={t("Mitmachen")}>
           <Mitmachen ytdlp={werkzeuge?.ytdlpVersion} />
         </Section>
@@ -587,9 +581,9 @@ function Toggle({
   onChange: (value: boolean) => void;
 }) {
   return (
-    // Mittig zum ganzen Block: Beschriftung und Erklärung gehören zusammen,
-    // und das Kästchen gilt für beides. Es steht darum auf halber Höhe
-    // zwischen ihnen, nicht auf der Zeile der Überschrift.
+    // centred on the whole block: label and explanation belong together, and
+    // the checkbox applies to both. it therefore stands at half height
+    // between them, not on the line of the heading
     <label className="flex cursor-pointer items-center gap-3">
       <input
         type="checkbox"
@@ -605,13 +599,11 @@ function Toggle({
   );
 }
 
-/**
- * Eine reine Angabe, ohne Knopf.
- *
- * `PathRow` taugt dafür nicht: Es hält die Beschriftung auf fester Breite und
- * bietet „Öffnen“ an. Auf dem Telefon blieb von „2025.11.12“ eine „2“ übrig,
- * und der Knopf hätte versucht, eine Fassungsnummer als Ordner zu öffnen.
- */
+// a plain value, without a button.
+//
+// `PathRow` does not do for it: it keeps the label at a fixed width and
+// offers to open the value. on a phone a single "2" was left of "2025.11.12",
+// and the button would have tried to open a version number as a folder
 function AngabeZeile({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -624,9 +616,9 @@ function AngabeZeile({ label, value }: { label: string; value: string }) {
 function PathRow({ label, value }: { label: string; value: string }) {
   const notify = useUi((s) => s.notify);
   return (
-    /* Auf schmalen Anzeigen steht die Bezeichnung über dem Pfad. Nebenan
-       nahm sie feste 208 von 338 Bildpunkten ein; für den Pfad blieben
-       sechsunddreißig, und in der Zeile stand nur noch „/…“. */
+    /* on narrow displays the label stands above the path. beside it, it took
+       a fixed 208 of 338 pixels, leaving thirty-six for the path, and only a
+       slash and an ellipsis stood in the row. */
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
       <span className="w-full shrink-0 text-sm text-mute sm:w-52">{label}</span>
       <code

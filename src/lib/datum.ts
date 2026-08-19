@@ -1,20 +1,18 @@
 import { spracheJetzt, t } from "./i18n";
 
-/**
- * Datumsangaben in der eingestellten Sprache.
- *
- * `Intl.DateTimeFormat` bringt Monats- und Wochentagsnamen für jede Sprache
- * mit, und dazu deren Reihenfolge: Im Deutschen steht der Tag vor dem Monat,
- * im Englischen dahinter, im Chinesischen das Jahr zuerst. Vorher stand in der
- * App überall fest „de-DE“, und der Wochentag auf der Startseite blieb
- * deutsch, auch wenn die Oberfläche russisch war.
- *
- * Jede Funktion legt ihren Formatierer bei Bedarf an statt auf Modulebene:
- * Ein Formatierer merkt sich seine Sprache, und ein einmal angelegter bliebe
- * nach einem Sprachwechsel bei der alten.
- */
+// dates in the selected language.
+//
+// `Intl.DateTimeFormat` brings month and weekday names for every language,
+// and their order along with them: in german the day stands before the month,
+// in english behind it, in chinese the year comes first. "de-DE" used to
+// stand fixed everywhere in the app, and the weekday on the home page stayed
+// german even with a russian interface.
+//
+// every function creates its formatter on demand rather than at module level:
+// a formatter remembers its language, and one created once would keep the old
+// one after a language switch
 
-/** Wochentag mit Tag und Monat, z. B. „Montag, 17. August“. */
+/** weekday with day and month, "Montag, 17. August" for instance. */
 export function wochentagUndTag(datum: Date): string {
   return new Intl.DateTimeFormat(spracheJetzt(), {
     weekday: "long",
@@ -23,7 +21,7 @@ export function wochentagUndTag(datum: Date): string {
   }).format(datum);
 }
 
-/** Monat und Jahr, z. B. „August 2026“. */
+/** month and year, "August 2026" for instance. */
 export function monatUndJahr(datum: Date): string {
   return new Intl.DateTimeFormat(spracheJetzt(), {
     month: "long",
@@ -31,7 +29,7 @@ export function monatUndJahr(datum: Date): string {
   }).format(datum);
 }
 
-/** Tag ausgeschrieben, z. B. „17. August 2026“. */
+/** the day written out, "17. August 2026" for instance. */
 export function vollesDatum(datum: Date): string {
   return new Intl.DateTimeFormat(spracheJetzt(), {
     day: "numeric",
@@ -40,7 +38,7 @@ export function vollesDatum(datum: Date): string {
   }).format(datum);
 }
 
-/** Kurzer Tag ohne Jahr, für die Balken im Rückblick. */
+/** short day without a year, for the bars in the review. */
 export function kurzerTag(datum: Date): string {
   return new Intl.DateTimeFormat(spracheJetzt(), {
     day: "numeric",
@@ -49,10 +47,11 @@ export function kurzerTag(datum: Date): string {
 }
 
 /**
- * Kurzer Monat ohne Tag, für den Jahresrückblick.
+ * short month without a day, for the yearly review.
  *
- * Über mehrere Jahre hinweg mit Jahreszahl: Im Rückblick auf alles stehen
- * sonst an beiden Enden des Verlaufs „Aug.“ und meinen zwei verschiedene.
+ * with the year across several years: in the review of everything, "Aug."
+ * would otherwise stand at both ends of the history meaning two different
+ * ones.
  */
 export function kurzerMonat(datum: Date, mitJahr = false): string {
   return new Intl.DateTimeFormat(spracheJetzt(), {
@@ -62,12 +61,12 @@ export function kurzerMonat(datum: Date, mitJahr = false): string {
 }
 
 /**
- * Zeitspanne von Tag zu Tag, z. B. „17. bis 23. August 2026“.
+ * a span from day to day, "17. bis 23. August 2026" for instance.
  *
- * `formatRange` setzt selbst zusammen, was sich wiederholt: Liegen beide Tage
- * im selben Monat, nennt es ihn nur einmal, und es wählt das Trennzeichen der
- * Sprache. Von Hand zusammengesetzt stand dort ein Gedankenstrich, den weder
- * die englische noch die arabische Schreibweise so setzt.
+ * `formatRange` folds what repeats itself: where both days lie in the same
+ * month it names it once, and it picks the separator of the language.
+ * assembled by hand a dash stood there which neither english nor arabic
+ * spelling sets that way.
  */
 export function zeitraum(von: Date, bis: Date): string {
   const formatierer = new Intl.DateTimeFormat(spracheJetzt(), {
@@ -79,10 +78,10 @@ export function zeitraum(von: Date, bis: Date): string {
 }
 
 /**
- * Ein Datum aus der Datenbank in lesbare Form.
+ * a date from the database into readable form.
  *
- * Die Auswertung liefert Schlüssel wie `2026-08-17` oder `2026-08`, weil
- * SQLite danach gruppiert. Sie sind zum Sortieren gedacht, nicht zum Lesen.
+ * the evaluation delivers keys such as `2026-08-17` or `2026-08` because
+ * sqlite groups by them. they are meant for sorting, not for reading.
  */
 export function ausSchluessel(schluessel: string, mitJahr = false): string {
   const teile = schluessel.split("-").map(Number);
@@ -96,10 +95,10 @@ export function ausSchluessel(schluessel: string, mitJahr = false): string {
 }
 
 /**
- * Begrüßung nach Tageszeit.
+ * a greeting by time of day.
  *
- * Die Grenzen sind bewusst grob: Wer um vier Uhr morgens Musik hört, ist eher
- * noch wach als schon auf.
+ * the bounds are deliberately rough: whoever listens to music at four in the
+ * morning is more likely still awake than already up.
  */
 export function begruessung(): string {
   const stunde = new Date().getHours();

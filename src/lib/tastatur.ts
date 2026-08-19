@@ -1,24 +1,22 @@
 import { useEffect } from "react";
 
-/**
- * Unterhalb dieser Höhe gilt eine Änderung nicht als Tastatur.
- *
- * Der sichtbare Ausschnitt wackelt um ein paar Punkte, wenn Leisten des
- * Systems ein- und ausblenden. Eine Tastatur nimmt ein Vielfaches davon.
- */
+// below this height a change does not count as a keyboard.
+//
+// the visible viewport wobbles by a few points when system bars fade in and
+// out. a keyboard takes a multiple of that
 const MINDESTHOEHE = 100;
 
 /**
- * Hält die Höhe der Bildschirmtastatur in `--tastatur` fest.
+ * keeps the height of the on-screen keyboard in `--tastatur`.
  *
- * Android schiebt die Tastatur über den Inhalt, ohne dem Fenster etwas davon
- * zu sagen: `innerHeight` bleibt, wie es war, und die Leiste mit dem Player
- * lag hinter der Tastatur. Der sichtbare Ausschnitt weiß es aber, und die
- * Differenz zwischen beiden ist genau die Höhe der Tastatur.
+ * android pushes the keyboard over the content without telling the window
+ * about it: `innerHeight` stays as it was, and the bar with the player lay
+ * behind the keyboard. the visual viewport does know, and the difference
+ * between the two is exactly the height of the keyboard.
  *
- * Das Ergebnis steht als CSS-Größe bereit; Rahmen und Leisten rechnen sie in
- * ihren Abstand nach unten ein. Schrumpft das Fenster auf einem anderen Gerät
- * doch selbst, kommt hier null heraus, und die Rechnung stimmt weiterhin.
+ * the result stands ready as a css value, and frame and bars fold it into
+ * their bottom spacing. where the window does shrink by itself on another
+ * device, zero comes out here and the calculation still holds.
  */
 export function useTastaturhoehe(): void {
   useEffect(() => {
@@ -33,9 +31,8 @@ export function useTastaturhoehe(): void {
 
     messen();
     sicht.addEventListener("resize", messen);
-    // Beim Rollen im gezoomten Zustand verschiebt sich der Ausschnitt, ohne
-    // dass sich seine Höhe ändert; ohne das Nachmessen bliebe der Abstand
-    // stehen, wo er war.
+    // scrolling while zoomed moves the viewport without changing its height,
+    // and without measuring again the spacing would stay where it was
     sicht.addEventListener("scroll", messen);
     return () => {
       sicht.removeEventListener("resize", messen);

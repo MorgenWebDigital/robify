@@ -27,7 +27,7 @@ import type { Playlist, Track } from "../types";
 
 export function PlaylistDetail() {
   const { id } = useParams();
-  // „Zum Song“ aus dem Hinzufügen-Dialog landet mit ?track=… hier.
+  // jumping to a track from the add dialog lands here with ?track=…
   const [suchparameter] = useSearchParams();
   const hervorheben = Number(suchparameter.get("track")) || null;
   const playlistId = Number(id);
@@ -89,10 +89,10 @@ export function PlaylistDetail() {
     );
   };
 
-  /** Neue Reihenfolge nach dem Ziehen sichern. */
+  /** stores the new order after dragging. */
   const neuOrdnen = async (ids: number[]) => {
-    // Sofort anzeigen, damit die Zeile nicht zurückspringt, während die
-    // Datenbank noch schreibt.
+    // show it at once so the row does not jump back while the database is
+    // still writing
     setTracks(
       ids.map((id) => tracks.find((t) => t.id === id)!).filter(Boolean),
     );
@@ -105,8 +105,8 @@ export function PlaylistDetail() {
   };
 
   const removeTrack = async (track: Track) => {
-    // Die alte Reihenfolge merken, sonst landet der Titel beim Zurücklegen
-    // hinten statt an seiner Stelle.
+    // remember the old order, otherwise the track lands at the end instead of
+    // in its place when put back
     const vorher = tracks.map((t) => t.id);
     try {
       await api.removeFromPlaylist(playlist.id, track.id);
@@ -135,7 +135,7 @@ export function PlaylistDetail() {
         cover,
         coverEntfernt,
       );
-      // Sonst zeigt der Zwischenspeicher weiter das alte Bild.
+      // otherwise the cache keeps showing the old image
       bustCoverCache();
       await Promise.all([load(), reloadPlaylists()]);
       setEditing(false);
@@ -196,13 +196,13 @@ export function PlaylistDetail() {
               ` · ${formatDuration(playlist.durationMs)}`}
           </p>
 
-          {/* Erst was die Playlist verwaltet, dann was sie hört, alle vier
-              dicht beieinander. Ohne Lücke vor dem Abspielen: Sie schob es
-              zwar an die Kante, riss die Reihe dabei aber auseinander.
+          {/* first what manages the playlist, then what plays it, all four
+              close together. no gap in front of play: it did push it to the
+              edge but tore the row apart in doing so.
 
-              Alle klein: Bei Enge fallen sie auf ihr Zeichen zusammen, wie in
-              der Bibliothek. Vier beschriftete Knöpfe nebeneinander passen auf
-              eine Handbreite ohnehin nicht. */}
+              all small: under pressure they collapse onto their icon, as in
+              the library. four labelled buttons side by side do not fit a
+              hand's width anyway. */}
           <div className="aktionsreihe mt-4 gap-2">
             <button
               type="button"

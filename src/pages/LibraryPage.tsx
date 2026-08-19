@@ -29,9 +29,9 @@ export function LibraryPage() {
   const notifyUndo = useUi((s) => s.notifyUndo);
 
   const [search, setSearch] = useState("");
-  /** `null`, solange noch nicht geladen, sonst blitzt der Leerzustand auf. */
+  /** `null` while not loaded yet, otherwise the empty state flashes up. */
   const [tracks, setTracks] = useState<Track[] | null>(null);
-  /** Nur für die Zählung in der Kopfzeile, die Releases haben eigene Seiten. */
+  /** for the count in the header only, the releases have pages of their own. */
   const [albums, setAlbums] = useState<Album[]>([]);
   const [check, setCheck] = useState<LibraryCheck | null>(null);
   const settings = useLibrary((s) => s.settings);
@@ -41,8 +41,8 @@ export function LibraryPage() {
   const [nichtMehrFragen, setNichtMehrFragen] = useState(false);
 
   const ordnung = settings?.librarySort ?? "added";
-  // Sortiert wird hier statt in der Datenbank: Die Liste liegt ohnehin
-  // vollständig vor, und das Umschalten wirkt dann ohne neue Abfrage.
+  // sorted here instead of in the database: the list lies complete anyway,
+  // and switching then takes effect without a new query
   const sortiert = useMemo(
     () =>
       tracks === null
@@ -53,7 +53,7 @@ export function LibraryPage() {
 
   useEffect(() => {
     let cancelled = false;
-    // Kurze Verzögerung, damit die Suche nicht bei jedem Zeichen feuert.
+    // a short delay so the search does not fire on every character
     const timer = window.setTimeout(
       () => {
         void Promise.all([
@@ -104,7 +104,7 @@ export function LibraryPage() {
     }
   };
 
-  /** Einzelne Dateien statt eines ganzen Ordners. */
+  /** single files instead of a whole folder. */
   const importFiles = async () => {
     try {
       const selected = await open({
@@ -141,11 +141,9 @@ export function LibraryPage() {
     }
   };
 
-  /**
-   * Ordner und Datenbank laufen im Alltag auseinander: Dateien werden von
-   * außen verschoben, Importe brechen ab. Der Abgleich meldet beides und
-   * fasst nichts an, bevor der Nutzer zustimmt.
-   */
+  // folder and database drift apart in daily use: files are moved from
+  // outside, imports break off. the reconciliation reports both and touches
+  // nothing before the user agrees
   const runCheck = async () => {
     try {
       const result = await api.checkLibrary();
@@ -173,11 +171,9 @@ export function LibraryPage() {
     }
   };
 
-  /**
-   * Entfernt die Einträge ohne Datei. Gelöscht wird weich, darum steht danach
-   * ein Zurück bereit, dieselbe Zusage wie beim Löschen eines einzelnen
-   * Titels. Die Datei selbst ist ohnehin schon fort, angefasst wird nichts.
-   */
+  // removes the rows without a file. the deletion is soft, so an undo stands
+  // ready afterwards, the same promise as when deleting a single track. the
+  // file itself is gone anyway and nothing is touched
   const removeMissing = async () => {
     setFragtNachEntfernen(false);
     if (nichtMehrFragen) {
@@ -261,19 +257,19 @@ export function LibraryPage() {
       )}
 
       <div className="aktionsreihe mb-5 gap-3">
-        {/* Erst die Suche, dann die Werkzeuge, alle drei nur als Zeichen:
-            Pfeil, Ordner und Dreieck sprechen für sich, während
-            „Aktualisieren“, „Importieren“ und „Von vorn hören“
-            nebeneinander wie eine Ansage klingen.
+        {/* the search first, then the tools, all three as icons alone: arrow,
+            folder and triangle speak for themselves, while "refresh",
+            "import" and "play from the top" next to each other sound like an
+            announcement.
 
-            Die Sortierung steht am anderen Ende: Sie ist keine Handlung,
-            sondern die Ordnung der Liste darunter, und mit ihrer Breite
-            stünde sie zwischen den Zeichen im Weg. */}
-        {/* Die Suche als Knopf, der beim Tippen ausfährt. Ohne
-            `aktionsfeld`: Dessen Mindestbreite sinkt bei Enge zwar mit, endet
-            aber bei 7rem und hielt das Feld genau dort fest, sodass der Kreis
-            nie zustande kam. Die Breite regelt `suchfeld-kurz` selbst, in
-            beiden Zuständen. */}
+            the sorting stands at the other end: it is no action but the order
+            of the list below, and with its width it would stand in the way
+            between the icons. */}
+        {/* the search as a button that slides out on tapping. without
+            `aktionsfeld`: its minimum width does shrink under pressure but
+            ends at 7rem and held the field exactly there, so the circle never
+            came about. `suchfeld-kurz` handles the width itself, in both
+            states. */}
         <div className="suchfeld-kurz relative">
           <SearchIcon
             size={16}
@@ -287,8 +283,8 @@ export function LibraryPage() {
             className="search-field ps-10"
           />
         </div>
-        {/* Die Werkzeuge stehen bei dem, worauf sie wirken: der Titelliste.
-            Gleiche Bauweise wie die Schalter auf Playlists und Wrapped. */}
+        {/* the tools stand with what they act on: the track list. the same
+            build as the switches on playlists and the review. */}
         <button
           type="button"
           onClick={() => void runCheck()}
@@ -299,17 +295,16 @@ export function LibraryPage() {
           <RefreshIcon size={16} />
           <span className="beschriftung truncate">{t("Aktualisieren")}</span>
         </button>
-        {/* Ein Knopf, zwei Wege: Ein ganzer Ordner ist der übliche Fall,
-            einzelne Dateien braucht man trotzdem. Zwei Knöpfe nebeneinander
-            wären dafür zu viel.
+        {/* one button, two ways: a whole folder is the usual case, and
+            single files are needed all the same. two buttons side by side
+            would be too much for it.
 
-            Auf dem Telefon gibt es nur einen Weg: Android hat keine
-            Ordnerauswahl, die Tauri anbieten könnte — der Aufruf endete dort
-            wortwörtlich mit „Folder picker is not implemented on mobile“.
-            Dann soll der Knopf auch kein Menü aufklappen, in dem eine von
-            zwei Möglichkeiten sicher scheitert; er führt direkt zur
-            Dateiauswahl. Ganze Ordner kommen dort über „Eigene Songs“
-            herein. */}
+            on a phone there is only one way: android has no folder picker
+            tauri could offer, and the call ended there literally with "Folder
+            picker is not implemented on mobile". the button is then not to
+            unfold a menu in which one of two options is certain to fail, it
+            leads straight to the file picker. whole folders come in through
+            the "Eigene Songs" folder there. */}
         {settings?.festeOrte ? (
           <button
             type="button"

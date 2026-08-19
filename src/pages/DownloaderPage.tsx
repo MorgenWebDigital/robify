@@ -25,13 +25,13 @@ import type {
   PlanHinweis,
 } from "../types";
 
-/* Opus fehlt bewusst: Der eingebaute Player kann es nicht abspielen. */
-/**
- * Als Funktion, nicht als feste Liste: Eine Liste auf Modulebene entsteht
- * einmal beim Laden. Wechselt der Nutzer danach die Sprache, baut die App sich
- * zwar neu auf, das Modul aber nicht, und die Beschriftungen blieben in der
- * Anfangssprache stehen.
- */
+// the audio formats to choose from. opus is deliberately absent, the
+// built-in player cannot play it.
+//
+// a function and not a fixed list: a list at module level comes into being
+// once at load time. does the user switch language afterwards, the app
+// rebuilds itself but the module does not, and the labels would stay in the
+// starting language
 function formate() {
   return [
     { id: "best", label: t("Beste Qualität") },
@@ -42,25 +42,21 @@ function formate() {
   ];
 }
 
-/**
- * Überschrift über der Trefferliste.
- *
- * Bei einer Suche liefert der Rust-Teil nur die Eingabe; den Satz drumherum
- * baut die Oberfläche, damit er ihrer Sprache folgt. Bei einem Link ist das
- * Etikett der Name des Fundes und bleibt, wie er ist.
- */
+// the heading above the result list.
+//
+// on a search the rust side delivers the input alone, and the ui builds the
+// sentence around it so it follows the ui language. with a link the label is
+// the name found and stays as it is
 function planTitel(plan: LinkPlan): string {
   return plan.kind === "search"
     ? t("Treffer für „{0}“", plan.label)
     : plan.label;
 }
 
-/**
- * Wortlaut zu einer Hinweis-Kennung aus dem Rust-Teil.
- *
- * Dort steht nur, *welcher* Hinweis gilt; der Satz gehört hierher, weil nur
- * die Oberfläche die eingestellte Sprache kennt.
- */
+// the wording for a hint id coming from the rust side.
+//
+// only which hint applies stands there, and the sentence belongs here because
+// the ui alone knows the selected language
 function hinweisText(hinweis: PlanHinweis): string {
   if (hinweis.code === "spotify-nur-metadaten") {
     return t(
@@ -92,8 +88,8 @@ export function DownloaderPage() {
   const [format, setFormat] = useState("mp3");
   const [importing, setImporting] = useState(false);
 
-  // Trefferliste und laufende Downloads überleben den Tabwechsel, weil sie
-  // außerhalb dieser Seite liegen.
+  // result list and running downloads survive a tab change because they lie
+  // outside this page
   const {
     input,
     plan,
@@ -122,10 +118,8 @@ export function DownloaderPage() {
     if (settings) setFormat(settings.downloadFormat);
   }, [settings]);
 
-  /**
-   * Ein Feld für alles, das Backend erkennt selbst, ob ein Link eingefügt
-   * oder gesucht wurde, und wählt die passende Quelle.
-   */
+  // one field for everything, the backend recognises by itself whether a
+  // link was pasted or a search typed, and picks the matching source
   const submit = async () => {
     const value = input.trim();
     if (!value) return;
@@ -164,11 +158,11 @@ export function DownloaderPage() {
     try {
       const outcome = await api.startDownload(id, {
         url: item.url,
-        // Liefert die erste Quelle nichts Brauchbares, greifen diese.
+        // where the first source delivers nothing usable, these take hold
         fallbacks: item.fallbacks,
-        // Ist die Laufzeit bekannt, sucht das Backend die passendste Aufnahme.
+        // where the running time is known the backend picks the best matching recording
         matchQuery: item.matchQuery,
-        // Wonach gesucht wurde, das Backend prüft das Ergebnis dagegen.
+        // what was searched for, the backend checks the result against it
         intent: item.intent,
         expectedDurationMs: item.durationMs,
         format,
@@ -188,7 +182,7 @@ export function DownloaderPage() {
         removeJob(id);
         await refresh();
       } else {
-        // Passt das Ergebnis nicht zur Suche, wird auch im Stapel gefragt.
+        // where the result does not match the search, a batch asks as well
         setReview({ job: { ...job, outcome }, metadata: outcome.metadata });
         notify(
           outcome.warning
@@ -204,28 +198,22 @@ export function DownloaderPage() {
     }
   };
 
-  /**
-   * Nacheinander, damit die Quelle nicht mit Anfragen überfahren wird.
-   *
-   * Was schon in der Bibliothek liegt, wird übersprungen. Das ist der Fall,
-   * wenn man einen einzelnen Titel geladen hat und später das Album dazu:
-   * Der Stapel muss ihn nicht ein zweites Mal suchen.
-   */
-  /**
-   * Ein Stapel, der keine Albumveröffentlichung ist, ist eine Playlist. Bei
-   * einem Album wäre eine gleichnamige Playlist nur eine zweite Fassung
-   * dessen, was die Bibliothek ohnehin als Release führt.
-   */
+  // one after another, so the source is not run over with requests.
+  //
+  // what already lies in the library is skipped. that is the case where one
+  // downloaded a single track and the album to it later: the batch does not
+  // have to search it a second time
+  // a batch that is no album release is a playlist. with an album a playlist
+  // of the same name would only be a second version of what the library
+  // carries as a release anyway
   const alsPlaylist =
     Boolean(plan?.batch) &&
     plan?.kind !== "spotify-album" &&
     settings?.playlistFromDownload !== false;
 
-  /**
-   * Namensvorschlag aus der Überschrift. Bei Spotify steht davor der
-   * Ersteller („Spotify · Today's Top Hits“), der gehört nicht in den Namen
-   * der eigenen Playlist.
-   */
+  // a name suggested from the heading. at spotify the creator stands in front
+  // of it ("Spotify · Today's Top Hits"), and that does not belong in the name
+  // of one's own playlist
   const playlistName = (plan?.label ?? "").split(" · ").pop()?.trim() ?? "";
 
   const downloadAll = async (items: DownloadPlan[], name = "") => {
@@ -250,9 +238,9 @@ export function DownloaderPage() {
         );
       }
 
-      // Die Playlist entsteht aus allen Einträgen, auch den übersprungenen:
-      // Die liegen ja bereits in der Bibliothek und gehören genauso hinein.
-      // Deshalb läuft dieser Schritt auch dann, wenn nichts zu laden war.
+      // the playlist grows out of every entry, the skipped ones included:
+      // those lie in the library already and belong in it just as much. this
+      // step therefore runs even where there was nothing to download
       if (alsPlaylist && name.trim()) {
         try {
           const ergebnis = await api.createPlaylistFromEntries(
@@ -301,9 +289,9 @@ export function DownloaderPage() {
       await refresh();
       removeJob(review.job.id);
       setReview(null);
-      // Der Titel ist drin, die Eingabe hat ihren Zweck erfüllt. Stehen
-      // geblieben war sie ein Rest vom letzten Mal: Wer den nächsten Link
-      // einfügen wollte, musste erst den alten von Hand löschen.
+      // the track is in, and the input has served its purpose. left standing
+      // it was a leftover from last time: whoever wanted to paste the next
+      // link had to delete the old one by hand first
       setInput("");
       notify(t("In die Bibliothek übernommen"), "success");
     } catch (error) {
@@ -366,10 +354,9 @@ export function DownloaderPage() {
                 }
               }}
               autoFocus
-              /* Kurz gehalten: Auf einem Telefon ist das Feld gut zweihundert
-                 Punkte breit, und der lange Satz brach mitten im Wort ab —
-                 „Künstler und Titel suchen oder“. Was alles erkannt wird,
-                 steht ohnehin darunter. */
+              /* kept short: on a phone the field is a good two hundred points
+                 wide, and the long sentence broke off mid-word. what is
+                 recognised stands below it anyway. */
               placeholder={t("Suchbegriff oder Link")}
               aria-label={t("Suchbegriff oder Link")}
               className="search-field ps-10"
@@ -411,9 +398,9 @@ export function DownloaderPage() {
           <h2 className="mb-3 text-xl font-semibold tracking-tight">
             {t("Downloads")}
           </h2>
-          {/* Der Hinweis steht bei den Aufträgen und nicht nur über der
-              Trefferliste: Die geht beim Laden weg, und dann stünde da ein
-              Balken, der sich minutenlang kaum bewegt, ohne ein Wort dazu. */}
+          {/* the hint stands with the jobs and not above the result list
+              alone: that one goes away while downloading, and a bar would
+              stand there barely moving for minutes without a word on it. */}
           {jobs.some((job) => !job.outcome && !job.error) && (
             <p className="mb-3 text-xs text-mute">
               {t(
@@ -428,12 +415,11 @@ export function DownloaderPage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{job.label}</p>
                     {job.error ? (
-                      // Der Fehler ist das Wichtigste an einem gescheiterten
-                      // Auftrag und darf nicht in einer Zeile verschwinden:
-                      // Robify erklärt darin, woran es lag und was hilft, und
-                      // hängt die wörtliche Meldung der Quelle an. Abgeschnitten
-                      // blieb davon „Die Quelle hat den Zugriff abgelehnt (403).
-                      // Das k…“ übrig.
+                      // the error is the most important part of a failed job
+                      // and must not disappear into one line: robify explains
+                      // in it what went wrong and what helps, and appends the
+                      // verbatim message of the source. truncated, all that
+                      // was left of it was the first half of a sentence
                       <p className="text-xs text-mute">{job.error}</p>
                     ) : (
                       <p className="truncate text-xs text-mute">
@@ -527,8 +513,9 @@ export function DownloaderPage() {
             </p>
           )}
 
-          {/* Jeder Titel wird einzeln gesucht, geladen und umgewandelt. Bei
-              einem Album dauert das Minuten, das soll niemanden überraschen. */}
+          {/* every track is searched, downloaded and converted separately.
+              with an album that takes minutes, and it is to surprise
+              nobody. */}
           <p className="mb-4 text-xs text-mute">
             {t(
               "Rechne mit etwa einer halben bis einer Minute je Titel. Robify sucht jeden einzeln in mehreren Quellen, lädt ihn und schreibt die Metadaten hinein. Das Fenster kann dabei offen bleiben.",
@@ -572,11 +559,10 @@ export function DownloaderPage() {
                 <span className="shrink-0 text-xs text-mute tabular-nums">
                   {item.durationMs ? formatTime(item.durationMs) : "unbekannt"}
                 </span>
-                {/* Die Trefferliste geht weg, sobald einer davon geladen
-                    wird. Sie hat ihren Zweck erfüllt, und darunter stand
-                    bisher der Auftrag, den man erst durch zehn Treffer
-                    hindurch suchen musste. Die Liste kommt mit derselben
-                    Suche zurück. */}
+                {/* the result list goes away as soon as one of them is being
+                    downloaded. it has served its purpose, and the job used to
+                    stand below it where one had to look for it through ten
+                    hits. the list comes back with the same search. */}
                 <Button
                   onClick={() => {
                     setPlan(null);
@@ -619,8 +605,8 @@ export function DownloaderPage() {
       >
         {review && (
           <div className="space-y-5">
-            {/* Passt das Geladene nicht zur Suche, steht es hier, bevor
-                der Titel in die Bibliothek wandert. */}
+            {/* where the download does not match the search, it stands here
+                before the track travels into the library. */}
             {review.job.outcome?.warning && (
               <div className="rounded-xl border border-warning/40 bg-warning-soft px-4 py-3 text-sm">
                 <p className="font-medium text-warning">{t("Passt das?")}</p>
@@ -648,14 +634,11 @@ export function DownloaderPage() {
   );
 }
 
-/**
- * Was der Auftrag gerade tut, in einem Satz.
- *
- * Die Zwischenstände kommen aus dem Rust-Teil als Vorlage samt Werten und
- * werden hier übersetzt — vorher standen „Quelle wird gelesen…“ und
- * „Metadaten werden gesucht…“ auch über einer englischen Oberfläche auf
- * Deutsch.
- */
+// what the job is doing right now, in one sentence.
+//
+// the intermediate states come from the rust side as a template together with
+// its values and are translated here. before that, "reading the source…" and
+// "searching the metadata…" stood in german above an english interface too
 function describe(progress: DownloadProgress | null): string {
   if (!progress) return t("Wird vorbereitet…");
   if (progress.status === "processing")

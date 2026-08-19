@@ -13,25 +13,25 @@ import {
 export interface NavEintrag {
   to: string;
   /**
-   * Nachschlagebegriff für die Texttabelle, nicht die fertige Beschriftung.
+   * lookup term for the text table, not the finished label.
    *
-   * Übersetzt wird erst beim Zeichnen: Eine Liste auf Modulebene entsteht
-   * einmal beim Laden und bliebe nach einem Sprachwechsel in der
-   * Anfangssprache stehen.
+   * the translation happens at render time: a list at module level comes into
+   * being once at load time and would stay in the starting language after a
+   * language switch.
    */
   schluessel: string;
   icon: ComponentType<{ size?: number; className?: string }>;
-  /** Weitere Adressen, die zu diesem Abschnitt gehören. */
+  /** further addresses belonging to this section. */
   auch: string[];
 }
 
 /**
- * Die Navigationspunkte, gemeinsam für Seitenleiste und Unterleiste.
+ * the navigation entries, shared by the sidebar and the bottom bar.
  *
- * Steht hier und nicht in einem der beiden Bauteile: Am Rechner führt eine
- * Leiste an der Seite durch die App, am Telefon eine am unteren Rand. Zwei
- * Listen liefen über kurz oder lang auseinander, und ein Abschnitt, den es
- * nur auf einem der beiden Geräte gibt, wäre ein Fehler, den niemand sucht.
+ * kept here and not in either component: on a desktop a bar at the side leads
+ * through the app, on a phone one at the bottom edge. two lists would drift
+ * apart sooner or later, and a section existing on only one of the two
+ * devices would be a bug nobody looks for.
  */
 export const NAV: NavEintrag[] = [
   { to: "/", schluessel: "Start", icon: HomeIcon, auch: ["/mix"] },
@@ -58,18 +58,16 @@ export const NAV: NavEintrag[] = [
   { to: "/downloader", schluessel: "Downloader", icon: DownloadIcon, auch: [] },
 ];
 
-/**
- * Was am Telefon unten steht, in dieser Reihenfolge.
- *
- * Vier Punkte plus „Mehr“: Mehr als fünf Ziele nebeneinander werden auf einer
- * Handbreite zu schmal zum Treffen. Die übrigen liegen hinter „Mehr“, damit
- * kein Abschnitt unerreichbar wird.
- *
- * Ausdrücklich aufgezählt und nicht die ersten vier aus `NAV`: Unten gehört
- * hin, was man am Telefon oft braucht, und das ist nicht dasselbe wie die
- * Reihenfolge in der Seitenleiste. Der Downloader ist am Telefon ein
- * täglicher Griff, die Künstlerübersicht erreicht man meist über einen Titel.
- */
+// what stands at the bottom on a phone, in this order.
+//
+// four entries plus "more": more than five targets side by side get too
+// narrow to hit on a hand's width. the rest sit behind "more" so no section
+// becomes unreachable.
+//
+// listed explicitly rather than the first four out of `NAV`: what belongs at
+// the bottom is what one needs often on a phone, and that is not the same as
+// the order in the sidebar. the downloader is a daily reach on a phone, while
+// the artist overview is usually reached through a track
 const UNTEN_PFADE = ["/", "/library", "/downloader", "/playlists"];
 
 export const UNTEN: NavEintrag[] = UNTEN_PFADE.map((pfad) =>
@@ -87,16 +85,16 @@ export const UNTER_MEHR: NavEintrag[] = [
 ];
 
 /**
- * Gehört die geöffnete Seite zu diesem Navigationspunkt?
+ * whether the open page belongs to this navigation entry.
  *
- * `NavLink` vergleicht nur seine eigene Adresse, und die Detailseiten heißen
- * anders als ihr Abschnitt: Ein Künstler steht unter `/artist/7`, der
- * Abschnitt unter `/artists`. Wer von einem Titel aus zum Künstler ging, sah
- * darum eine Leiste ohne jede Markierung, obwohl er mitten in einem Abschnitt
- * stand. Die Zweitadressen stehen in `auch`.
+ * `NavLink` compares its own address alone, and the detail pages are called
+ * differently from their section: an artist stands under `/artist/7`, the
+ * section under `/artists`. whoever went from a track to the artist therefore
+ * saw a bar without any marking although they stood in the middle of a
+ * section. the secondary addresses stand in `auch`.
  *
- * Der Schrägstrich beim Vergleich ist wichtig: Ohne ihn hielte `/playlist`
- * auch `/playlists` für seine eigene Seite.
+ * the slash in the comparison matters: without it `/playlist` would take
+ * `/playlists` for its own page as well.
  */
 export function istHier(pfad: string, eintrag: NavEintrag): boolean {
   if (pfad === eintrag.to) return true;

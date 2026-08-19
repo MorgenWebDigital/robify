@@ -20,10 +20,11 @@ interface Lizenzdaten {
 }
 
 /**
- * Hinweis auf fremde Inhalte, für die Downloader-Seite.
+ * a notice about foreign content, for the downloader page.
  *
- * Er steht dort und nicht nur in der README: Gelesen wird eine Warnung da, wo
- * gehandelt wird. Wer lädt, soll wissen, dass die Verantwortung bei ihm liegt.
+ * it stands there and not in the readme alone: a warning is read where the
+ * action happens. whoever downloads is to know that the responsibility lies
+ * with them.
  */
 export function DownloadHinweis() {
   return (
@@ -35,14 +36,11 @@ export function DownloadHinweis() {
   );
 }
 
-/**
- * Fußbereich der Einstellungsseite.
- *
- * Bewusst keine Karte wie die Abschnitte darüber, sondern eine ruhige Zeile
- * unter einer Haarlinie, wie der Fuß einer Webseite. Rechtliches soll
- * auffindbar sein, aber nicht mit den Schaltern konkurrieren, die man hier
- * tatsächlich sucht.
- */
+// the footer of the settings page.
+//
+// deliberately no card like the sections above it but a calm row under a
+// hairline, like the footer of a web page. the legal part is to be findable
+// without competing with the switches one actually comes here for
 export function RechtlichesFuss() {
   const [offen, setOffen] = useState(false);
 
@@ -51,8 +49,9 @@ export function RechtlichesFuss() {
       <p className="text-xs text-mute">
         <span className="font-medium text-fg/70">Robify {version}</span>
         <Punkt />
-        {/* Der Name der Lizenz, nicht übersetzt: Er ist einer, wie „Robify“
-            auch. Was sie bedeutet, steht in der LICENSE und im README. */}
+        {/* the name of the licence, not translated: it is a name, as
+            "Robify" is. what it means stands in the licence and the
+            readme. */}
         PolyForm Noncommercial
         <Punkt />
         <button
@@ -75,7 +74,7 @@ export function RechtlichesFuss() {
   );
 }
 
-/** Trennpunkt zwischen den Angaben im Fuß. */
+/** the separator dot between the entries in the footer. */
 function Punkt() {
   return <span className="mx-2 text-mute/40">·</span>;
 }
@@ -92,8 +91,8 @@ function LizenzenDialog({
   const [suche, setSuche] = useState("");
   const [ausgeklappt, setAusgeklappt] = useState<string | null>(null);
 
-  // Erst beim Öffnen laden: Die Datei ist knapp ein Megabyte groß und wird in
-  // den allermeisten Sitzungen nie gebraucht.
+  // loaded on opening only: the file is close to a megabyte and is never
+  // needed in the vast majority of sessions
   useEffect(() => {
     if (!open || daten || fehler) return;
     let abgebrochen = false;

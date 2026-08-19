@@ -90,11 +90,10 @@ export function AlbumDetail() {
             {formatDuration(album.durationMs)}
           </p>
 
-          {/* Bearbeiten links, Abspielen rechts, wie bei Künstler und
-              Playlist. Alle vier klein: Vier beschriftete Knöpfe brauchten
-              510 Bildpunkte auf einer 411 breiten Anzeige — „Bearbeiten“ stand
-              vollständig außerhalb des Bildes, und die Seite ließ sich zur
-              Seite schieben. */}
+          {/* edit on the left, play on the right, as with artist and
+              playlist. all four small: four labelled buttons needed 510
+              pixels on a display 411 wide, the edit button stood entirely
+              outside the picture and the page could be pushed sideways. */}
           <div className="aktionsreihe mt-4 gap-2">
             <button
               type="button"

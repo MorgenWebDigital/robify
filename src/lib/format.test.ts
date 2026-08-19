@@ -18,8 +18,8 @@ describe("formatTime", () => {
   });
 
   it("macht aus Unsinn eine Null statt „NaN:NaN“", () => {
-    // Laufzeiten kommen aus Dateien; fehlt die Angabe, steht dort schon mal
-    // nichts Brauchbares.
+    // running times come out of files, and where the value is missing
+    // nothing usable stands there now and then
     expect(formatTime(-5000)).toBe("0:00");
     expect(formatTime(Number.NaN)).toBe("0:00");
     expect(formatTime(Number.POSITIVE_INFINITY)).toBe("0:00");
@@ -35,8 +35,8 @@ describe("formatDuration", () => {
   });
 
   it("rundet auf ganze Minuten, sobald es sich lohnt", () => {
-    // Ab einer halben Minute steht „1 Min.“ statt „30 Sek.“, gewollt, weil
-    // die Angabe ohnehin nur einen Umfang vermitteln soll.
+    // from half a minute on it reads "1 Min." instead of "30 Sek.", which is
+    // wanted, the value is only meant to convey a magnitude anyway
     expect(formatDuration(29_000)).toBe("29 Sek.");
     expect(formatDuration(30_000)).toBe("1 Min.");
   });
@@ -69,11 +69,9 @@ describe("plural", () => {
     expect(plural(1234, "Titel")).toBe("1.234 Titel");
   });
 
-  /**
-   * Der eigentliche Grund für die Umstellung: Russisch beugt nach 2, 3, 4
-   * anders als nach 5 und mehr. Mit zwei mitgegebenen Wörtern stand in der App
-   * „7 Треки“, die Form für 2 bis 4, an einer Stelle, an der „треков“ gehört.
-   */
+  // the actual reason for the change: russian inflects after 2, 3, 4
+  // differently from after 5 and more. with two words handed over, the app
+  // read "7 Треки", the form for 2 to 4, where "треков" belongs
   it("beugt im Russischen nach der Zahl", () => {
     spracheSetzen("ru");
     expect(plural(1, "Titel")).toBe("1 трек");

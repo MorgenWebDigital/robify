@@ -7,7 +7,7 @@ export interface Artist {
   mbid: string | null;
   trackCount: number;
   releaseCount: number;
-  /** Profilbild hinterlegt? */
+  /** whether a profile image is stored. */
   hasImage: boolean;
   bio: string | null;
   sourceUrl: string | null;
@@ -38,7 +38,7 @@ export interface Album {
 export interface TrackArtist {
   id: number;
   name: string;
-  /** "main" oder "feature". */
+  /** "main" or "feature". */
   role: string;
 }
 
@@ -46,10 +46,10 @@ export interface Track {
   id: number;
   path: string;
   title: string;
-  /** Hauptkünstler. */
+  /** lead artist. */
   artistId: number;
   artistName: string;
-  /** Alle Beteiligten, Hauptkünstler zuerst. */
+  /** everyone involved, lead artist first. */
   artists: TrackArtist[];
   albumId: number;
   albumTitle: string;
@@ -66,7 +66,7 @@ export interface Track {
   playCount: number;
   favorite: boolean;
   source: string | null;
-  /** Aus der Bibliothek entfernt, im Rückblick aber noch geführt. */
+  /** removed from the library but still carried in the review. */
   deleted: boolean;
 }
 
@@ -78,15 +78,15 @@ export interface Playlist {
   trackCount: number;
   durationMs: number;
   coverAlbumIds: number[];
-  /** Eigenes Bild hinterlegt, sonst entsteht die Kachel aus den Covern. */
+  /** an image of its own is stored, otherwise the tile grows from the covers. */
   hasCover: boolean;
 }
 
 export interface PlaylistFill {
   playlist: Playlist;
-  /** Neu angelegt oder eine vorhandene ergänzt? */
+  /** whether it was newly created or an existing one extended. */
   created: boolean;
-  /** Wie viele Titel diesmal dazugekommen sind. */
+  /** how many tracks came along this time. */
   added: number;
 }
 
@@ -100,9 +100,9 @@ export interface Lyrics {
 
 export interface TrackMetadata {
   title: string;
-  /** Hauptkünstler, mehrere mit Semikolon getrennt. */
+  /** lead artists, several of them separated by semicolons. */
   artist: string;
-  /** Gastkünstler, mit Semikolon getrennt. */
+  /** guest artists, separated by semicolons. */
   featuredArtists: string | null;
   album: string;
   albumArtist: string | null;
@@ -147,14 +147,14 @@ export interface PlayerState {
   queue: number[];
   queueIndex: number | null;
   /**
-   * Stellen der Warteschlange in der Reihenfolge, in der sie laufen.
+   * positions of the queue in the order they run in.
    *
-   * Ohne Zufallswiedergabe schlicht `0, 1, 2, …`; mit ist es die gewürfelte
-   * Folge. Nötig, um zu zeigen, was noch kommt: Bei Zufallswiedergabe steht
-   * das Kommende nicht hinter dem laufenden Titel, sondern verstreut.
+   * without shuffle plainly `0, 1, 2, …`, with it the drawn sequence. needed
+   * to show what is still to come: under shuffle the coming tracks do not
+   * stand behind the running one but lie scattered.
    */
   order: number[];
-  /** Wo in `order` der laufende Titel steht. */
+  /** where in `order` the running track stands. */
   orderPos: number | null;
   sleepTimer: SleepTimerState | null;
 }
@@ -174,10 +174,10 @@ export interface ScanResult {
 }
 
 export interface LibraryCheck {
-  /** Audiodateien im Bibliotheksordner ohne Eintrag in der Datenbank. */
+  /** audio files in the library folder without a row in the database. */
   orphanCount: number;
   orphanSamples: string[];
-  /** Titel, deren Datei nicht mehr existiert. */
+  /** tracks whose file no longer exists. */
   missingCount: number;
   missingSamples: string[];
 }
@@ -203,7 +203,7 @@ export interface MetadataCandidate {
   coverUrl: string | null;
   mbid: string | null;
   durationMs: number | null;
-  /** Genius-Seite mit den Lyrics. */
+  /** genius page carrying the lyrics. */
   lyricsUrl: string | null;
   geniusSongId: number | null;
   geniusAlbumId: number | null;
@@ -224,15 +224,15 @@ export interface DownloadOptions {
   format: string;
   quality?: string | null;
   embedThumbnail: boolean;
-  /** Vorbekannte Metadaten, die den Tags der Datei vorgehen. */
+  /** metadata known beforehand, which wins over the tags of the file. */
   metadata?: TrackMetadata | null;
-  /** Ausweichadressen, falls die erste Quelle nichts liefert. */
+  /** fallback addresses where the first source delivers nothing. */
   fallbacks?: string[];
-  /** Bekannte Länge, zu kurze Ergebnisse gelten als Vorschau. */
+  /** the known length, results that are too short count as a preview. */
   expectedDurationMs?: number | null;
-  /** Suchbegriff, aus dem der beste Treffer bestimmt wird. */
+  /** search term the best hit is determined from. */
   matchQuery?: string | null;
-  /** Sucheingabe des Nutzers, für die Gegenprobe nach dem Laden. */
+  /** the user's search input, for the check after downloading. */
   intent?: string | null;
 }
 
@@ -240,7 +240,7 @@ export interface DownloadPlan {
   url: string;
   fallbacks: string[];
   matchQuery: string | null;
-  /** Wonach gesucht wurde. Grundlage der Gegenprobe nach dem Laden. */
+  /** what was searched for, the basis of the check after downloading. */
   intent: string | null;
   title: string;
   subtitle: string | null;
@@ -248,25 +248,25 @@ export interface DownloadPlan {
   durationMs: number | null;
   source: string;
   metadata: TrackMetadata | null;
-  /** Liegt bereits ein Titel dieses Namens vom selben Künstler vor? */
+  /** whether a track of this name by the same artist lies there already. */
   alreadyInLibrary: boolean;
 }
 
-/** Ein Hinweis, dessen Wortlaut die Oberfläche selbst beisteuert. */
+/** a hint whose wording the ui contributes itself. */
 export interface PlanHinweis {
-  /** Welcher Hinweis; der Wortlaut steht in der Texttabelle. */
+  /** which hint. the wording stands in the text table. */
   code: string;
-  /** Einsetzwerte für die Platzhalter `{0}`, `{1}`, … */
+  /** values for the placeholders `{0}`, `{1}` and so on. */
   args: string[];
 }
 
 export interface LinkPlan {
-  /** Bei `kind === "search"` die Eingabe selbst, sonst der Name des Fundes. */
+  /** with `kind === "search"` the input itself, otherwise the name found. */
   label: string;
-  /** "search", "link" oder z. B. "spotify-album". */
+  /** "search", "link" or "spotify-album" for instance. */
   kind: string;
   notes: PlanHinweis[];
-  /** Gehören die Einträge zusammen? Dann ist „Alle laden“ sinnvoll. */
+  /** whether the entries belong together. downloading all of them makes sense then. */
   batch: boolean;
   items: DownloadPlan[];
 }
@@ -289,7 +289,7 @@ export interface DownloadOutcome {
   format: string;
   metadata: TrackMetadata;
   sourceUrl: string;
-  /** Gesetzt, wenn das Ergebnis nicht zur Sucheingabe passt. */
+  /** set where the result does not match the search input. */
   warning: string | null;
 }
 
@@ -297,13 +297,13 @@ export interface DownloaderStatus {
   ytdlpPath: string | null;
   ytdlpVersion: string | null;
   ffmpegAvailable: boolean;
-  /** Für YouTube nötig, sonst 403-Fehler. */
+  /** needed for youtube, 403 errors otherwise. */
   jsRuntime: string | null;
   /**
-   * Lässt sich an einer fehlenden Laufzeit überhaupt etwas ändern?
+   * whether anything can be done about a missing runtime at all.
    *
-   * Auf Android nicht: Dort gibt es weder Node noch Deno, und installieren
-   * kann man sie auch nicht. Die Warnung entfällt dort.
+   * on android it cannot: neither node nor deno exists there, and they cannot
+   * be installed either. the warning is dropped there.
    */
   jsRuntimeRelevant: boolean;
   activeJobs: string[];
@@ -355,9 +355,9 @@ export interface Wrapped {
 
 export interface Recommendation {
   track: Track;
-  /** Wie oft der Titel in dieser Woche lief. */
+  /** how often the track ran that week. */
   playCount: number;
-  /** Wie lange er dabei insgesamt lief. */
+  /** how long it ran in total while doing so. */
   msPlayed: number;
 }
 
@@ -368,25 +368,25 @@ export interface WeeklyMixSummary {
   end: number;
   offset: number;
   trackCount: number;
-  /** Alben der meistgehörten Titel, daraus entsteht das Mosaik-Cover. */
+  /** albums of the most played tracks, the mosaic cover grows out of them. */
   coverAlbumIds: number[];
 }
 
 export interface WeeklyMix {
-  /** Kalenderwoche, z. B. „2026-KW33“. */
+  /** calendar week, "2026-KW33" for instance. */
   weekKey: string;
   /**
-   * Fortlaufende Nummer ab der ersten Woche mit Hördaten.
+   * running number counted from the first week with listening data.
    *
-   * Der Anzeigename entsteht daraus in `lib/mix.ts`, er ist Text der
-   * Oberfläche und folgt ihrer Sprache.
+   * the display name grows out of it in `lib/mix.ts`, it is ui text and
+   * follows the ui language.
    */
   number: number;
   start: number;
   end: number;
-  /** Wie viele Wochen zurück. 0 ist die laufende. */
+  /** how many weeks back. 0 is the running one. */
   offset: number;
-  /** Gibt es davor noch eine Woche mit Hördaten? */
+  /** whether another week with listening data lies before it. */
   hasOlder: boolean;
   items: Recommendation[];
 }
@@ -402,29 +402,29 @@ export interface Settings {
   moveDownloadsIntoLibrary: boolean;
   theme: string;
   accent: string;
-  /** „grid“ oder „list“. */
+  /** "grid" or "list". */
   playlistView: string;
-  /** „sm“, „md“ oder „lg“. */
+  /** "sm", "md" or "lg". */
   playlistSize: string;
-  /** Vor dem Löschen nachfragen. */
+  /** ask before deleting. */
   confirmDelete: boolean;
-  /** Aus einer geladenen Playlist eine Playlist in der Bibliothek machen. */
+  /** turn a downloaded playlist into a playlist in the library. */
   playlistFromDownload: boolean;
-  /** Umfang des Rückblicks: „all“, „month“, „year“ oder „off“. */
+  /** scope of the review: "all", "month", "year" or "off". */
   wrappedMode: string;
-  /** Beim Import fehlende Angaben online nachschlagen. */
+  /** look missing details up online at import. */
   autoFetchImport: boolean;
-  /** Sortierung der Bibliothek: „added“, „title“, „artist“, „album“, „year“. */
+  /** sorting of the library: "added", "title", "artist", "album", "year". */
   librarySort: string;
-  /** Selbst gemischte Akzentfarben, mit Komma getrennt. */
+  /** accent colours mixed by hand, comma separated. */
   accentCustom: string;
-  /** Oberflächensprache: „system“, „de“ oder „en“. */
+  /** ui language: "system", "de" or "en". */
   language: string;
   /**
-   * Stehen die Speicherorte fest?
+   * whether the storage locations are fixed.
    *
-   * Auf dem Telefon liegen die Titel in „Robify“ und alles Übrige in
-   * „.robify“, beides im Gerätespeicher. Die Ordnerwahl entfällt dort.
+   * on a phone the tracks lie in "Robify" and everything else in ".robify",
+   * both in the device storage. the folder choice is dropped there.
    */
   festeOrte: boolean;
 }

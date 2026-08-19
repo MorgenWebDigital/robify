@@ -8,11 +8,10 @@ import { CoverPicker, type CoverChoice } from "./CoverPicker";
 import { Button, Field, inputClass, Modal } from "./Modal";
 import type { Playlist } from "../types";
 
-/**
- * Das eine Fenster zum Anlegen einer Playlist, mit Cover, Name und
- * Beschreibung. Wird von der Playlist-Übersicht und aus dem
- * Hinzufügen-Dialog benutzt, damit beide Wege dasselbe zeigen.
- */
+// the one dialog for creating a playlist, with cover, name and description.
+//
+// used from the playlist overview and from the add dialog, so both ways show
+// the same thing
 export function PlaylistCreateDialog({
   open,
   onClose,
@@ -20,7 +19,7 @@ export function PlaylistCreateDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  /** Bekommt die frisch angelegte Playlist, etwa um Titel einzufüllen. */
+  /** receives the freshly created playlist, to fill tracks into it for instance. */
   onCreated?: (playlist: Playlist) => void | Promise<void>;
 }) {
   const reloadPlaylists = useLibrary((s) => s.reloadPlaylists);

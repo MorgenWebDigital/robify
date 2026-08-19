@@ -18,30 +18,30 @@ import { useLibrary } from "../store/library";
 import type { Album, Track, WeeklyMixSummary } from "../types";
 
 /**
- * Wie viele Kacheln eine Vorschau auf der Startseite zeigt.
+ * how many tiles a preview on the home page shows.
  *
- * Die Startseite ist ein Überblick, keine Liste. Fünf passen am Rechner in
- * eine Reihe, auf einem Telefon nur drei; die beiden hinteren bleiben dort
- * verborgen, statt allein eine zweite Reihe anzufangen. Darunter beginnt so
- * oder so gleich der nächste Abschnitt.
+ * the home page is an overview, not a list. five fit in one row on a desktop
+ * and only three on a phone, where the last two stay hidden instead of
+ * starting a second row on their own. below it the next section begins either
+ * way.
  */
 const VORSCHAU = 5;
 
-/** So viele davon sind auf einem Telefon zu sehen. */
+/** this many of them are visible on a phone. */
 const VORSCHAU_SCHMAL = 3;
 
-/** Blendet die hinteren Kacheln aus, solange die Reihe nur drei fasst. */
+/** hides the trailing tiles while the row holds three only. */
 function nurBreit(stelle: number): string {
   return stelle >= VORSCHAU_SCHMAL ? "max-lg:hidden" : "";
 }
 
 /**
- * Wie viele Zeilen eine Vorschau als Liste zeigt.
+ * how many rows a preview shows as a list.
  *
- * Mehr als bei den Kacheln, weil eine Zeile flacher ist: Fünf davon nehmen
- * etwa so viel Platz wie eine Reihe Kacheln, und die Startseite bleibt in
- * beiden Fällen ein Überblick. Vorher standen hier acht, und die zwei
- * Abschnitte zusammen füllten mehr als einen Bildschirm.
+ * more than with the tiles because a row is flatter: five of them take about
+ * as much room as one row of tiles, and the home page stays an overview
+ * either way. eight stood here before, and the two sections together filled
+ * more than a screen.
  */
 const VORSCHAU_ZEILEN = 5;
 
@@ -78,8 +78,8 @@ export function Home() {
   }, [revision]);
 
   const geladen = useLibrary((s) => s.geladen);
-  // Erst urteilen, wenn die Zahlen da sind: Vor dem ersten Abruf steht dort
-  // eine Null, und die sähe aus wie eine leere Bibliothek.
+  // judge only once the numbers are there: before the first fetch a zero
+  // stands there, and that would look like an empty library
   const empty = geladen && (stats?.trackCount ?? 0) === 0;
 
   return (
@@ -127,10 +127,10 @@ export function Home() {
             </>
           )}
 
-          {/* Drei Kacheln, der Rest hinter „Alle ansehen“. Vorher lag hier
-              eine waagerechte Reihe mit bis zu zwölf Wochen zum Schieben; auf
-              einem Telefon sah man davon zweieinhalb und ahnte nicht, dass es
-              weiterging. */}
+          {/* three tiles, the rest behind "view all". a horizontal row with
+              up to twelve weeks to swipe lay here before, and on a phone one
+              saw two and a half of them without suspecting that it went
+              on. */}
           <SectionTitle
             action={
               mixes.length > VORSCHAU_SCHMAL ? (

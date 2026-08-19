@@ -7,17 +7,15 @@ import { t } from "../lib/i18n";
 import { useLibrary } from "../store/library";
 import type { WeeklyMixSummary } from "../types";
 
-/**
- * Alle Wochenmixe, so weit die Hörhistorie reicht.
- *
- * Auf der Startseite stehen drei davon; die übrigen waren vorher nur über eine
- * waagerechte Reihe zum Schieben erreichbar, von der auf einem Telefon
- * zweieinhalb Kacheln zu sehen waren.
- */
+// every weekly mix, as far back as the listening history reaches.
+//
+// three of them stand on the home page, and the rest used to be reachable
+// only through a horizontal row to swipe, of which two and a half tiles were
+// visible on a phone
 export function MixesPage() {
   const revision = useLibrary((s) => s.revision);
-  // `null` heißt: noch nicht nachgesehen. Erst danach darf die Seite
-  // behaupten, es gebe keine Mixe.
+  // `null` means not looked yet. only afterwards may the page claim there
+  // are no mixes
   const [mixes, setMixes] = useState<WeeklyMixSummary[] | null>(null);
 
   useEffect(() => {

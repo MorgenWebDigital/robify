@@ -11,8 +11,8 @@ import type { Artist } from "../types";
 
 export function ArtistsPage() {
   const revision = useLibrary((s) => s.revision);
-  // `null` heißt: noch nicht nachgesehen. Erst danach darf die Seite
-  // behaupten, es gebe keine Künstler.
+  // `null` means not looked yet. only afterwards may the page claim there
+  // are no artists
   const [artists, setArtists] = useState<Artist[] | null>(null);
   const [search, setSearch] = useState("");
 
@@ -39,11 +39,10 @@ export function ArtistsPage() {
         subtitle={plural(artists?.length ?? 0, "Künstler in deiner Bibliothek")}
       />
 
-      {/* Über die ganze Breite, anders als in der Bibliothek.
-          Dort steht die Suche zwischen Knöpfen und muss sich zum Kreis
-          zusammenfalten, damit die Reihe nicht überläuft. Hier steht sie
-          allein: Zusammengefaltet gäbe sie den Platz, den sie spart, an
-          niemanden ab — es bliebe ein Kreis in einer leeren Zeile. */}
+      {/* across the whole width, unlike in the library. there the search
+          stands between buttons and has to fold into a circle so the row does
+          not overflow. here it stands alone: folded it would hand the room it
+          saves to nobody, and a circle in an empty row would be left. */}
       <div className="aktionsreihe mb-5 gap-3">
         <div className="aktionsfeld relative flex-1">
           <SearchIcon

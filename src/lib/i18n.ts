@@ -1,35 +1,32 @@
 import { RECHTS_NACH_LINKS, SPRACHEN } from "./sprachen";
 
-/**
- * Oberflächensprache.
- *
- * Der deutsche Text ist zugleich der Schlüssel: `t("Bibliothek")` liefert auf
- * Englisch „Library" und sonst den Text selbst. Das hat zwei Vorteile
- * gegenüber erfundenen Schlüsseln wie `library.title`:
- *
- *   - Im Quelltext steht weiterhin lesbarer Text, keine Kürzel.
- *   - Was noch nicht übersetzt ist, erscheint auf Deutsch statt als Kürzel.
- *     Eine Lücke sieht damit unfertig aus, nicht kaputt.
- *
- * `t` liest eine Modulvariable statt eines Zustands, ist also keine
- * Hakenfunktion und überall aufrufbar, auch in Listen außerhalb von
- * Bauteilen. Damit ein Sprachwechsel dennoch ankommt, hängt die App in
- * `main.tsx` an einem Schlüssel und wird dabei einmal neu aufgebaut. Das
- * kostet nichts: Der Wechsel geschieht selten, und die geöffnete Seite steht
- * in der Adresse, geht also nicht verloren.
- */
+// the interface language.
+//
+// the german text is the key at the same time: `t("Bibliothek")` yields
+// "Library" in english and the text itself otherwise. that carries two
+// advantages over invented keys such as `library.title`:
+//
+//   - readable text stays in the source, no codes.
+//   - what is not translated yet appears in german rather than as a code. a
+//     gap therefore looks unfinished, not broken.
+//
+// `t` reads a module variable instead of state, so it is no hook and can be
+// called anywhere, in lists outside components too. for a language switch to
+// arrive all the same, the app hangs on a key in `main.tsx` and is rebuilt
+// once. that costs nothing: the switch happens rarely, and the open page
+// stands in the address, so it is not lost
 
 /**
- * Alle Fassungen eines Begriffs beieinander.
+ * every version of a term in one place.
  *
- * Nach Begriff geordnet, nicht nach Sprache: So sieht man beim Nachtragen auf
- * einen Blick, welche Sprache fehlt, und muss nicht dreißig Dateien
- * durchgehen. Fehlt eine Sprache, greift die Kette unten in `t`.
+ * keyed by term, not by language: adding one, a single glance shows which
+ * language is missing, and thirty files do not have to be walked. where a
+ * language is missing, the chain in `t` below takes hold.
  */
 type Fassungen = Record<string, string>;
 
 const TEXTE: Record<string, Fassungen> = {
-  // ── Navigation ────────────────────────────────────────────────────────
+  // --- navigation ---
   Start: {
     en: "Home",
     fr: "Accueil",
@@ -111,7 +108,7 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "لا توجد قوائم بعد.",
   },
 
-  // ── Wiederkehrendes ───────────────────────────────────────────────────
+  // --- recurring ---
   Sammlung: {
     en: "Collection",
     fr: "Collection",
@@ -361,7 +358,7 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "كبير",
   },
 
-  // ── Einstellungen ─────────────────────────────────────────────────────
+  // --- settings ---
   Darstellung: {
     en: "Appearance",
     fr: "Apparence",
@@ -572,7 +569,7 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "«النظام» يتبع إعدادات نظام التشغيل.",
   },
 
-  // ── Einstellungen, ausführlich ────────────────────────────────────────
+  // --- settings, at length ---
   Zielordner: {
     en: "Target folder",
     es: "Carpeta de destino",
@@ -841,7 +838,7 @@ const TEXTE: Record<string, Fassungen> = {
       zh: "勾选后它们将移入 Robify 的回收站，30 天后彻底删除。",
     },
 
-  // ── Sortierungen ──────────────────────────────────────────────────────
+  // --- sort orders ---
   "Zuletzt hinzugefügt": {
     en: "Recently added",
     fr: "Ajouts récents",
@@ -867,7 +864,7 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "السنة",
   },
 
-  // ── Startseite ────────────────────────────────────────────────────────
+  // --- home page ---
   "Gute Nacht": {
     en: "Good night",
     fr: "Bonne nuit",
@@ -949,7 +946,7 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "أكثر 30 مقطعًا استماعًا كل أسبوع",
   },
 
-  // ── Suchfelder ────────────────────────────────────────────────────────
+  // --- search fields ---
   "Titel, Künstler oder Album suchen": {
     en: "Search tracks, artists or albums",
     fr: "Rechercher un titre, un artiste ou un album",
@@ -983,7 +980,7 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "النظام",
   },
 
-  // ── Restliche Oberfläche ──────────────────────────────────────────────
+  // --- the rest of the ui ---
   "Abgleich mit dem Bibliotheksordner": {
     en: "Comparison with the library folder",
     es: "Comparación con la carpeta de la biblioteca",
@@ -2241,7 +2238,7 @@ const TEXTE: Record<string, Fassungen> = {
     zh: "应用",
   },
 
-  // ── Meldungen, Zustände und Texte mit Platzhaltern ────────────────────
+  // --- messages, states and texts with placeholders ---
   Abwählen: {
     en: "Deselect",
     es: "Desmarcar",
@@ -3208,7 +3205,7 @@ const TEXTE: Record<string, Fassungen> = {
     zh: "高",
   },
 
-  // ── Einheiten und Zeitangaben ─────────────────────────────────────────
+  // --- units and times ---
   "Tg.": { en: "d", es: "d", fr: "j", ru: "дн", ar: "ي", zh: "天" },
   "Std.": { en: "hr", es: "h", fr: "h", ru: "ч", ar: "س", zh: "小时" },
   "Min.": { en: "min", es: "min", fr: "min", ru: "мин", ar: "د", zh: "分钟" },
@@ -3230,7 +3227,7 @@ const TEXTE: Record<string, Fassungen> = {
     zh: "未找到",
   },
 
-  // ── Startseite und Wochenmix ──────────────────────────────────────────
+  // --- home page and weekly mix ---
   "{0} Musik": {
     en: "{0} of music",
     es: "{0} de música",
@@ -3429,7 +3426,7 @@ const TEXTE: Record<string, Fassungen> = {
       zh: "导入你已有的音乐，或用下载器获取曲目。每周精选、年度回顾和艺术家页面随后会自动生成。",
     },
 
-  // ── Bibliothek ────────────────────────────────────────────────────────
+  // --- library ---
   "{0}, ohne Eintrag: {1}": {
     en: "{0}, with no entry: {1}",
     es: "{0}, sin entrada: {1}",
@@ -3457,7 +3454,7 @@ const TEXTE: Record<string, Fassungen> = {
       zh: "这些曲目会从音乐库中消失。它们的文件本来就不在了，因此磁盘上不会有任何改动。随后的提示可在短时间内撤销此操作，收藏和播放列表归属一并恢复。",
     },
 
-  // ── Playlists ─────────────────────────────────────────────────────────
+  // --- playlists ---
   "{0} zu „{1}“ hinzugefügt": {
     en: "{0} added to “{1}”",
     es: "{0} añadidas a «{1}»",
@@ -3512,7 +3509,7 @@ const TEXTE: Record<string, Fassungen> = {
       zh: "新建一个，把你喜欢的曲目收在里面。从网络下载播放列表时也会自动生成一个。",
     },
 
-  // ── Favoriten und Künstler ────────────────────────────────────────────
+  // --- favourites and artists ---
   "Markiere Titel über das Menü hinter den drei Punkten. Sie sammeln sich hier, ohne dass du eine Playlist anlegen musst.":
     {
       en: "Mark tracks from the menu behind the three dots. They gather here without you having to create a playlist.",
@@ -3532,7 +3529,7 @@ const TEXTE: Record<string, Fassungen> = {
       zh: "艺术家由你的音乐生成。导入已有文件或用下载器获取曲目，他们便会带着图片和简介出现在这里。",
     },
 
-  // ── Downloader ────────────────────────────────────────────────────────
+  // --- downloader ---
   "Treffer für „{0}“": {
     en: "Results for “{0}”",
     es: "Resultados de «{0}»",
@@ -3629,7 +3626,7 @@ const TEXTE: Record<string, Fassungen> = {
       zh: "全部采用，或先行调整，随后该曲目便进入音乐库。",
     },
 
-  // ── Rückblick ─────────────────────────────────────────────────────────
+  // --- review ---
   "Stärkster Tag: {0} ({1})": {
     en: "Busiest day: {0} ({1})",
     es: "Día más intenso: {0} ({1})",
@@ -3648,7 +3645,7 @@ const TEXTE: Record<string, Fassungen> = {
       zh: "回顾由你所听的内容生成。播放几首曲目，它就会自行充实。此处显示哪个时段可在设置中指定，也可在那里将回顾完全隐藏。",
     },
 
-  // ── Editoren und Lyrics ───────────────────────────────────────────────
+  // --- editors and lyrics ---
   "Künstler und Titelnummern änderst du über die Titel selbst, im Kontextmenü unter „Metadaten bearbeiten“.":
     {
       en: "Artists and track numbers are changed on the tracks themselves, in the context menu under “Edit metadata”.",
@@ -3686,7 +3683,7 @@ const TEXTE: Record<string, Fassungen> = {
       zh: "段落标记和附带内容已预先取消勾选。用右侧的叉号可再移除或重新加入其他行。取消勾选的行不会获得时间标记，也不会显示在播放器中。",
     },
 
-  // ── Löschen und Fehler ────────────────────────────────────────────────
+  // --- deletion and errors ---
   "Der Eintrag verschwindet aus der Bibliothek, die Datei wandert in den Papierkorb von Robify. Kurz danach lässt sich der Griff über die Meldung noch zurücknehmen.":
     {
       en: "The entry disappears from the library, the file moves into Robify's recycle bin. The message that follows lets you undo the step for a moment.",
@@ -3706,7 +3703,7 @@ const TEXTE: Record<string, Fassungen> = {
       zh: "错误只发生在这里，你的音乐未受影响。再试一次通常就够了；若无济于事，可经由其他页面返回。",
     },
 
-  // ── Rechtliches ───────────────────────────────────────────────────────
+  // --- legal ---
   "Robify ist ein Werkzeug ohne eigene Inhalte. Ob du eine bestimmte Aufnahme herunterladen darfst, richtet sich nach dem Urheberrecht und den Bedingungen der jeweiligen Plattform. Das liegt in deiner Verantwortung. Die Metadatensuche liest öffentlich erreichbare Seiten von Spotify, Genius und anderen aus; deren Nutzungsbedingungen erlauben das in der Regel nicht.":
     {
       en: "Robify is a tool without content of its own. Whether you may download a particular recording depends on copyright and on the terms of the platform in question. That is your responsibility. The metadata search reads publicly reachable pages from Spotify, Genius and others; their terms of use generally do not permit this.",
@@ -3853,7 +3850,7 @@ const TEXTE: Record<string, Fassungen> = {
     zh: "“{0}”已加入队列末尾",
   },
 
-  // ── Meldungen aus dem Rust-Teil: Bibliothek und Dateien ───────────────
+  // --- messages from the rust side: library and files ---
   "Der Name darf nicht leer sein.": {
     en: "The name must not be empty.",
     es: "El nombre no puede estar vacío.",
@@ -3951,7 +3948,7 @@ const TEXTE: Record<string, Fassungen> = {
     zh: "未找到用于备份的位置。",
   },
 
-  // ── Wiedergabe ────────────────────────────────────────────────────────
+  // --- playback ---
   "Kein Audiogerät verfügbar: {0}": {
     en: "No audio device available: {0}",
     es: "No hay dispositivo de audio disponible: {0}",
@@ -3985,7 +3982,7 @@ const TEXTE: Record<string, Fassungen> = {
     zh: "无法跳转：{0}",
   },
 
-  // ── Auswertung ────────────────────────────────────────────────────────
+  // --- evaluation ---
   "Dieser Wochenmix ist noch leer.": {
     en: "This weekly mix is still empty.",
     es: "Esta mezcla semanal todavía está vacía.",
@@ -4019,7 +4016,7 @@ const TEXTE: Record<string, Fassungen> = {
     zh: "未知时段：{0}",
   },
 
-  // ── Online-Suche und Lyrics ───────────────────────────────────────────
+  // --- online search and lyrics ---
   "Bitte etwas eingeben.": {
     en: "Please enter something.",
     es: "Introduce algo, por favor.",
@@ -4101,7 +4098,7 @@ const TEXTE: Record<string, Fassungen> = {
     zh: "来自 {0} 的图片为空",
   },
 
-  // ── Spotify ───────────────────────────────────────────────────────────
+  // --- spotify ---
   "Zu diesem Spotify-Link gibt es keine öffentlichen Daten.": {
     en: "There is no public data for this Spotify link.",
     es: "No hay datos públicos para este enlace de Spotify.",
@@ -4135,7 +4132,7 @@ const TEXTE: Record<string, Fassungen> = {
     zh: "此 Spotify {0} 中看不到任何曲目。",
   },
 
-  // ── Download ──────────────────────────────────────────────────────────
+  // --- download ---
   "Download abgebrochen": {
     en: "Download cancelled",
     es: "Descarga cancelada",
@@ -4217,7 +4214,7 @@ const TEXTE: Record<string, Fassungen> = {
     zh: "来源的消息：{0}",
   },
 
-  // ── Erklärungen zu gescheiterten Downloads ────────────────────────────
+  // --- explanations for failed downloads ---
   "Das Video ist privat und nicht abrufbar.": {
     en: "The video is private and cannot be retrieved.",
     es: "El vídeo es privado y no se puede obtener.",
@@ -4343,11 +4340,11 @@ const TEXTE: Record<string, Fassungen> = {
 };
 
 /**
- * Ist der Begriff in der Tabelle geführt, und wenn ja, in dieser Sprache?
+ * whether the term is carried in the table, and if so in this language.
  *
- * Nur für Prüfungen gedacht. Ein Vergleich der Rückgabe mit dem Ursprungstext
- * taugt dafür nicht: „Single" heißt auf Französisch ebenfalls „Single", und
- * eine gültige Fassung sähe dann aus wie eine Lücke.
+ * meant for tests alone. comparing the return value against the source text
+ * does not do for that: "Single" is called "Single" in french as well, and a
+ * valid version would look like a gap.
  */
 export function istGefuehrt(text: string, sprache?: string): boolean {
   const fassungen = TEXTE[text];
@@ -4355,16 +4352,15 @@ export function istGefuehrt(text: string, sprache?: string): boolean {
   return sprache === undefined || fassungen[sprache] !== undefined;
 }
 
-/** Aktuelle Sprache. Wird beim Aufbau der App gesetzt. */
+/** the current language, set when the app is built up. */
 let aktuell = "de";
 
 /**
- * Löst die Einstellung zur tatsächlichen Sprache auf.
+ * resolves the setting into the actual language.
  *
- * „system“ fragt den Browser; WebKit reicht dort die Einstellung des
- * Betriebssystems durch. Eine Sprache, die wir nicht führen, landet bei
- * Englisch, verständlicher als Deutsch für jemanden, der weder das eine
- * noch das andere gewählt hat.
+ * "system" asks the browser, and webkit passes the setting of the operating
+ * system through there. a language not carried here lands at english, which
+ * is more comprehensible than german to somebody who chose neither.
  */
 export function spracheAufloesen(einstellung: string | undefined): string {
   if (einstellung && einstellung !== "system") {
@@ -4378,28 +4374,29 @@ export function spracheAufloesen(einstellung: string | undefined): string {
     : "en";
 }
 
+/** sets the language and the matching attributes on the root element. */
 export function spracheSetzen(sprache: string): void {
   aktuell = sprache;
-  // Außerhalb eines Fensters, etwa im Test, gibt es kein Dokument. Die
-  // Übersetzung selbst braucht keins, nur die Merkmale am Wurzelelement.
+  // outside a window, in a test for instance, there is no document. the
+  // translation itself needs none, only the attributes on the root element
   if (typeof document === "undefined") return;
   document.documentElement.lang = sprache;
-  // Arabisch und Hebräisch laufen von rechts nach links; das Merkmal dreht
-  // Textrichtung, Einrückungen und Bildlaufleisten der ganzen Oberfläche um.
+  // arabic and hebrew run from right to left, and the attribute turns text
+  // direction, indentation and scrollbars of the whole ui around
   document.documentElement.dir = RECHTS_NACH_LINKS.has(sprache) ? "rtl" : "ltr";
 }
 
+/** the language currently set. */
 export function spracheJetzt(): string {
   return aktuell;
 }
 
 /**
- * Übersetzt einen deutschen Text.
+ * translates a german text.
  *
- * Die Kette lautet: gewünschte Sprache → Englisch → deutscher Text. Der
- * Zwischenschritt über Englisch ist wichtig, sobald eine Sprache nur
- * teilweise gefüllt ist, für jemanden, der Japanisch gewählt hat, ist eine
- * englische Lücke brauchbarer als eine deutsche.
+ * the chain runs: wanted language, english, german text. the step through
+ * english matters as soon as a language is only partly filled, as an english
+ * gap is more usable than a german one to somebody who chose japanese.
  */
 export function t(text: string, ...werte: (string | number)[]): string {
   const fassung =
@@ -4407,10 +4404,10 @@ export function t(text: string, ...werte: (string | number)[]): string {
       ? text
       : (TEXTE[text]?.[aktuell] ?? TEXTE[text]?.en ?? text);
   if (werte.length === 0) return fassung;
-  // Platzhalter statt eingesetzter Werte im Schlüssel: Ein Text mit Namen
-  // darin wäre für jeden Titel ein eigener Eintrag. `{0}` bleibt derselbe
-  // Schlüssel, und die Sprachen dürfen die Reihenfolge frei wählen, im
-  // Arabischen steht der Name oft an anderer Stelle als im Deutschen.
+  // placeholders instead of inserted values in the key: a text with a name
+  // in it would be an entry of its own for every track. `{0}` stays the same
+  // key, and the languages may choose the order freely, in arabic the name
+  // often stands elsewhere than in german
   return fassung.replace(/\{(\d+)\}/g, (treffer, nummer) => {
     const wert = werte[Number(nummer)];
     return wert === undefined ? treffer : String(wert);

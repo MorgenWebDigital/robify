@@ -30,12 +30,12 @@ import type {
 } from "../types";
 
 export const api = {
-  // Bibliothek
+  // --- library ---
   libraryStats: () => invoke<LibraryStats>("library_stats"),
   scanFolders: (paths: string[]) =>
     invoke<ScanResult>("scan_folders", { paths }),
   checkLibrary: () => invoke<LibraryCheck>("check_library"),
-  /** Liefert die Kennungen der entfernten Titel, damit sich das zurücknehmen lässt. */
+  /** returns the ids of the removed tracks, so it can be undone. */
   removeMissingTracks: () => invoke<number[]>("remove_missing_tracks"),
   backupDatabase: () => invoke<string>("backup_database"),
   resetApp: (deleteFiles: boolean, keepSettings: boolean) =>
@@ -108,7 +108,7 @@ export const api = {
   deleteTrack: (trackId: number, deleteFile: boolean) =>
     invoke<void>("delete_track", { trackId, deleteFile }),
 
-  // Metadaten & Lyrics
+  // --- metadata and lyrics ---
   getTrackMetadata: (trackId: number) =>
     invoke<TrackMetadata>("get_track_metadata", { trackId }),
   updateTrackMetadata: (
@@ -119,7 +119,7 @@ export const api = {
     invoke<Track>("update_track_metadata", { trackId, metadata, writeToFile }),
   searchMetadataOnline: (query: string) =>
     invoke<MetadataCandidate[]>("search_metadata_online", { query }),
-  /** Holt zu einem Treffer Cover, Lyrics, Release-Art und Titelnummer nach. */
+  /** fetches cover, lyrics, release type and track number for a hit. */
   enrichCandidate: (candidate: MetadataCandidate, durationMs?: number) =>
     invoke<TrackMetadata>("enrich_candidate", {
       candidate,
@@ -140,7 +140,7 @@ export const api = {
   searchLyricsOnline: (query: string) =>
     invoke<LyricsCandidate[]>("search_lyrics_online", { query }),
 
-  // Playlists
+  // --- playlists ---
   listPlaylists: () => invoke<Playlist[]>("list_playlists"),
   getPlaylist: (id: number) => invoke<Playlist>("get_playlist", { id }),
   createPlaylist: (
@@ -187,11 +187,11 @@ export const api = {
     invoke<void>("reorder_playlist", { playlistId, trackIds }),
   reorderFavorites: (trackIds: number[]) =>
     invoke<void>("reorder_favorites", { trackIds }),
-  /** Reihenfolge der Sammlung selbst, nicht der Titel darin. */
+  /** order of the collection itself, not of the tracks inside it. */
   reorderPlaylists: (playlistIds: number[]) =>
     invoke<void>("reorder_playlists", { playlistIds }),
 
-  // Player
+  // --- player ---
   playerState: () => invoke<PlayerState>("player_state"),
   playTracks: (trackIds: number[], startIndex = 0) =>
     invoke<void>("play_tracks", { trackIds, startIndex }),
@@ -213,7 +213,7 @@ export const api = {
   setSleepTimer: (mode: SleepTimerMode | null, minutes?: number) =>
     invoke<void>("set_sleep_timer", { mode, minutes: minutes ?? null }),
 
-  // Statistiken
+  // --- statistics ---
   weeklyMix: (offset = 0) => invoke<WeeklyMix>("weekly_mix", { offset }),
   weeklyMixes: (limit = 12) =>
     invoke<WeeklyMixSummary[]>("weekly_mixes", { limit }),
@@ -223,11 +223,11 @@ export const api = {
   wrapped: (period: "month" | "year" | "all", offset = 0) =>
     invoke<Wrapped>("wrapped", { period, offset }),
 
-  // Downloader
+  // --- downloader ---
   downloaderStatus: () => invoke<DownloaderStatus>("downloader_status"),
-  /** Holt die neueste Fassung von yt-dlp und liefert deren Nummer zurück. */
+  /** fetches the newest version of yt-dlp and returns its number. */
   ytdlpAktualisieren: () => invoke<string>("update_ytdlp"),
-  /** Erkennt selbst, ob ein Link eingefügt oder gesucht wurde. */
+  /** recognises by itself whether a link was pasted or a search typed. */
   resolveInput: (input: string, limit?: number) =>
     invoke<LinkPlan>("resolve_input", { input, limit: limit ?? null }),
   startDownload: (jobId: string, options: DownloadOptions) =>
@@ -247,7 +247,7 @@ export const api = {
       moveIntoLibrary,
     }),
 
-  // Einstellungen
+  // --- settings ---
   getSettings: () => invoke<Settings>("get_settings"),
   setSetting: (key: string, value: string) =>
     invoke<void>("set_setting", { key, value }),
@@ -255,23 +255,23 @@ export const api = {
   appPaths: () => invoke<AppPaths>("app_paths"),
 };
 
-/** Fehlermeldungen aus dem Backend kommen als String an. */
-/** Trennt Vorlage und Einsetzwerte; muss zu `meldung.rs` passen. */
+/** error messages from the backend arrive as a string. */
+/** separates template and values, has to match `meldung.rs`. */
 const TRENNER = "\u001f";
-/** Trennt zwei eigenständige Meldungen; muss zu `meldung.rs` passen. */
+/** separates two independent messages, has to match `meldung.rs`. */
 const ABSATZ = "\u001e";
 
 /**
- * Fehlertext für die Anzeige, übersetzt.
+ * error text for display, translated.
  *
- * Meldungen aus dem Rust-Teil kommen als deutsche Vorlage samt Einsetzwerten,
- * durch Steuerzeichen getrennt. Der deutsche Text ist dabei der Schlüssel,
- * genau wie sonst in der App, nur mit `{0}` an den Stellen, die erst zur
- * Laufzeit feststehen: Ein Dateiname gehört nicht in eine Texttabelle.
+ * messages from the rust side arrive as a german template together with its
+ * values, separated by control characters. the german text is the key there,
+ * exactly as everywhere else in the app, only with `{0}` at the places that
+ * are settled at runtime: a filename does not belong in a text table.
  *
- * Was keine Steuerzeichen enthält, läuft trotzdem durch `t()`. Meldungen ohne
- * Einsetzwerte brauchen im Rust-Teil deshalb gar keine Behandlung, ihr
- * Wortlaut *ist* schon der Nachschlagebegriff.
+ * what holds no control characters still runs through `t()`. messages without
+ * values therefore need no handling on the rust side at all, their wording
+ * already is the lookup term.
  */
 export function errorMessage(error: unknown): string {
   const roh =
@@ -285,13 +285,13 @@ export function errorMessage(error: unknown): string {
 }
 
 /**
- * Übersetzt eine vom Rust-Teil gebaute Meldung.
+ * translates a message assembled on the rust side.
  *
- * Nicht nur Fehler reisen so: Auch was ein Download gerade tut — „Quelle wird
- * gelesen…“ — kommt als Vorlage samt Werten an und wird hier zu einem Satz in
- * der eingestellten Sprache. Steht die Vorlage nicht in der Tabelle, gibt `t`
- * sie unverändert zurück; eine wörtliche Meldung von yt-dlp bleibt also, wie
- * sie ist.
+ * not only errors travel this way: what a download is doing right now
+ * ("reading the source…") arrives as a template together with its values too
+ * and becomes a sentence in the selected language here. where the template is
+ * not in the table, `t` returns it unchanged, so a verbatim message from
+ * yt-dlp stays as it is.
  */
 export function meldungText(roh: string): string {
   return roh
@@ -303,20 +303,20 @@ export function meldungText(roh: string): string {
     .join("\n\n");
 }
 
-/** Zuletzt gemeldeter Ausfall, samt Zeitpunkt. */
+/** the last failure reported, together with its time. */
 let letzteMeldung = { text: "", zeit: 0 };
 
 /**
- * Ersatzwert für eine gescheiterte Ladeanfrage, aber nicht lautlos.
+ * a fallback value for a failed load, but not a silent one.
  *
- * Seiten holen ihre Daten in Bündeln (`Promise.all`), und ein einzelner
- * Fehlschlag darf den Rest nicht mitreißen. Bisher stand dafür überall
- * `.catch(() => [])`: Die Seite blieb heil, aber leer, und niemand erfuhr
- * warum, eine leere Bibliothek sieht aus wie eine Bibliothek ohne Musik.
+ * pages fetch their data in bundles (`Promise.all`), and a single failure
+ * must not tear the rest along. `.catch(() => [])` used to stand everywhere
+ * for that: the page stayed intact but empty, and nobody learned why, as an
+ * empty library looks like a library without music.
  *
- * Statt dessen kommt der Ersatzwert zurück *und* eine Meldung. Gleiche
- * Meldungen innerhalb von fünf Sekunden werden zusammengefasst, sonst
- * überschütten vier gleichzeitig fehlgeschlagene Abfragen den Nutzer.
+ * the fallback value comes back instead, and a message with it. identical
+ * messages within five seconds are folded together, otherwise four queries
+ * failing at once bury the user.
  */
 export function fallback<T>(ersatz: T, was: string): (error: unknown) => T {
   return (error: unknown): T => {
@@ -326,9 +326,9 @@ export function fallback<T>(ersatz: T, was: string): (error: unknown) => T {
     const jetzt = Date.now();
     if (letzteMeldung.text !== text || jetzt - letzteMeldung.zeit > 5000) {
       letzteMeldung = { text, zeit: jetzt };
-      // Erst im nächsten Durchlauf melden: Der Aufruf steckt oft noch im
-      // Rendern einer Seite, und ein Zustandswechsel mittendrin wäre ein
-      // Verstoß gegen Reacts Regeln.
+      // report on the next pass: the call often sits inside the render of a
+      // page, and a state change in the middle of it would break react's
+      // rules
       queueMicrotask(() =>
         useUi.getState().notify(`${text}: ${errorMessage(error)}`, "error"),
       );

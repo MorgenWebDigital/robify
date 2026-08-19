@@ -9,12 +9,10 @@ import { Auswahl } from "./Auswahl";
 import { Button, Field, inputClass, Modal } from "./Modal";
 import type { Album, MetadataCandidate, ReleaseType } from "../types";
 
-/**
- * Als Funktion, nicht als feste Liste: Eine Liste auf Modulebene entsteht
- * einmal beim Laden. Wechselt der Nutzer danach die Sprache, baut die App sich
- * zwar neu auf, das Modul aber nicht, und die Beschriftungen blieben in der
- * Anfangssprache stehen.
- */
+// a function and not a fixed list: a list at module level comes into being
+// once at load time. does the user switch language afterwards, the app
+// rebuilds itself but the module does not, and the labels would stay in the
+// starting language
 function arten(): { id: ReleaseType; label: string }[] {
   return [
     { id: "single", label: t("Single") },
@@ -70,7 +68,7 @@ export function AlbumEditor({
     reader.readAsDataURL(file);
   };
 
-  /** Sucht online nach diesem Release und übernimmt Cover, Jahr und Art. */
+  /** searches online for this release and takes cover, year and type over. */
   const searchOnline = async () => {
     setSearching(true);
     try {

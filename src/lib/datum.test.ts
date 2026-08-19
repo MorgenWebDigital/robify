@@ -6,15 +6,13 @@ describe("ausSchluessel", () => {
   it("liest Tages- und Monatsschlüssel", () => {
     spracheSetzen("de");
     expect(ausSchluessel("2026-08-19")).toBe("19. Aug.");
-    // Ohne Tag daneben schreibt die Bibliothek den Monat ohne Punkt.
+    // without a day next to it the library writes the month without a dot
     expect(ausSchluessel("2026-08")).toBe("Aug");
   });
 
-  /*
-   * Der Rückblick auf alles zählt in Monaten und reicht über Jahre. Ohne
-   * Jahreszahl stand an beiden Enden des Verlaufs „Aug.“ und meinte zwei
-   * verschiedene.
-   */
+  // the review of everything counts in months and reaches over years.
+  // without a year, "Aug." stood at both ends of the history meaning two
+  // different ones
   it("nennt auf Wunsch das Jahr dazu", () => {
     spracheSetzen("de");
     const mitJahr = ausSchluessel("2025-08", true);

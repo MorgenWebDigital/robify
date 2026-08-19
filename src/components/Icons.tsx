@@ -2,7 +2,7 @@ import type { SVGProps } from "react";
 
 type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 
-/** Gemeinsame Grundlage: 24er-Raster, Strichstärke 1.8, currentColor. */
+/** the shared basis: a 24 unit grid, stroke width 1.8, currentcolor. */
 function Icon({ size = 20, children, ...props }: IconProps) {
   return (
     <svg
@@ -311,9 +311,9 @@ export const ListIcon = (p: IconProps) => (
 );
 
 /**
- * Drei Quadrate wachsender Kantenlänge, nebeneinander gestellt liest sich die
- * Reihe als Größenskala, ohne dass Buchstaben nötig wären. Bewusst kein
- * Raster wie beim Kachel-Symbol, sonst verwechselt man Ansicht und Größe.
+ * three squares of growing edge length. set side by side the row reads as a
+ * size scale without any letters being needed. deliberately no grid as on the
+ * tile icon, otherwise view and size get mixed up.
  */
 export const SizeSmallIcon = (p: IconProps) => (
   <Icon {...p}>
@@ -334,11 +334,11 @@ export const SizeLargeIcon = (p: IconProps) => (
 );
 
 /**
- * Das Zeichen der App: zwei Noten unter einem gemeinsamen Balken.
+ * the mark of the app: two notes under a shared beam.
  *
- * Die Verschiebung setzt die Zeichnung mittig ins Feld und zieht sie auf, damit
- * sie es ausfüllt, sonst stünde sie klein in einer Ecke. Nimmt die Textfarbe
- * an, in der Seitenleiste ist das der Akzent.
+ * the transform sets the drawing centred into the field and scales it up so
+ * it fills it, otherwise it would stand small in a corner. it takes the text
+ * colour, which in the sidebar is the accent.
  */
 export const NotesMark = ({ size = 20, ...p }: IconProps) => (
   <svg
@@ -352,10 +352,10 @@ export const NotesMark = ({ size = 20, ...p }: IconProps) => (
     <g transform="translate(256 256) scale(1.45) translate(-204 -288)">
       <path d="M150 214 L338 166 v52 L150 266 z" />
       <rect x="150" y="214" width="26" height="150" />
-      {/* 172.64 statt 166: die Oberkante des Balkens an dieser Stelle. Höher
-          angesetzt schaute die obere linke Ecke des Halses über den Balken
-          hinaus und bildete eine Stufe. Muss zu `icons/robify-logo.svg`
-          passen, daraus entstehen die Programmsymbole. */}
+      {/* 172.64 instead of 166: the top edge of the beam at this point. set
+          higher, the top left corner of the stem looked out over the beam and
+          formed a step. has to match `icons/robify-logo.svg`, the program
+          icons grow out of that. */}
       <rect x="312" y="172.64" width="26" height="143.36" />
       <ellipse
         cx="120"
@@ -375,7 +375,7 @@ export const NotesMark = ({ size = 20, ...p }: IconProps) => (
   </svg>
 );
 
-/** Kleine animierte Balken für den gerade laufenden Titel. */
+/** small animated bars for the track currently running. */
 export function PlayingBars({ className = "" }: { className?: string }) {
   return (
     <span

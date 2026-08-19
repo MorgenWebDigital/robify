@@ -1,11 +1,9 @@
 import type { ComponentType, ReactNode } from "react";
 
-/**
- * Leerer Bereich mit Symbol, Erklärung und einem Weg weiter.
- *
- * Ein bloßes „Nichts gefunden“ lässt den Nutzer stehen. Jede leere Stelle in
- * Robify soll sagen, was sie füllt und wo das geht.
- */
+// an empty area with an icon, an explanation and a way on.
+//
+// a plain "nothing found" leaves the user standing. every empty place in
+// robify is to say what fills it and where that happens
 export function EmptyState({
   icon: Glyph,
   title,
@@ -15,7 +13,7 @@ export function EmptyState({
   icon: ComponentType<{ size?: number; className?: string }>;
   title: string;
   text: ReactNode;
-  /** Knöpfe oder Links. Ohne sie bleibt der Kasten reine Auskunft. */
+  /** buttons or links. without them the box stays pure information. */
   actions?: ReactNode;
 }) {
   return (

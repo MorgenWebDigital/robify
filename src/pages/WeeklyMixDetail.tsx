@@ -17,13 +17,11 @@ import { useLibrary } from "../store/library";
 import { useUi } from "../store/ui";
 import type { WeeklyMix } from "../types";
 
-/**
- * Zeitraum der Woche als „12.-18. August 2026“.
- *
- * `zeitraum` kürzt selbst, was sich wiederholt, und setzt das Trennzeichen der
- * Sprache. Vorher stand hier ein von Hand gebautes „{0}. bis {1}“ mit fest
- * deutschen Monatsnamen.
- */
+// the span of the week as "12.-18. August 2026".
+//
+// `zeitraum` folds what repeats itself and sets the separator of the
+// language. a hand-built "{0}. bis {1}" with fixed german month names stood
+// here before
 function weekLabel(mix: WeeklyMix): string {
   return zeitraum(new Date(mix.start * 1000), new Date((mix.end - 1) * 1000));
 }
@@ -75,13 +73,11 @@ export function WeeklyMixDetail() {
     );
   };
 
-  /**
-   * Der Mix selbst bleibt ein Rückblick, hiervon gibt es eine Kopie.
-   *
-   * Name und Beschreibung entstehen hier statt im Rust-Teil: Sie werden in der
-   * Datenbank abgelegt und sollen in der Sprache stehen, die beim Übernehmen
-   * eingestellt war.
-   */
+  // the mix itself stays a look back, and this makes a copy of it.
+  //
+  // name and description grow here rather than on the rust side: they are
+  // stored in the database and are to stand in the language that was set when
+  // it was taken over
   const save = async () => {
     if (!mix) return;
     setSaving(true);
@@ -127,21 +123,21 @@ export function WeeklyMixDetail() {
             {weekLabel(mix)} · {plural(tracks.length, "Titel")} ·{" "}
             {formatDuration(totalMs)}
           </p>
-          {/* Steht hier statt auf der Startseite: Wer den Mix öffnet, will
-              wissen, wie er zustande kommt, auf der Übersicht war es nur
-              Beiwerk neben der Überschrift. */}
+          {/* stands here instead of on the home page: whoever opens the mix
+              wants to know how it comes about, and in the overview it was
+              trimming next to the heading. */}
           <p className="mt-1 text-sm text-mute/80">
             {t("Die 30 meistgehörten Titel je Woche")}
           </p>
 
-          {/* Erst was den Mix aufbewahrt, dann was ihn hört. Alle vier klein,
-              wie auf den anderen Seiten: Beschriftet lief die Reihe 21
-              Bildpunkte über den Rand hinaus, und „In bestehende Playlist“
-              war auf 14 Punkte zusammengequetscht.
+          {/* first what keeps the mix, then what plays it. all four small, as
+              on the other pages: with labels the row ran 21 pixels over the
+              edge and "add to an existing playlist" was squeezed to 14
+              points.
 
-              Der letzte Knopf hatte kein Zeichen. Zusammengefallen wäre er
-              ein leerer Kreis geworden; das Notenblatt steht auch sonst für
-              eine Playlist, das Plus für „neu anlegen“. */}
+              the last button carried no icon. collapsed it would have become
+              an empty circle, and the sheet of music stands for a playlist
+              elsewhere too, the plus for creating one. */}
           <div className="aktionsreihe mt-4 gap-2">
             <button
               type="button"

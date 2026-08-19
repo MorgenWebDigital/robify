@@ -2,19 +2,17 @@ import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 import "@testing-library/jest-dom/vitest";
 
-/**
- * Gemeinsame Vorbereitung für alle Tests, die ein Dokument brauchen.
- *
- * Zwei Dinge fehlen jsdom, die diese App voraussetzt:
- *
- * `matchMedia` fragt das Erscheinungsbild des Systems ab. Ohne Ersatz stürbe
- * jeder Test, der eine Seite aufbaut, an einem `undefined is not a function`
- * statt an dem, was er eigentlich prüft.
- *
- * `scrollIntoView` ruft die Titelliste auf, um den hervorgehobenen Titel in
- * den Blick zu holen. jsdom kennt keine Bildlaufflächen und bringt die
- * Methode darum nicht mit.
- */
+// shared setup for every test that needs a document.
+//
+// two things jsdom lacks which this app takes for granted:
+//
+// `matchMedia` asks for the appearance of the system. without a stand-in
+// every test that builds a page would die on an `undefined is not a function`
+// instead of on what it actually checks.
+//
+// `scrollIntoView` is called by the track list to bring the highlighted track
+// into view. jsdom knows no scrolling areas and therefore does not bring the
+// method
 Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: (abfrage: string) => ({
@@ -29,6 +27,6 @@ Object.defineProperty(window, "matchMedia", {
 
 Element.prototype.scrollIntoView = vi.fn();
 
-// Zwischen zwei Tests bleibt nichts im Dokument stehen; sonst fände eine
-// Abfrage nach „dem Knopf“ den aus dem Test davor gleich mit.
+// nothing stays in the document between two tests, otherwise a query for
+// "the button" would find the one from the test before along with it
 afterEach(cleanup);

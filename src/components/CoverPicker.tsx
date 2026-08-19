@@ -3,29 +3,27 @@ import { t } from "../lib/i18n";
 import { PlaylistIcon } from "./Icons";
 import { Button } from "./Modal";
 
-/** Ein vom Nutzer gewähltes Bild, noch nicht gespeichert. */
+/** an image chosen by the user, not stored yet. */
 export interface CoverChoice {
   base64: string;
   mime: string;
 }
 
-/**
- * Bildauswahl für Playlists: Vorschau, Datei wählen, wieder entfernen.
- *
- * Gelesen wird über den Browser als Base64, denselben Weg gehen schon
- * Künstlerbild und Albumcover. Der Dateidialog des Systems bliebe hier ohne
- * Nutzen, weil das Bild ohnehin in die Datenbank wandert und nicht als Pfad
- * gemerkt wird.
- */
+// the image picker for playlists: preview, choose a file, remove it again.
+//
+// it is read through the browser as base64, the same way artist image and
+// album cover already go. the file dialog of the system would be of no use
+// here because the image travels into the database anyway and is not
+// remembered as a path
 export function CoverPicker({
   preview,
   onPick,
   onRemove,
 }: {
-  /** Anzuzeigendes Bild, oder `null` für den Platzhalter. */
+  /** the image to show, or `null` for the placeholder. */
   preview: string | null;
   onPick: (choice: CoverChoice) => void;
-  /** Fehlt der Rückruf, lässt sich das Bild nicht entfernen. */
+  /** without the callback the image cannot be removed. */
   onRemove?: () => void;
 }) {
   const dateiFeld = useRef<HTMLInputElement>(null);

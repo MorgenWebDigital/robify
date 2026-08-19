@@ -1,20 +1,19 @@
-/**
- * Rechnerei rund um die Akzentfarbe.
- *
- * Steht als eigenes Modul da, weil es reine Funktionen sind: Sie brauchen
- * weder React noch das Backend und lassen sich darum unmittelbar prüfen.
- */
+// calculations around the accent colour.
+//
+// a module of its own because these are pure functions: they need neither
+// react nor the backend and can therefore be checked directly
 
-/** Schrift auf hellem Akzent. Derselbe Ton wie der Fließtext. */
+/** type on a light accent, the same tone as the body text. */
 const DUNKLE_SCHRIFT = "#16161a";
-/** Schrift auf dunklem Akzent. */
+/** type on a dark accent. */
 const HELLE_SCHRIFT = "#ffffff";
 
 /**
- * Bringt eine Eingabe auf die Form `#rrggbb`, oder gibt `null` zurück.
+ * brings an input into the form `#rrggbb`, or returns `null`.
  *
- * Erlaubt ist mit und ohne Doppelkreuz sowie die Kurzform mit drei Stellen,
- * denn genau so hat man einen Farbwert im Kopf oder in der Zwischenablage.
+ * allowed with and without the hash sign as well as the short form of three
+ * digits, because that is exactly how a colour value sits in one's head or in
+ * the clipboard.
  */
 export function normalisiereHex(eingabe: string): string | null {
   const roh = eingabe.trim().replace(/^#/, "").toLowerCase();
@@ -25,7 +24,7 @@ export function normalisiereHex(eingabe: string): string | null {
   return null;
 }
 
-/** Zerlegt die gespeicherte Liste; unbrauchbare Einträge fallen weg. */
+/** splits the stored list, unusable entries fall away. */
 export function eigeneFarben(gespeichert: string): string[] {
   return gespeichert
     .split(",")
@@ -33,12 +32,11 @@ export function eigeneFarben(gespeichert: string): string[] {
     .filter((farbe): farbe is string => farbe !== null);
 }
 
-/**
- * Relative Helligkeit nach WCAG, zwischen 0 (schwarz) und 1 (weiß).
- *
- * Die Kanäle werden vorher entzerrt: Ein Bildschirm gibt Werte nicht linear
- * aus, und ohne diesen Schritt gälte Grün als zu dunkel und Blau als zu hell.
- */
+// relative luminance per wcag, between 0 (black) and 1 (white).
+//
+// the channels are linearised first: a screen does not output values
+// linearly, and without this step green would count as too dark and blue as
+// too light
 function helligkeit(hex: string): number {
   const zahl = Number.parseInt(hex.slice(1), 16);
   const kanaele = [(zahl >> 16) & 255, (zahl >> 8) & 255, zahl & 255].map(
@@ -49,22 +47,22 @@ function helligkeit(hex: string): number {
         : ((anteil + 0.055) / 1.055) ** 2.4;
     },
   );
-  // Das Auge sieht Grün am stärksten, Blau am schwächsten.
+  // the eye sees green strongest and blue weakest
   return 0.2126 * kanaele[0] + 0.7152 * kanaele[1] + 0.0722 * kanaele[2];
 }
 
-/** Kontrastverhältnis zweier Helligkeiten nach WCAG (1 bis 21). */
+// contrast ratio of two luminances per wcag, 1 to 21
 function kontrast(a: number, b: number): number {
   const [hell, dunkel] = a > b ? [a, b] : [b, a];
   return (hell + 0.05) / (dunkel + 0.05);
 }
 
 /**
- * Wählt die Schriftfarbe, die auf dem Akzent besser lesbar ist.
+ * picks the type colour that reads better on the accent.
  *
- * Nötig, seit die Vorgaben von hellem Grau bis Indigo reichen: Ein fester
- * dunkler Ton verschwand auf DarkRed, ein fester heller auf Khaki. Gerechnet
- * statt je Farbe hinterlegt, damit es auch für selbst gemischte Farben gilt.
+ * needed since the presets range from light grey to indigo: a fixed dark tone
+ * disappeared on darkred, a fixed light one on khaki. calculated instead of
+ * stored per colour, so it holds for colours mixed by hand as well.
  */
 export function akzentSchrift(akzent: string): string {
   const farbe = normalisiereHex(akzent);

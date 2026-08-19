@@ -4,7 +4,7 @@ import type { Track } from "../types";
 
 let naechsteId = 1;
 
-/** Titel mit allen Pflichtfeldern; für den Test zählen nur wenige davon. */
+/** a track with every required field, only a few of which matter here. */
 function titel(teil: Partial<Track>): Track {
   return {
     id: naechsteId++,
@@ -33,7 +33,7 @@ function titel(teil: Partial<Track>): Track {
   };
 }
 
-/** Sortiert und gibt nur zurück, was sich im Test ablesen lässt. */
+/** sorts and returns only what can be read off in the test. */
 function ordne(
   tracks: Track[],
   ordnung: string,
@@ -110,8 +110,8 @@ describe("Ordnung nach Künstler", () => {
   });
 
   it("hält gleichjährige Releases zusammen statt sie zu verschränken", () => {
-    // Ohne den Albumnamen als Anker stünden die Titelnummern beider Alben
-    // abwechselnd untereinander.
+    // without the album name as an anchor the track numbers of both albums
+    // would stand under each other alternately
     const tracks = [
       titel({ artistName: "A", albumTitle: "Eins", year: 2020, trackNo: 2 }),
       titel({ artistName: "A", albumTitle: "Zwei", year: 2020, trackNo: 1 }),
@@ -171,7 +171,7 @@ describe("übrige Ordnungen", () => {
       "mittel",
       "alt",
     ]);
-    // Ein unbekannter Schlüssel darf nicht durchfallen, sondern landet hier.
+    // an unknown key must not fall through, it lands here
     expect(ordne(tracks, "quatsch", (t) => t.title)).toEqual([
       "neu",
       "mittel",

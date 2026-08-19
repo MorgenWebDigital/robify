@@ -29,20 +29,17 @@ export const emptyMetadata: TrackMetadata = {
 interface MetadataFormProps {
   value: TrackMetadata;
   onChange: (value: TrackMetadata) => void;
-  /** Dauer hilft beim Finden passender Lyrics. */
+  /** the duration helps in finding matching lyrics. */
   durationMs?: number;
 }
 
-/**
- * Formular für alle editierbaren Metadaten. Wird sowohl beim Bearbeiten
- * vorhandener Titel als auch nach einem Download verwendet.
- */
-/**
- * Als Funktion, nicht als feste Liste: Eine Liste auf Modulebene entsteht
- * einmal beim Laden. Wechselt der Nutzer danach die Sprache, baut die App sich
- * zwar neu auf, das Modul aber nicht, und die Beschriftungen blieben in der
- * Anfangssprache stehen.
- */
+// the form for every editable field of metadata, used when editing existing
+// tracks and after a download alike.
+//
+// a function and not a fixed list: a list at module level comes into being
+// once at load time. does the user switch language afterwards, the app
+// rebuilds itself but the module does not, and the labels would stay in the
+// starting language
 function releaseArten() {
   return [
     { id: "single", label: t("Single") },
@@ -86,7 +83,7 @@ export function MetadataForm({
   };
 
   const applyCandidate = async (candidate: MetadataCandidate) => {
-    // Sofort übernehmen, was der Treffer schon mitbringt …
+    // take over right away what the hit brings along already …
     const next: TrackMetadata = {
       ...value,
       title: candidate.title || value.title,
@@ -104,7 +101,7 @@ export function MetadataForm({
     setCandidates(null);
     setEnriching(true);
 
-    // … und den Rest nachladen: Cover, Lyrics, Release-Art, Titelnummer.
+    // … and fetch the rest: cover, lyrics, release type, track number
     try {
       const full = await api.enrichCandidate(candidate, durationMs);
       onChange({
@@ -190,7 +187,7 @@ export function MetadataForm({
 
   return (
     <div className="space-y-5">
-      {/* Automatische Suche */}
+      {/* automatic search */}
       <div className="rounded-xl border border-ink-700 bg-ink-900/60 p-4">
         <p className="mb-2 eyebrow">{t("Metadaten automatisch suchen")}</p>
         <div className="flex items-center gap-3">
@@ -269,12 +266,12 @@ export function MetadataForm({
       </div>
 
       <div className="grid gap-5 sm:grid-cols-[10rem_1fr]">
-        {/* Cover.
+        {/* the cover.
 
-            Auf einer Handbreite ist die Spalte die ganze Breite, und ein
-            quadratisches Bild darin nahm dreihundert Punkte Höhe ein: Vom
-            Formular blieb darunter kein Feld mehr sichtbar. Ab `sm` steht es
-            wieder in seiner zehn Zeichen breiten Spalte und füllt sie. */}
+            on a hand's width the column is the whole width, and a square
+            image in it took three hundred points of height: no field of the
+            form below stayed visible. from `sm` on it stands in its ten
+            character wide column again and fills it. */}
         <div className="space-y-2">
           <Cover
             src={dataUrl(value.coverBase64, value.coverMime)}
@@ -312,7 +309,7 @@ export function MetadataForm({
           )}
         </div>
 
-        {/* Textfelder */}
+        {/* text fields */}
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Field label={t("Titel")}>
@@ -366,7 +363,7 @@ export function MetadataForm({
           </Field>
           <Field label={t("Art der Veröffentlichung")}>
             <Auswahl
-              // Ohne Album ist „Single“ die richtige Vorauswahl.
+              // without an album, single is the right preselection
               value={
                 value.releaseType ?? (value.album.trim() ? "album" : "single")
               }
@@ -425,7 +422,7 @@ export function MetadataForm({
         </div>
       </div>
 
-      {/* Lyrics */}
+      {/* lyrics */}
       <div className="rounded-xl border border-ink-700 bg-ink-900/60 p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -483,7 +480,7 @@ export function MetadataForm({
   );
 }
 
-/** Modal zum Bearbeiten eines bereits importierten Titels. */
+// the modal for editing a track that has already been imported
 export function MetadataEditorModal({
   track,
   onClose,
@@ -543,9 +540,9 @@ export function MetadataEditorModal({
       width="max-w-3xl"
       footer={
         <>
-          {/* Auf einer Handbreite eine Zeile für sich: Sonst blieb für die
-              beiden Knöpfe so wenig übrig, dass „Speichern“ allein in die
-              nächste Zeile rutschte und von „Abbrechen“ wegwanderte. */}
+          {/* a row of its own on a hand's width: otherwise so little was
+              left for the two buttons that save slid into the next line
+              alone and wandered away from cancel. */}
           <label className="flex w-full items-center gap-2 text-sm text-mute sm:mr-auto sm:w-auto">
             <input
               type="checkbox"

@@ -6,9 +6,10 @@ export interface LyricLine {
 const TIME_TAG = /\[(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g;
 
 /**
- * Zerlegt LRC-Text in Zeilen mit Zeitstempel. Eine Zeile darf mehrere
- * Zeitmarken tragen (wiederkehrende Refrains), dann wird sie mehrfach
- * ausgegeben.
+ * splits lrc text into lines with a timestamp.
+ *
+ * one line may carry several timestamps, for a recurring chorus, and it is
+ * emitted several times then.
  */
 export function parseLrc(input: string): LyricLine[] {
   const lines: LyricLine[] = [];
@@ -21,7 +22,7 @@ export function parseLrc(input: string): LyricLine[] {
       const minutes = Number(match[1]);
       const seconds = Number(match[2]);
       const fraction = match[3] ?? "0";
-      // Zwei- und dreistellige Bruchteile kommen beide vor.
+      // fractions of two and of three digits both occur
       const ms = Number(fraction.padEnd(3, "0").slice(0, 3));
       stamps.push(minutes * 60_000 + seconds * 1000 + ms);
     }
@@ -37,7 +38,7 @@ export function parseLrc(input: string): LyricLine[] {
   return lines;
 }
 
-/** Index der Zeile, die bei `positionMs` gerade gesungen wird. */
+/** index of the line being sung at `positionMs`. */
 export function activeLineIndex(
   lines: LyricLine[],
   positionMs: number,
@@ -59,10 +60,10 @@ export function activeLineIndex(
 }
 
 /**
- * Formt Zeilen mit Zeitmarken zurück in LRC-Text.
+ * forms lines with timestamps back into lrc text.
  *
- * Zwei Nachkommastellen wie üblich; feiner löst kein Abspielprogramm auf, und
- * Hundertstel sind beim Mitlesen ohnehin nicht wahrnehmbar.
+ * two decimal places as usual, no player resolves finer than that, and
+ * hundredths are imperceptible while reading along anyway.
  */
 export function formatLrc(lines: LyricLine[]): string {
   return lines

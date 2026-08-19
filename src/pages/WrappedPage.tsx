@@ -20,12 +20,10 @@ import type { Wrapped } from "../types";
 
 type Period = "month" | "year" | "all";
 
-/**
- * Als Funktion, nicht als feste Liste: Eine Liste auf Modulebene entsteht
- * einmal beim Laden. Wechselt der Nutzer danach die Sprache, baut die App sich
- * zwar neu auf, das Modul aber nicht, und die Beschriftungen blieben in der
- * Anfangssprache stehen.
- */
+// a function and not a fixed list: a list at module level comes into being
+// once at load time. does the user switch language afterwards, the app
+// rebuilds itself but the module does not, and the labels would stay in the
+// starting language
 function perioden(): { id: Period; label: string }[] {
   return [
     { id: "month", label: t("Monat") },
@@ -34,14 +32,12 @@ function perioden(): { id: Period; label: string }[] {
   ];
 }
 
-/**
- * Überschrift des Zeitraums, z. B. „August 2026“.
- *
- * Entsteht hier und nicht im Rust-Teil: Monatsnamen gehören zur Sprache der
- * Oberfläche, und dort erzeugt stand über dem russischen Rückblick weiterhin
- * „August 2026“. Der Anfangszeitpunkt reicht, welche Art Zeitraum es ist,
- * steht daneben.
- */
+// the heading of the period, "August 2026" for instance.
+//
+// grows here and not on the rust side: month names belong to the language of
+// the ui, and generated there "August 2026" still stood above the russian
+// review. the starting point is enough, what kind of period it is stands next
+// to it
 function zeitraumName(daten: Wrapped): string {
   const beginn = new Date(daten.start * 1000);
   if (daten.period === "month") return monatUndJahr(beginn);
@@ -53,7 +49,7 @@ export function WrappedPage() {
   const revision = useLibrary((s) => s.revision);
   const settings = useLibrary((s) => s.settings);
   const modus = settings?.wrappedMode ?? "all";
-  /** Bei „month“ oder „year“ steht der Zeitraum fest, die Wahl entfällt. */
+  /** with "month" or "year" the period is fixed and the choice is dropped. */
   const fest = modus === "month" || modus === "year";
 
   const [period, setPeriod] = useState<Period>("month");
@@ -61,9 +57,9 @@ export function WrappedPage() {
   const [data, setData] = useState<Wrapped | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Steht der Zeitraum fest, gilt der abgeschlossene davor: im Februar der
-  // Januar, im Jahr 2026 das Jahr 2025. Ein laufender Monat ist kein
-  // Rückblick, seine Zahlen ändern sich noch täglich.
+  // where the period is fixed, the completed one before it applies: in
+  // february that is january, in 2026 the year 2025. a running month is no
+  // review, its numbers still change daily
   useEffect(() => {
     if (fest) {
       setPeriod(modus as Period);
@@ -95,11 +91,9 @@ export function WrappedPage() {
     ...(data?.buckets.map((b) => b.msPlayed) ?? [1]),
   );
   const empty = !loading && (data?.totalPlays ?? 0) === 0;
-  /*
-   * „Gesamt“ und „Jahr“ zählen in Monaten, „Monat“ in Tagen. Über mehrere
-   * Jahre hinweg braucht ein Monat seine Jahreszahl, sonst steht an beiden
-   * Enden des Verlaufs „Aug.“ und meint zwei verschiedene.
-   */
+  // all-time and year count in months, month counts in days. across several
+  // years a month needs its year, otherwise "Aug." stands at both ends of the
+  // history meaning two different ones
   const monatsbalken = data?.period === "all";
 
   return (
@@ -111,8 +105,8 @@ export function WrappedPage() {
         subtitle={data ? zeitraumName(data) : undefined}
         actions={
           <div className="flex items-center gap-2">
-            {/* Nicht `hidden`: Die Anzeigeart der Kapsel überstimmt das
-                Merkmal, der Schalter bliebe sichtbar. */}
+            {/* not `hidden`: the display type of the pill bar outvotes the
+                attribute and the switch would stay visible. */}
             {!fest && (
               <div className="pill-bar">
                 {perioden().map((item) => (
@@ -193,10 +187,9 @@ export function WrappedPage() {
 
       {data && !loading && !empty && (
         <div className="space-y-8">
-          {/* Zwei nebeneinander schon auf dem Handy. Untereinander nahmen
-              die vier Zahlen 388 von 914 Bildpunkten ein — der halbe
-              Bildschirm für vier Zeilen, und der Rückblick selbst begann
-              erst darunter. */}
+          {/* two side by side on a phone already. under each other the four
+              numbers took 388 of 914 pixels, half the screen for four rows,
+              and the review itself only started below that. */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <BigStat
               label={t("Hörzeit gesamt")}
@@ -220,11 +213,11 @@ export function WrappedPage() {
           {data.buckets.length > 1 && (
             <section className="surface p-5">
               <h2 className="mb-4 text-sm font-semibold">{t("Verlauf")}</h2>
-              {/* Der Abstand steht in Bildpunkten und nicht als Klasse, weil
-                  er bei vielen Balken weichen muss: Eine Lücke in einer
-                  Flex-Reihe schrumpft nicht mit. Bei 300 Balken fraßen die
-                  Lücken die ganze Breite auf, jeder Balken war null Bildpunkte
-                  breit und die Karte blieb leer. */}
+              {/* the gap stands in pixels and not as a class because it has
+                  to give way with many bars: a gap in a flex row does not
+                  shrink along. with 300 bars the gaps ate the whole width,
+                  every bar was zero pixels wide and the card stayed
+                  empty. */}
               <div
                 className="flex h-32 items-end"
                 style={{ gap: data.buckets.length > 31 ? 1 : 4 }}
@@ -243,10 +236,10 @@ export function WrappedPage() {
                   />
                 ))}
               </div>
-              {/* Anfang und Ende außen, der stärkste Tag darunter. Zu dritt in
-                  einer Zeile standen sie auf einer Handbreite ohne Lücke
-                  aneinander; in einer Sprache mit längeren Monatsnamen
-                  überlappten sie. */}
+              {/* start and end on the outside, the strongest day below. as
+                  three in one row they stood against each other without a gap
+                  on a hand's width, and in a language with longer month names
+                  they overlapped. */}
               <div className="mt-2 flex justify-between text-xs text-mute">
                 <span>
                   {ausSchluessel(data.buckets[0]?.label ?? "", monatsbalken)}
@@ -276,22 +269,23 @@ export function WrappedPage() {
                 <h2 className="text-xl font-semibold tracking-tight">
                   {t("Deine Top 5 Titel")}
                 </h2>
-                {/* Als Aktionsreihe wie auf jeder anderen Seite: Wird es eng,
-                    fällt der Knopf auf sein Zeichen zusammen, statt die
-                    Überschrift in eine zweite Zeile zu drücken.
+                {/* an action row as on every other page: does it get tight,
+                    the button collapses onto its icon instead of pushing the
+                    heading into a second line.
 
-                    `grow` ist hier keine Zierde. Eine Aktionsreihe ist ein
-                    Größenbehälter, und der zählt seinen Inhalt für die eigene
-                    Breite nicht mit — als Flex-Kind fiel sie deshalb auf null
-                    zusammen und die Zahl stand als schmale Säule am Rand.
-                    Wachsen darf sie den Rest der Zeile ausfüllen. */}
+                    `grow` is no decoration here. an action row is a size
+                    container, and one of those does not count its content
+                    towards its own width, so as a flex child it collapsed to
+                    zero and the number stood at the edge as a narrow column.
+                    growing lets it fill the rest of the row. */}
                 <div className="aktionsreihe grow justify-end gap-3">
                   <span className="min-w-0 truncate text-sm text-mute">
                     {t("Zusammen {0}", formatDuration(data.topTracksTotalMs))}
                   </span>
-                  {/* Entfernte Titel haben keine Datei mehr, sie würden die
-                      Wiedergabe nur abbrechen. Die Laufvariable heißt nicht
-                      `t`: So hieße in diesem Baustein auch die Übersetzung. */}
+                  {/* removed tracks have no file any more, they would only
+                      break the playback off. the loop variable is not called
+                      `t`, that is the name of the translation in this
+                      component. */}
                   <button
                     type="button"
                     onClick={() =>
@@ -429,9 +423,9 @@ export function WrappedPage() {
                             {album.artistName}
                           </p>
                         </div>
-                        {/* Wie bei Titeln und Künstlern: gehörte Zeit, nicht
-                            Laufzeit. „57:08“ neben „1 Std. 42 Min.“ las sich
-                            wie die Länge des Releases. */}
+                        {/* as with tracks and artists: time listened, not
+                            running time. "57:08" next to "1 Std. 42 Min." read
+                            like the length of the release. */}
                         <span className="shrink-0 text-sm text-mute tabular-nums">
                           {formatDuration(album.msPlayed)}
                         </span>
@@ -457,11 +451,9 @@ function BigStat({
   value: string;
   accent?: boolean;
 }) {
-  /*
-   * Auf dem Handy eine Stufe kleiner. In zwei Spalten bleiben 144 Bildpunkte
-   * für die Zahl; „234 Std. 12 Min.“ braucht in 1.5rem deren 168 und wäre
-   * abgeschnitten, in 1.25rem sind es 140.
-   */
+  // one step smaller on a phone. in two columns 144 pixels are left for the
+  // number, and "234 Std. 12 Min." needs 168 of them at 1.5rem and would be
+  // cut off, while at 1.25rem it is 140
   return (
     <div className="surface px-4 py-3.5 sm:px-5 sm:py-4">
       <p className="eyebrow">{label}</p>

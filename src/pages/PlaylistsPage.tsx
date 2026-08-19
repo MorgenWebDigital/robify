@@ -31,7 +31,7 @@ export function PlaylistsPage() {
   const settings = useLibrary((s) => s.settings);
   const saveSetting = useLibrary((s) => s.saveSetting);
 
-  // Ansicht und Größe bleiben über Neustarts hinweg erhalten.
+  // view and size survive across restarts
   const asList = settings?.playlistView === "list";
   const size = (settings?.playlistSize ?? "md") as GridSize;
 
@@ -39,13 +39,11 @@ export function PlaylistsPage() {
   const reloadPlaylists = useLibrary((s) => s.reloadPlaylists);
   const notify = useUi((s) => s.notify);
 
-  /**
-   * Die neue Ordnung geht sofort nach hinten und wird danach neu geladen.
-   *
-   * Kein eigener Zwischenzustand für die Anzeige: Die Liste kommt aus dem
-   * Speicher, den auch die Seitenleiste liest. Würde hier eine eigene Kopie
-   * umsortiert, stünden beide für einen Moment verschieden da.
-   */
+  // the new order goes to the back right away and is reloaded afterwards.
+  //
+  // no intermediate state of its own for the display: the list comes out of
+  // the store the sidebar reads too. were a copy of its own reordered here,
+  // the two would stand differently for a moment
   const neuOrdnen = (ids: number[]) => {
     void api
       .reorderPlaylists(ids)
@@ -137,7 +135,7 @@ export function PlaylistsPage() {
           {playlists.map((playlist, index) => (
             <div
               key={playlist.id}
-              // Im Gitter zählt links oder rechts, nicht oben oder unten.
+              // in the grid left or right counts, not top or bottom
               {...merkmale(index, true)}
               className={`relative min-w-0 ${zieht === index ? "opacity-40" : ""}`}
             >
@@ -162,10 +160,8 @@ export function PlaylistsPage() {
   );
 }
 
-/**
- * Schalterreihe aus Symbolen. Der Text bleibt als Beschriftung erhalten, für
- * Vorlesewerkzeuge und als Kurzhinweis beim Verweilen mit dem Zeiger.
- */
+// a switch row made of icons. the text is kept as a label, for screen
+// readers and as a tooltip when the pointer rests
 function Segmented({
   options,
   value,
@@ -198,14 +194,12 @@ function Segmented({
   );
 }
 
-/**
- * Zeigt die Lücke, in die der gezogene Eintrag fällt.
- *
- * Ein Strich sagt das genauer als ein Rahmen um einen Eintrag: Der Rahmen
- * ließe offen, ob es davor oder dahinter wird. Am letzten Eintrag steht er
- * zusätzlich an dessen Ende, sonst ließe sich „ganz nach hinten“ gar nicht
- * anzeigen.
- */
+// shows the gap the dragged entry falls into.
+//
+// a line says that more precisely than a frame around an entry: the frame
+// would leave open whether it lands before or after. at the last entry it
+// additionally stands at its end, otherwise moving to the very back could not
+// be shown at all
 function Einfuegemarke({
   zieht,
   luecke,
@@ -217,7 +211,7 @@ function Einfuegemarke({
   luecke: number | null;
   index: number;
   anzahl: number;
-  /** Im Kachelgitter steht der Strich hochkant zwischen zwei Kacheln. */
+  /** in the tile grid the line stands upright between two tiles. */
   senkrecht?: boolean;
 }) {
   if (zieht === null) return null;

@@ -2,24 +2,22 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-// Der Sucher liegt bei den Werkzeugen, nicht in `src`: Er greift auf das
-// Dateisystem zu und gehört nicht in das, was ausgeliefert wird.
+// the finder lives with the tools and not in `src`: it reaches into the file
+// system and does not belong in what is shipped
 import { ungehuellteStellen } from "../../scripts/deutsch-finden.mjs";
 import { istGefuehrt } from "./i18n";
 import { hatFormen, stichwoerter } from "./mehrzahl";
 import { SPRACHEN } from "./sprachen";
 
-/**
- * Wacht darüber, dass fertig übersetzte Dateien fertig übersetzt bleiben.
- *
- * Geprüft wird, ob der Begriff in der Tabelle *steht*, nicht, ob seine
- * Fassung anders lautet als das deutsche Wort. „Single" heißt auf Französisch
- * ebenfalls „Single", und ein Wertvergleich hielte das für eine Lücke.
- *
- * Die Liste wächst, sobald eine weitere Datei durchgearbeitet ist. Sie ist
- * damit zugleich Fortschrittsanzeige und Schutz vor Rückschritten: Wer einen
- * neuen Text ohne `t()` einbaut, merkt es beim nächsten Testlauf.
- */
+// watches over finished files staying finished.
+//
+// what is checked is whether the term stands in the table, not whether its
+// version reads differently from the german word. "Single" is called "Single"
+// in french as well, and a comparison of values would take that for a gap.
+//
+// the list grows as soon as another file has been worked through. it is
+// therefore a progress indicator and a guard against regressions at once:
+// whoever builds in a new text without `t()` notices at the next test run
 const FERTIG = [
   "App.tsx",
   "lib/datum.ts",
@@ -66,10 +64,11 @@ const FERTIG = [
 ];
 
 /**
- * Wörter, die in jeder Sprache gleich lauten.
+ * words that read the same in every language.
  *
- * Produktname und Dateiformate werden nicht übersetzt, sie stehen so auf
- * jeder Verpackung. Ohne diese Ausnahme meldete der Test sie als Lücke.
+ * the product name and file formats are not translated, they stand that way
+ * on every package. without this exception the test would report them as a
+ * gap.
  */
 const EIGENNAMEN = new Set([
   "Robify",
@@ -83,19 +82,19 @@ const EIGENNAMEN = new Set([
 const SRC = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 /**
- * Alle `t("…")`-Aufrufe einer Datei.
+ * every `t("…")` call in a file.
  *
- * Zwischen Klammer und Anführungszeichen darf Leerraum stehen: Prettier bricht
- * lange Texte auf die nächste Zeile um. Ohne diese Freiheit blieben ausgerechnet
- * die längsten Absätze ungeprüft, und genau die waren unübersetzt.
+ * whitespace may stand between bracket and quote: prettier wraps long texts
+ * onto the next line. without that freedom the longest paragraphs of all
+ * would stay unchecked, and those were exactly the untranslated ones.
  */
 function benutzteTexte(datei: string): string[] {
   const inhalt = readFileSync(join(SRC, datei), "utf8");
-  // Der Rückblick verhindert Treffer wie `split(",")`, auch die enden auf `t(`.
+  // the lookbehind prevents hits such as `split(",")`, those end in `t(` too
   return [
     ...inhalt.matchAll(/(?<![A-Za-z0-9_$])t\(\s*"((?:[^"\\]|\\.)*)"/g),
-    // Gelesen wird der Quelltext, nicht der Wert: Ein Zeilenumbruch steht dort
-    // als zwei Zeichen. Nachgeschlagen wird aber der Text, wie ihn `t` sieht.
+    // the source is read, not the value: a line break stands there as two
+    // characters. what is looked up is the text as `t` sees it
   ].map((m) => m[1].replace(/\\"/g, '"').replace(/\\n/g, "\n"));
 }
 
@@ -109,18 +108,16 @@ describe("Übersetzungsdeckung", () => {
     });
   }
 
-  /**
-   * `t()` darf nicht auf Modulebene stehen.
-   *
-   * Eine Liste wie `const FORMATE = [{ label: t("Beste Qualität") }]` entsteht
-   * einmal beim Laden des Moduls. Wechselt der Nutzer danach die Sprache, baut
-   * die App sich zwar neu auf, das Modul aber nicht, und die Beschriftung
-   * bliebe in der Anfangssprache stehen. Genau so war es im Downloader, im
-   * Rückblick und in beiden Editoren.
-   *
-   * Erkannt wird an der Einrückung: Was zur Modulebene gehört, beginnt am
-   * linken Rand und läuft bis zur schließenden Klammer in Spalte 0.
-   */
+  // `t()` must not stand at module level.
+  //
+  // a list such as `const FORMATE = [{ label: t("Beste Qualität") }]` comes
+  // into being once when the module loads. does the user switch language
+  // afterwards, the app rebuilds itself but the module does not, and the
+  // label would stay in the starting language. that was exactly the case in
+  // the downloader, in the review and in both editors.
+  //
+  // it is recognised by the indentation: what belongs to module level starts
+  // at the left margin and runs to the closing bracket in column 0
   it("keine Übersetzung auf Modulebene", () => {
     const fundstellen: string[] = [];
 
@@ -132,10 +129,10 @@ describe("Übersetzungsdeckung", () => {
           tiefe === 0 && /^(export )?const [A-Za-z_]+[^=]*= [[{]/.test(zeile);
         if (!beginnt && tiefe === 0) return;
 
-        // Klammern zählen statt auf eine schließende Zeile zu warten: Eine
-        // Liste wie `const A = [1, 2];` öffnet und schließt in derselben
-        // Zeile. Ohne die Zählung hielte der Test den ganzen Rest der Datei
-        // für Teil der Liste, und meldete jede spätere Übersetzung.
+        // count brackets instead of waiting for a closing line: a list such
+        // as `const A = [1, 2];` opens and closes on the same line. without
+        // the counting the test would take the whole rest of the file for
+        // part of the list and report every later translation
         const offen = (zeile.match(/[[{]/g) ?? []).length;
         const zu = (zeile.match(/[\]}]/g) ?? []).length;
 
@@ -149,13 +146,11 @@ describe("Übersetzungsdeckung", () => {
     expect(fundstellen).toEqual([]);
   });
 
-  /**
-   * Jedes gezählte Hauptwort braucht seine Beugungen.
-   *
-   * `plural(anzahl, "Titel")` schlägt das Stichwort in `mehrzahl.ts` nach.
-   * Fehlt es dort, fällt die Anzeige auf das deutsche Wort zurück, und in der
-   * russischen Fassung stünde wieder „7 Titel“.
-   */
+  // every counted noun needs its inflections.
+  //
+  // `plural(anzahl, "Titel")` looks the keyword up in `mehrzahl.ts`. where it
+  // is missing there, the display falls back to the german word and the
+  // russian version would read "7 Titel" again
   it("jedes gezählte Wort ist gebeugt geführt", () => {
     const luecken: string[] = [];
 
@@ -181,29 +176,25 @@ describe("Übersetzungsdeckung", () => {
     expect(luecken).toEqual([]);
   });
 
-  /**
-   * Kein deutscher Text ohne `t()`.
-   *
-   * Die Prüfungen oben gehen von den `t()`-Aufrufen aus und finden darum nur
-   * Lücken in der Tabelle. Text, den niemand gehüllt hat, sehen sie nicht. So
-   * blieb in den Einstellungen „Musik, davon“ stehen, mitten zwischen lauter
-   * gehüllten Angaben, und fiel erst beim Durchklicken auf.
-   */
+  // no german text without `t()`.
+  //
+  // the checks above start from the `t()` calls and therefore find gaps in
+  // the table alone. text nobody wrapped is invisible to them. that is how
+  // "Musik, davon" stayed in the settings, in the middle of wrapped values
+  // all around, and only showed up when clicking through
   it("kein deutscher Text ohne Hülle", () => {
     expect(ungehuellteStellen(SRC)).toEqual([]);
   });
 
-  /**
-   * Auch die Meldungen aus dem Rust-Teil liegen übersetzt vor.
-   *
-   * Sie erscheinen nur im Fehlerfall, standen dafür aber in jeder Sprache auf
-   * Deutsch: Der Rust-Teil kennt die Oberflächensprache nicht. Er schickt
-   * seither die deutsche Vorlage samt Einsetzwerten, und die Oberfläche
-   * schlägt sie nach, genau wie jeden anderen Text.
-   *
-   * Geprüft wird der Quelltext, nicht der Bau: Der Test soll auch dann
-   * anschlagen, wenn niemand den Rust-Teil frisch übersetzt hat.
-   */
+  // the messages from the rust side are translated as well.
+  //
+  // they appear only on an error but stood in german whatever the language:
+  // the rust side does not know the interface language. since then it sends
+  // the german template together with its values, and the ui looks it up like
+  // any other text.
+  //
+  // the source is checked, not the build: the test is to fire even where
+  // nobody has compiled the rust side freshly
   it("jede Fehlermeldung aus dem Rust-Teil ist übersetzt", () => {
     const sprachen = SPRACHEN.map((eintrag) => eintrag.id).filter(
       (id) => id !== "de",

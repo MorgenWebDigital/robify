@@ -26,27 +26,27 @@ import type { Track } from "../types";
 
 interface TrackListProps {
   tracks: Track[];
-  /** Spielt die gesamte Liste ab diesem Index. */
+  /** plays the whole list from this index on. */
   onPlay?: (index: number) => void;
   showCover?: boolean;
   showAlbum?: boolean;
   showArtist?: boolean;
   /**
-   * Albumnummern statt fortlaufender Position anzeigen.
+   * show album track numbers instead of the running position.
    *
-   * Nur auf einer Albumseite sinnvoll: In Playlists und Mixen ist der erste
-   * Titel die Nummer 1, egal an welcher Stelle er auf seinem Album stand.
+   * only meaningful on an album page: in playlists and mixes the first track
+   * is number 1, whatever place it held on its album.
    */
   albumNumbering?: boolean;
   onRemove?: (track: Track) => void;
   removeLabel?: string;
   onChanged?: () => void;
   emptyMessage?: ReactNode;
-  /** Diesen Titel hervorheben und in den sichtbaren Bereich holen. */
+  /** highlight this track and bring it into view. */
   highlightTrackId?: number | null;
   /**
-   * Reihenfolge per Ziehen änderbar. Bekommt die neue Reihenfolge als Liste
-   * von Kennungen. Ohne diesen Rückruf bleibt die Liste unverschiebbar.
+   * makes the order changeable by dragging. receives the new order as a list
+   * of ids. without this callback the list stays unmovable.
    */
   onReorder?: (trackIds: number[]) => void;
 }
@@ -71,7 +71,7 @@ export function TrackList({
   const { notify, notifyUndo, editTrack, openAddToPlaylist } = useUi();
   const settings = useLibrary((s) => s.settings);
   const saveSetting = useLibrary((s) => s.saveSetting);
-  /** Im Dialog angehakt: künftig ohne Rückfrage löschen. */
+  /** ticked in the dialog: delete without asking from now on. */
   const [nichtMehrFragen, setNichtMehrFragen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Track | null>(null);
   const { zieht, luecke, merkmale } = useZiehordnung(
@@ -92,23 +92,21 @@ export function TrackList({
       );
   };
 
-  /*
-   * Wischen an einer Zeile.
-   *
-   * Nur eine Zeile lässt sich zugleich wischen, darum genügt ein Zustand für
-   * die ganze Liste statt einer je Zeile.
-   *
-   * `gewischt` verhindert, dass der Finger nach dem Wischen noch den Titel
-   * startet: Der Browser schickt nach einer Berührung ohnehin ein Klick-
-   * Ereignis, und das trifft dieselbe Zeile.
-   */
+  // swiping on a row.
+  //
+  // only one row can be swiped at a time, so one state for the whole list
+  // does instead of one per row.
+  //
+  // `gewischt` keeps the finger from starting the track after the swipe: the
+  // browser sends a click event after a touch anyway, and it hits the same
+  // row
   const [wisch, setWisch] = useState<{ index: number; dx: number } | null>(
     null,
   );
   const beginn = useRef<{ x: number; y: number; index: number } | null>(null);
   const gewischt = useRef(false);
 
-  /** Ab hier gilt es als Wisch und nicht mehr als Zittern beim Tippen. */
+  /** from here on it counts as a swipe and no longer as a tremor while tapping. */
   const SCHWELLE = 72;
 
   const wischStart = (index: number) => (event: React.TouchEvent) => {
@@ -123,8 +121,8 @@ export function TrackList({
     const finger = event.touches[0];
     const dx = finger.clientX - start.x;
     const dy = finger.clientY - start.y;
-    // Senkrecht gewinnt: Sonst bliebe die Liste beim Blättern hängen, sobald
-    // der Daumen dabei ein wenig zur Seite wandert.
+    // vertical wins: otherwise the list would catch while scrolling as soon
+    // as the thumb wandered a little sideways
     if (Math.abs(dx) <= Math.abs(dy) || Math.abs(dx) < 8) return;
     gewischt.current = true;
     setWisch({ index: start.index, dx });
@@ -153,11 +151,9 @@ export function TrackList({
     }
   };
 
-  /**
-   * Entfernt Eintrag und Datei. Die Datei wandert in den Papierkorb der App,
-   * darum lässt sich der Griff eine Weile zurücknehmen. Gefragt wird trotzdem
-   * vorher, und der Pfad genannt, damit klar ist, was verschwindet.
-   */
+  // removes row and file. the file travels into the app's trash, so the
+  // action can be undone for a while. it still asks beforehand and names the
+  // path, so it is clear what disappears
   const deleteTrack = async (track: Track) => {
     setPendingDelete(null);
     if (nichtMehrFragen) {
@@ -182,8 +178,8 @@ export function TrackList({
   };
 
   if (tracks.length === 0) {
-    // Reiner Text bekommt den gestrichelten Rahmen; ein ganzes Bauteil bringt
-    // seine eigene Fläche mit und würde darin doppelt gerahmt.
+    // plain text gets the dashed frame, a whole component brings a surface of
+    // its own and would be framed twice inside it
     return typeof emptyMessage === "string" ? (
       <p className="rounded-xl border border-dashed border-ink-700 px-5 py-10 text-center text-sm text-mute">
         {emptyMessage}
@@ -212,26 +208,24 @@ export function TrackList({
                   : undefined
               }
               {...merkmale(index)}
-              /*
-               * Die ganze Zeile startet den Titel.
-               *
-               * Auf einem Telefon zielt man nicht auf einen kleinen Knopf,
-               * man tippt auf den Song. Alles, was selbst etwas tut, behält
-               * dabei den Vortritt: die Künstler- und Albumlinks, die beiden
-               * Knöpfe rechts, der Titel. Ohne diese Ausnahme startete ein
-               * Druck auf „Yeat“ den Titel, statt zum Künstler zu führen.
-               *
-               * Die Zeile bleibt ein `li` und wird kein Knopf: Sie enthält
-               * Knöpfe und Links, und die dürfen nicht in einem Knopf stehen.
-               * Über die Tastatur führt weiter der Titel hinein.
-               */
+              // the whole row starts the track.
+              //
+              // on a phone one does not aim at a small button, one taps the
+              // song. everything that does something itself keeps precedence:
+              // the artist and album links, the two buttons on the right, the
+              // title. without that exception a press on "Yeat" started the
+              // track instead of leading to the artist.
+              //
+              // the row stays an `li` and does not become a button: it holds
+              // buttons and links, and those must not stand inside a button.
+              // by keyboard the title still leads in
               onTouchStart={wischStart(index)}
               onTouchMove={wischZug}
               onTouchEnd={wischEnde(track)}
               onClick={(event) => {
                 if ((event.target as HTMLElement).closest("a, button")) return;
-                // Nach einem Wisch kommt trotzdem ein Klick; der darf den
-                // Titel nicht auch noch starten.
+                // a click still comes after a swipe, and it must not start
+                // the track as well
                 if (gewischt.current) {
                   gewischt.current = false;
                   return;
@@ -242,9 +236,9 @@ export function TrackList({
                 zieht === index ? "opacity-40" : ""
               }`}
             >
-              {/* Zeigt die Lücke, in die der Titel fällt. Ein Strich sagt das
-                  genauer als ein Rahmen um eine Zeile: Der Rahmen ließ offen,
-                  ob es davor oder dahinter wird. */}
+              {/* shows the gap the track falls into. a line says that more
+                  precisely than a frame around a row: the frame left open
+                  whether it lands before or after. */}
               {zieht !== null && luecke === index && (
                 <span
                   aria-hidden="true"
@@ -262,9 +256,9 @@ export function TrackList({
                   />
                 )}
 
-              {/* Was das Wischen bewirkt, während der Finger noch liegt.
-                  Außerhalb des wandernden Inhalts, sonst schöbe sie sich mit
-                  ihm aus dem Bild. */}
+              {/* what the swipe brings about, while the finger still rests.
+                  outside the travelling content, otherwise it would slide out
+                  of view with it. */}
               {wisch?.index === index && (
                 <span
                   aria-hidden="true"
@@ -288,8 +282,8 @@ export function TrackList({
                 style={
                   wisch?.index === index
                     ? { transform: `translateX(${wisch.dx}px)` }
-                    : // Nur beim Zurückschnellen weich: Während der Finger
-                      // liegt, soll die Zeile ihm ohne Verzögerung folgen.
+                    : // eased only while snapping back: while the finger
+                      // rests, the row is to follow it without delay
                       { transition: "transform 0.18s ease" }
                 }
               >
@@ -327,13 +321,13 @@ export function TrackList({
                     />
                   )}
                   <div className="min-w-0">
-                    {/* Der Titel startet ihn.
-                      Der Knopf links tut das auch, zeigt sein Play-Symbol aber
-                      erst beim Überfahren — auf einem Telefon also nie: Dort
-                      stand nur die Nummer, und dass sie tippbar ist, sah
-                      niemand. Den Titel anzutippen ist die Geste, die man
-                      ohnehin versucht. Er steht neben den Künstlerlinks, nicht
-                      um sie herum, sonst läge ein Knopf über einem Link. */}
+                    {/* the title starts it. the button on the left does that
+                      too but shows its play icon on hover only, so on a phone
+                      never: the number alone stood there, and that it can be
+                      tapped was visible to nobody. tapping the title is the
+                      gesture one tries anyway. it stands next to the artist
+                      links and not around them, otherwise a button would lie
+                      over a link. */}
                     <button
                       type="button"
                       onClick={() => playAt(index)}
@@ -358,9 +352,9 @@ export function TrackList({
                   </Link>
                 )}
 
-                {/* Laufzeit, dann die Handgriffe: Zu einer Playlist hinzufügen ist
-                der häufigere als das Favorisieren, das bleibt im Menü. Beide
-                Knöpfe stehen erst beim Überfahren der Zeile heraus. */}
+                {/* running time, then the handles: adding to a playlist is
+                the more frequent one than marking a favourite, which stays in
+                the menu. both buttons stand out on hovering the row only. */}
                 <div className="flex items-center gap-1.5">
                   <span className="me-1 text-xs tabular-nums text-mute">
                     {formatTime(track.durationMs)}
@@ -384,10 +378,9 @@ export function TrackList({
                       {
                         label: t("Als Nächstes spielen"),
                         icon: <QueueIcon size={16} />,
-                        // Der Hinweis nennt beim Namen, was geschah: Die
-                        // beiden Einträge sehen einander ähnlich, und ohne
-                        // Rückmeldung ist am Fenster nichts zu sehen, wenn die
-                        // Warteschlange gerade nicht ausgefahren ist.
+                        // the notice names what happened: the two entries
+                        // look alike, and without feedback nothing is visible
+                        // on screen while the queue is not slid out
                         onSelect: () => {
                           void api.queuePlayNext([track.id]);
                           notify(
@@ -438,8 +431,8 @@ export function TrackList({
                         icon: <TrashIcon size={16} />,
                         tone: "danger" as const,
                         onSelect: () => {
-                          // Wer die Rückfrage abgestellt hat, will sie auch nicht
-                          // beim nächsten Mal sehen. Rückgängig geht trotzdem.
+                          // whoever turned the confirmation off does not want
+                          // to see it next time either. undoing still works
                           if (settings && !settings.confirmDelete)
                             void deleteTrack(track);
                           else setPendingDelete(track);
@@ -452,10 +445,10 @@ export function TrackList({
                         onClick={toggleMenu}
                         aria-expanded={menuOffen}
                         aria-label={t("Weitere Aktionen")}
-                        /* Solange die Liste offen steht, bleibt der Knopf stehen
-                         und leuchtet. Vorher verblasste er, sobald der Zeiger
-                         die Zeile verließ, die Liste hing dann ohne sichtbaren
-                         Auslöser in der Luft und sah aus wie ein Fehler. */
+                        /* while the menu stands open the button stays and
+                         lights up. before that it faded as soon as the pointer
+                         left the row, and the menu then hung in the air
+                         without a visible trigger and looked like a bug. */
                         className={`pill-btn is-lift h-8 w-8 transition-opacity ${
                           menuOffen
                             ? "is-on opacity-100"
@@ -524,10 +517,8 @@ export function TrackList({
   );
 }
 
-/**
- * Zeigt alle Beteiligten eines Titels. Gastkünstler stehen hinter „feat.“,
- * jeder Name führt auf seine Künstlerseite.
- */
+// shows everyone involved in a track. guest artists stand behind "feat.",
+// and every name leads to its artist page
 export function ArtistLinks({
   track,
   className = "",
@@ -550,10 +541,10 @@ export function ArtistLinks({
         <Link
           draggable={false}
           to={`/artist/${artist.id}`}
-          // Die Lyrics-Ansicht legt sich über Seitenleiste und Inhalt. Bliebe
-          // sie offen, liefe die Navigation ins Leere: Die Künstlerseite baut
-          // sich dahinter auf, zu sehen wäre weiterhin das Cover. In einer
-          // Titelliste ist die Ansicht ohnehin zu, der Aufruf also folgenlos.
+          // the lyrics view lies over sidebar and content. left open, the
+          // navigation would lead nowhere: the artist page builds up behind
+          // it while the cover stays visible. in a track list the view is
+          // closed anyway, so the call has no effect
           onClick={() => setNowPlayingOpen(false)}
           className="transition hover:text-fg hover:underline"
         >

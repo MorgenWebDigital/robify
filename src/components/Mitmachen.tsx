@@ -6,13 +6,12 @@ import { useUi } from "../store/ui";
 import { Button } from "./Modal";
 import { CheckIcon, SparkIcon } from "./Icons";
 
-/**
- * Legt Text in die Zwischenablage.
- *
- * Zwei Wege, weil der erste nicht überall gilt: `navigator.clipboard` verlangt
- * einen als sicher eingestuften Ursprung. Der ältere Weg über ein verstecktes
- * Feld ist abgekündigt, funktioniert aber noch dort, wo der neue fehlt.
- */
+// puts text into the clipboard.
+//
+// two ways, because the first does not apply everywhere:
+// `navigator.clipboard` demands an origin classed as secure. the older way
+// through a hidden field is deprecated but still works where the new one is
+// missing
 async function inDieAblage(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);
@@ -30,19 +29,17 @@ async function inDieAblage(text: string): Promise<boolean> {
   }
 }
 
-/**
- * Das System in einer lesbaren Zeile.
- *
- * `navigator.userAgent` steht voller Beiwerk, das seit dreißig Jahren
- * mitgeschleppt wird: „Mozilla/5.0 (Linux; Android 15; A063 Build/AQ3A…; wv)
- * AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/150.0.7871.181“.
- * In einem Fehlerbericht zählt davon dreierlei — welches Android, welches
- * Gerät, welcher Unterbau —, und der Rest verstellt den Blick darauf.
- *
- * Auf allen anderen Systemen steht in der ersten Klammer schon das Richtige:
- * „X11; Linux x86_64“, „Windows NT 10.0; Win64; x64“, „Macintosh; Intel Mac OS
- * X 10_15_7“.
- */
+// the system in one readable line.
+//
+// `navigator.userAgent` stands full of trimmings carried along for thirty
+// years: "Mozilla/5.0 (Linux; Android 15; A063 Build/AQ3A…; wv)
+// AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/150.0.7871.181".
+// three things of it count in a bug report, which android, which device,
+// which engine, and the rest blocks the view of them.
+//
+// on every other system the right thing already stands in the first bracket:
+// "X11; Linux x86_64", "Windows NT 10.0; Win64; x64", "Macintosh; Intel Mac
+// OS X 10_15_7"
 function systemZeile(): string {
   const kennung = navigator.userAgent;
   const android = /Android (\d+(?:\.\d+)*)[^)]*?; ([^;)]+?) Build\//.exec(
@@ -60,20 +57,18 @@ function systemZeile(): string {
   return klammer ? klammer[1] : kennung;
 }
 
-/** Adresse gekürzt, damit sie in eine Zeile passt: Anfang … Ende. */
+/** an address shortened to fit one line: start, ellipsis, end. */
 function gekuerzt(adresse: string): string {
   if (adresse.length <= 24) return adresse;
   return `${adresse.slice(0, 10)}…${adresse.slice(-8)}`;
 }
 
-/**
- * Aufruf zum Mitmachen: Fehler melden, Vorschläge machen, spenden.
- *
- * Der Bericht wird hier zusammengestellt und in die Zwischenablage gelegt,
- * nicht verschickt. Das ist der ganze Unterschied zu einem Briefkasten: Robify
- * sendet von sich aus nichts, der Nutzer sieht, was dasteht, und entscheidet,
- * wohin er es gibt — oder ob überhaupt.
- */
+// a call to take part: report bugs, make suggestions, donate.
+//
+// the report is assembled here and put into the clipboard, not sent. that is
+// the whole difference to a mailbox: robify sends nothing of its own accord,
+// the user sees what stands there and decides where to give it, or whether at
+// all
 export function Mitmachen({ ytdlp }: { ytdlp?: string | null }) {
   const notify = useUi((s) => s.notify);
   const [bericht, setBericht] = useState(false);
@@ -90,8 +85,8 @@ export function Mitmachen({ ytdlp }: { ytdlp?: string | null }) {
       notify(t("In die Zwischenablage kopiert"), "success");
       window.setTimeout(() => setBericht(false), 2000);
     } else {
-      // Nicht stillschweigend nichts tun: Ein Knopf, der nichts sichtbar
-      // bewirkt, sieht aus wie ein kaputter Knopf.
+      // do not quietly do nothing: a button with no visible effect looks
+      // like a broken button
       notify(t("Die Zwischenablage ließ sich nicht beschreiben."), "error");
     }
   };

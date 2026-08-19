@@ -9,13 +9,11 @@ const EINTRAEGE = [
   { label: "Löschen", onSelect: vi.fn() },
 ];
 
-/**
- * Legt fest, wo der Knopf im Fenster sitzt.
- *
- * jsdom rechnet kein Layout und liefert für jedes Element ein Rechteck aus
- * lauter Nullen. Die Richtungswahl des Menüs hängt aber genau daran, also
- * muss der Test sie vorgeben.
- */
+// pins down where the button sits in the window.
+//
+// jsdom computes no layout and returns a rectangle of nothing but zeros for
+// every element. the direction the menu picks hangs on exactly that, so the
+// test has to supply it
 function knopfSitztBei(oben: number) {
   window.innerHeight = 800;
   window.innerWidth = 1200;
@@ -35,11 +33,10 @@ function knopfSitztBei(oben: number) {
 afterEach(() => vi.restoreAllMocks());
 
 describe("Menu", () => {
-  /**
-   * Die Liste hängt am Fenster und wird an den Körper gezeichnet. Stünde sie
-   * im Baum neben dem Knopf, zählte sie zur Bildlauffläche ihres Behälters:
-   * Beim letzten Titel einer Playlist wuchs die Seite um ihre Höhe.
-   */
+  // the list hangs off the window and is drawn onto the body. standing in
+  // the tree next to the button, it would count towards the scrolling area of
+  // its container: at the last track of a playlist the page grew by its
+  // height
   it("zeichnet die Liste an den Körper, nicht neben den Knopf", async () => {
     const nutzer = userEvent.setup();
     knopfSitztBei(100);
@@ -83,7 +80,7 @@ describe("Menu", () => {
     expect(liste.style.bottom).toBe("");
   });
 
-  /** Am unteren Rand kehrt sich die Richtung um, statt aus dem Bild zu laufen. */
+  /** at the bottom edge the direction turns around instead of running out of view. */
   it("fährt nach oben aus, wenn darunter kein Platz mehr ist", async () => {
     const nutzer = userEvent.setup();
     knopfSitztBei(760);

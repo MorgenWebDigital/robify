@@ -1,29 +1,26 @@
 import { spracheJetzt } from "./i18n";
 
-/**
- * Gezählte Hauptwörter in der richtigen Beugung.
- *
- * Deutsch und Englisch kennen zwei Formen, Russisch vier, Arabisch sechs, und
- * Chinesisch kommt mit einer aus. Zwei Wörter mitzugeben, „{eins}“ und
- * „{viele}“, genügt darum nur für die halbe Liste: Russisch braucht neben
- * „трек“ und „треков“ noch „трека“ für 2 bis 4, und in der App stand deshalb
- * „7 Треки“ statt „7 треков“.
- *
- * `Intl.PluralRules` kennt diese Regeln bereits, es sagt für jede Zahl und
- * Sprache, welche der Kategorien `zero`, `one`, `two`, `few`, `many`, `other`
- * gilt. Hier stehen nur noch die Wörter dazu.
- *
- * Gesucht wird der Reihe nach: passende Kategorie, dann `other`, dann
- * Englisch, zuletzt das deutsche Stichwort. Eine fehlende Form fällt damit auf
- * eine brauchbare zurück statt auf ein Kürzel.
- */
+// counted nouns in the right inflection.
+//
+// german and english know two forms, russian four, arabic six, and chinese
+// gets by with one. handing over two words, one and many, therefore does for
+// half the list only: besides "трек" and "треков" russian needs "трека" for 2
+// to 4, and the app therefore read "7 Треки" instead of "7 треков".
+//
+// `Intl.PluralRules` knows these rules already, it says for every number and
+// language which of the categories `zero`, `one`, `two`, `few`, `many`,
+// `other` applies. only the words for them stand here.
+//
+// the lookup runs in order: matching category, then `other`, then english,
+// last the german keyword. a missing form therefore falls back to a usable
+// one instead of to a code
 type Formen = Partial<Record<Intl.LDMLPluralRule, string>>;
 
 /**
- * Nach dem deutschen Stichwort geordnet, dasselbe Muster wie die Texttabelle.
+ * keyed by the german keyword, the same pattern as the text table.
  *
- * Kleingeschrieben, wo die Sprache es verlangt: „42 tracks“, nicht
- * „42 Tracks“. Nur Deutsch schreibt Hauptwörter groß, auch mitten im Satz.
+ * lowercase where the language demands it: "42 tracks", not "42 Tracks". only
+ * german capitalises nouns, in the middle of a sentence too.
  */
 const FORMEN: Record<string, Record<string, Formen>> = {
   Titel: {
@@ -295,24 +292,23 @@ const FORMEN: Record<string, Record<string, Formen>> = {
   },
 };
 
-/** Prüfhilfe: Steht das Stichwort in der Tabelle, und wenn ja, in dieser Sprache? */
+/** test helper: whether the keyword is in the table, and if so in this language. */
 export function hatFormen(stichwort: string, sprache?: string): boolean {
   const eintrag = FORMEN[stichwort];
   if (!eintrag) return false;
   return sprache === undefined || eintrag[sprache] !== undefined;
 }
 
-/** Alle Stichwörter, für den Deckungstest. */
+/** every keyword, for the coverage test. */
 export function stichwoerter(): string[] {
   return Object.keys(FORMEN);
 }
 
 /**
- * Die zur Anzahl passende Form eines Stichworts, ohne die Zahl selbst.
+ * the form of a keyword matching the count, without the number itself.
  *
- * `Intl.PluralRules` mit einer unbekannten Sprache anzulegen wirft; darum der
- * Rückfall auf Englisch, falls eine Sprache dazukommt, bevor ihre Formen es
- * tun.
+ * creating `Intl.PluralRules` with an unknown language throws, hence the
+ * fallback to english should a language arrive before its forms do.
  */
 export function mehrzahl(anzahl: number, stichwort: string): string {
   const sprache = spracheJetzt();

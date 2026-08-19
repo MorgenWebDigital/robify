@@ -14,48 +14,47 @@ interface MenuProps {
   trigger: (props: { open: boolean; toggle: () => void }) => ReactNode;
   align?: "left" | "right";
   /**
-   * Ausfahrrichtung erzwingen.
+   * forces the direction it opens in.
    *
-   * Ohne Angabe entscheidet das Menü selbst nach dem Platz um den Knopf.
+   * without a value the menu decides by itself from the room around the
+   * button.
    */
   side?: "bottom" | "top";
   /**
-   * Öffnet beim Überfahren und schließt beim Verlassen, statt auf Klick.
+   * opens on hover and closes on leaving, instead of on a click.
    *
-   * Für Knöpfe, die ohnehin nur beim Überfahren einer Zeile erscheinen: Dort
-   * ist der Klick ein zusätzlicher Schritt für etwas, das man nur ansehen
-   * will. Der Klick funktioniert weiterhin, für Zeigegeräte ohne Schweben.
+   * for buttons that appear on hovering a row anyway: a click is an extra
+   * step there for something one only wants to look at. clicking still works,
+   * for pointing devices without hovering.
    */
   hover?: boolean;
 }
 
-/** Wo das Menü steht, in Fensterkoordinaten. */
+/** where the menu stands, in window coordinates. */
 interface Lage {
   obenAus: boolean;
-  /** Abstand zur oberen bzw. unteren Fensterkante, je nach `obenAus`. */
+  /** distance to the top or bottom window edge, depending on `obenAus`. */
   y: number;
-  /** Abstand zur linken bzw. rechten Fensterkante, je nach `align`. */
+  /** distance to the left or right window edge, depending on `align`. */
   x: number;
   maxHoehe: number;
 }
 
-/** Luft zu den Fensterkanten. */
+/** air to the window edges. */
 const RAND = 8;
-/** Luft zwischen Knopf und Liste. */
+/** air between button and list. */
 const LUFT = 4;
 
-/**
- * Kleines Kontextmenü; schließt bei Klick nach außen und mit Escape.
- *
- * Die Liste hängt am Fenster (`position: fixed`) und wird durch ein Portal
- * unmittelbar an den Körper gezeichnet, nicht neben den Knopf. Der Grund ist
- * die Bildlauffläche: Ein absolut gesetztes Element zählt zum scrollbaren
- * Inhalt seines Behälters. Beim letzten Titel einer Playlist wuchs die Seite
- * dadurch um die Höhe des Menüs, und zwar auch dann, wenn im Fenster darunter
- * noch Platz war, denn der Inhalt endete ja mit dieser Zeile. Am Fenster
- * hängend nimmt die Liste keinen Platz mehr ein und kann sich zugleich an
- * dessen Kanten halten.
- */
+// a small context menu, closes on a click outside and on escape.
+//
+// the list hangs off the window (`position: fixed`) and is drawn straight
+// onto the body through a portal, not next to the button. the reason is the
+// scrolling area: an absolutely positioned element counts towards the
+// scrollable content of its container. at the last track of a playlist the
+// page therefore grew by the height of the menu, even where there was room
+// below in the window, since the content ended with that row. hanging off the
+// window the list takes no room any more and can hold to its edges at the
+// same time
 export function Menu({
   items,
   trigger,
@@ -70,11 +69,10 @@ export function Menu({
   const schliessUhr = useRef<number | null>(null);
 
   /**
-   * Zwischen Knopf und Liste liegen vier Pixel Luft. Ohne diese Verzögerung
-   * fiele das Menü genau beim Überqueren dieser Lücke wieder zu, und man käme
-   * nie an einen Eintrag heran. Sie trägt jetzt doppelt: Die Liste liegt in
-   * einem Portal, der Zeiger verlässt den Knopf also in jedem Fall, bevor er
-   * die Liste erreicht.
+   * four pixels of air lie between button and list. without this delay the
+   * menu would fall shut exactly while crossing that gap, and one would never
+   * reach an entry. it carries twice as much now: the list lies in a portal,
+   * so the pointer leaves the button in any case before it reaches the list.
    */
   const spaeterSchliessen = () => {
     if (schliessUhr.current) window.clearTimeout(schliessUhr.current);
@@ -88,12 +86,12 @@ export function Menu({
   useEffect(() => () => nichtSchliessen(), []);
 
   /**
-   * Wohin die Liste gehört.
+   * where the list belongs.
    *
-   * Die Höhe wird geschätzt, nicht gemessen: Messen ließe sie sich erst, wenn
-   * die Liste schon steht. Für die Frage „oben oder unten“ genügt die
-   * Schätzung; die genaue Begrenzung übernimmt danach `maxHoehe`, und was
-   * nicht hineinpasst, wird in der Liste selbst scrollbar.
+   * the height is estimated, not measured: measuring would only be possible
+   * once the list already stands. for the question of above or below the
+   * estimate does, the exact bound is taken over by `maxHoehe` afterwards,
+   * and what does not fit becomes scrollable inside the list.
    */
   const messen = (): Lage | null => {
     const kasten = container.current?.getBoundingClientRect();
@@ -102,9 +100,9 @@ export function Menu({
     const platzUnten = window.innerHeight - kasten.bottom - LUFT - RAND;
     const platzOben = kasten.top - LUFT - RAND;
     const geschaetzt = Math.min(items.length * 38 + 12, 320);
-    // Nur wechseln, wenn oben tatsächlich mehr Platz ist: Bei einem Fenster,
-    // das für beides zu klein ist, bliebe die Liste sonst genauso knapp, nur
-    // an der anderen Kante.
+    // switch only where there is actually more room above: in a window too
+    // small for either, the list would otherwise stay just as tight, only at
+    // the other edge
     const obenAus = side
       ? side === "top"
       : platzUnten < geschaetzt && platzOben > platzUnten;
@@ -139,9 +137,9 @@ export function Menu({
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
-    // Am Fenster hängend wandert die Liste beim Blättern nicht mit dem Knopf.
-    // `capture`, weil gescrollt wird, was unter dem Zeiger liegt, und das
-    // Ereignis dort nicht nach oben steigt.
+    // hanging off the window, the list does not travel with the button while
+    // scrolling. `capture`, because what is scrolled is whatever lies under
+    // the pointer, and the event does not bubble up from there
     const nachfuehren = () => setLage(messen());
 
     document.addEventListener("pointerdown", onPointerDown);
@@ -158,8 +156,8 @@ export function Menu({
 
   const beimUeberfahren = hover
     ? (event: React.PointerEvent) => {
-        // Berührung meldet sich ebenfalls als „enter“; dort soll erst der
-        // Klick öffnen, sonst klappt beim Tippen zweimal etwas auf.
+        // a touch reports itself as an enter as well, and there the click is
+        // to open it, otherwise something unfolds twice on a tap
         if (event.pointerType === "touch") return;
         nichtSchliessen();
         oeffnen();
@@ -167,13 +165,13 @@ export function Menu({
     : undefined;
 
   /**
-   * Beim Verlassen zufallen — außer der Finger war es.
+   * falls shut on leaving, unless it was a finger.
    *
-   * Auf einem Telefon endet der Zeiger mit der Berührung: Gleich nach dem
-   * Tippen meldet sich „leave“, und das eben erst geöffnete Menü fiel nach
-   * 160 ms wieder zu, ohne dass etwas zu sehen war. Das Öffnen nimmt
-   * Berührungen längst aus, das Schließen tat es nicht. Dort schließt der
-   * Druck daneben, den `pointerdown` am Dokument schon abfängt.
+   * on a phone the pointer ends with the touch: right after the tap a leave
+   * is reported, and the menu just opened fell shut after 160 ms without
+   * anything having been visible. opening has excluded touches for a long
+   * time, closing did not. there the press next to it closes, which
+   * `pointerdown` on the document catches already.
    */
   const beimVerlassen = hover
     ? (event: React.PointerEvent) => {
@@ -206,9 +204,9 @@ export function Menu({
               maxHeight: lage.maxHoehe,
               maxWidth: `calc(100vw - ${RAND * 2}px)`,
             }}
-            // `w-max`: Die Breite richtet sich nach dem längsten Eintrag, nicht
-            // nach dem schmalen Knopf darüber. `overflow-y-auto` fängt Listen,
-            // die auch in der besseren Richtung nicht ganz hineinpassen.
+            // `w-max`: the width follows the longest entry, not the narrow
+            // button above it. `overflow-y-auto` catches lists that do not
+            // quite fit even in the better direction
             className="animate-rise z-50 w-max min-w-56 overflow-x-hidden overflow-y-auto rounded-xl border border-ink-600 bg-ink-800 py-1 shadow-2xl"
           >
             {items.map((item) => (

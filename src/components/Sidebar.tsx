@@ -10,8 +10,8 @@ import { NotesMark, SettingsIcon } from "./Icons";
 export function Sidebar() {
   const playlists = useLibrary((s) => s.playlists);
   const settings = useLibrary((s) => s.settings);
-  // Der Rückblick lässt sich ganz abstellen; dann gehört er auch nicht in
-  // die Navigation.
+  // the review can be turned off entirely, and then it does not belong in
+  // the navigation either
   const eintraege = NAV.filter(
     (item) => item.to !== "/wrapped" || settings?.wrappedMode !== "off",
   );
@@ -27,7 +27,7 @@ export function Sidebar() {
         onClick={() => navigate("/")}
         className="flex w-full items-center justify-center gap-2 px-2 py-1.5"
       >
-        {/* Ohne Kachel dahinter: Das Zeichen steht für sich, in Akzentfarbe. */}
+        {/* no tile behind it: the mark stands for itself, in the accent colour. */}
         <NotesMark
           size={48}
           className="shrink-0"
@@ -42,9 +42,10 @@ export function Sidebar() {
           const hier = istHier(pfad, eintrag);
           return (
             <li key={to}>
-              {/* `Link` statt `NavLink`: Der Abgleich läuft über `istHier`,
-                  weil die Detailseiten unter anderen Adressen liegen als ihr
-                  Abschnitt. `aria-current` setzen wir deshalb selbst. */}
+              {/* `Link` instead of `NavLink`: the matching runs through
+                  `istHier` because the detail pages lie under different
+                  addresses than their section. `aria-current` is therefore set
+                  here by hand. */}
               <Link
                 to={to}
                 aria-current={hier ? "page" : undefined}

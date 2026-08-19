@@ -34,51 +34,46 @@ import { useTastaturhoehe } from "./lib/tastatur";
 export function App() {
   const initPlayer = usePlayer((s) => s.init);
   const initLibrary = useLibrary((s) => s.init);
-  // Der Downloader hört seine Fortschrittsmeldungen von hier aus, damit sie
-  // auch ankommen, während eine andere Seite offen ist.
+  // the downloader listens for its progress events from here, so they arrive
+  // while another page is open as well
   const initDownloader = useDownloader((s) => s.init);
   const { editingTrack, editTrack } = useUi();
   const openAddToPlaylist = useUi((s) => s.openAddToPlaylist);
   const location = useLocation();
 
-  /**
-   * Was über der Seite liegt, geht mit der Seite.
-   *
-   * Diese beiden Dialoge hängen an der App, nicht an der Seite, die sie
-   * geöffnet hat. „Zu Playlist hinzufügen“ vom Album blieb darum stehen, wenn
-   * man unten auf Bibliothek tippte — ein Dialog über einer Seite, mit der er
-   * nichts zu tun hat. Dasselbe galt für den Metadaten-Editor.
-   *
-   * Beide Setzer kommen aus dem Zustandsspeicher und bleiben dieselben; das
-   * `useCallback` hält auch die Abhängigkeit dieses Aufrufs stabil, sonst
-   * schlösse er den Dialog beim nächsten Neuzeichnen gleich wieder.
-   */
+  // what lies over the page goes with the page.
+  //
+  // these two dialogs hang off the app, not off the page that opened them.
+  // "add to playlist" from an album therefore stayed standing when one tapped
+  // library at the bottom, a dialog over a page it has nothing to do with.
+  // the same held for the metadata editor.
+  //
+  // both setters come out of the store and stay the same, and the
+  // `useCallback` keeps the dependency of this call stable too, otherwise it
+  // would close the dialog again at the next render
   useSchliesstBeimSeitenwechsel(
     useCallback(() => {
       openAddToPlaylist(null);
       editTrack(null);
     }, [openAddToPlaylist, editTrack]),
   );
-  // Hält `--tastatur` aktuell, damit Player und Leiste über der Tastatur
-  // bleiben statt dahinter.
+  // keeps `--tastatur` current so the player and the bar stay above the
+  // keyboard instead of behind it
   useTastaturhoehe();
 
   const blaetterbereich = useRef<HTMLElement>(null);
 
-  /**
-   * Jede Seite beginnt oben.
-   *
-   * Der Blätterbereich bleibt beim Seitenwechsel stehen, wo er war. Wer weit
-   * unten in der Bibliothek stand und dann eine Playlist öffnete, landete
-   * mitten in deren Titelliste, das sah nach einem Sprung aus, nicht nach
-   * einem Wechsel.
-   */
+  // every page starts at the top.
+  //
+  // the scrolling area stays where it was on a page change. whoever stood far
+  // down in the library and then opened a playlist landed in the middle of
+  // its track list, which looked like a jump rather than a change
   useEffect(() => {
     blaetterbereich.current?.scrollTo({ top: 0 });
   }, [location.pathname]);
 
   useEffect(() => {
-    // Die Aufräumfunktionen kommen erst nach dem await zurück.
+    // the cleanup functions come back only after the await
     const pending = Promise.all([
       initPlayer(),
       initLibrary(),
@@ -91,25 +86,25 @@ export function App() {
 
   return (
     <div className="app-rahmen flex h-full flex-col overflow-hidden">
-      {/* Am Telefon gibt es keine Fensterknöpfe zu bedienen, und die Leiste
-          läge unter der Statusleiste des Systems. Der sichere Bereich oben
-          wird stattdessen vom Rahmen selbst freigehalten. */}
+      {/* on a phone there are no window buttons to operate, and the bar would
+          lie under the status bar of the system. the safe area at the top is
+          kept clear by the frame itself instead. */}
       <div className="hidden md:block">
         <TitleBar />
       </div>
       <div className="relative flex min-h-0 flex-1">
         <Sidebar />
 
-        {/* Ruhiger Canvas statt Verlauf: Die Tiefe entsteht im MorgenWeb-Design
-            aus den Karten darauf, nicht aus dem Hintergrund.
+        {/* a calm canvas instead of a gradient: in the morgenweb design the
+            depth comes from the cards on it, not from the background.
 
-            Die Fläche liegt als abgerundete Insel im Fensterrahmen. Sichtbar
-            wird die Rundung nur, weil Rahmen (Titelleiste, Seitenleiste,
-            Player) und Inhalt verschiedene Töne tragen.
+            the surface lies in the window frame as a rounded island. the
+            rounding becomes visible only because frame (title bar, sidebar,
+            player) and content carry different tones.
 
-            Fläche und Blätterbereich sind getrennt, damit die Rundung beim
-            Blättern nicht mitwandert. Die Bildlaufleiste steht innen auf der
-            Fläche. */}
+            surface and scrolling area are kept apart so the rounding does not
+            travel along while scrolling. the scrollbar stands inside on the
+            surface. */}
         <div className="relative min-w-0 flex-1 md:mt-2 md:me-3 md:mb-3 md:ms-3">
           <div
             className="sunken-panel absolute inset-0 bg-ink-950 md:rounded-xl"
@@ -119,18 +114,17 @@ export function App() {
             ref={blaetterbereich}
             className="relative h-full overflow-y-auto"
           >
-            {/* Der Schlüssel am Pfad baut diesen Bereich bei jedem Wechsel
-                neu auf. Das ist gleich zweierlei wert: Die Einblendung läuft
-                erneut an, und ein stehengebliebener Fehler wird dabei
-                abgeräumt. */}
+            {/* the key on the path rebuilds this area at every change. that
+                is worth two things at once: the fade-in runs again, and an
+                error left standing is cleared out along the way. */}
             <div
               key={location.pathname}
               className="animate-page mx-auto max-w-6xl px-4 py-4 pb-6 md:px-6 md:py-6 md:pb-10"
             >
-              {/* Das Netz sitzt um den Seiteninhalt, nicht um die ganze App:
-                  Stolpert eine Seite, bleiben Seitenleiste und Player
-                  bedienbar, die Musik läuft weiter, und der Weg zurück ist
-                  einen Klick entfernt. */}
+              {/* the net sits around the page content, not around the whole
+                  app: does a page stumble, sidebar and player stay operable,
+                  the music keeps running, and the way back is one click
+                  away. */}
               <ErrorBoundary scope={t("Diese Seite")}>
                 <Routes>
                   <Route path="/" element={<Home />} />
