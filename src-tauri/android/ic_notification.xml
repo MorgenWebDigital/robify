@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Das Robify-Zeichen als Symbol für die Benachrichtigung.
+
+    Android zeichnet das kleine Symbol einer Benachrichtigung nur als Umriss:
+    Die Farbe kommt vom System, übrig bleibt die Alphamaske. Das Startsymbol
+    der App taugt dafür nicht, seine Fläche ist deckend und ergäbe ein weißes
+    Viereck. Diese Fassung ist von Haus aus eine Silhouette — dieselbe
+    Zeichnung wie `icons/robify-logo.svg`, nur in der Schreibweise, die
+    Android für Vektoren kennt: keine Rechtecke, keine Ellipsen, nur Pfade.
+
+    Liegt hier und nicht unter `gen/android`, weil dieses Verzeichnis bei
+    jedem `tauri android init` neu entsteht; hineingelegt wird es von
+    scripts/android-nachruesten.mjs.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <!-- Rückt die Zeichnung in die Feldmitte und zieht sie auf, wie im SVG. -->
+    <group android:translateX="256" android:translateY="256">
+        <group android:scaleX="1.45" android:scaleY="1.45">
+            <group android:translateX="-204" android:translateY="-288">
+                <!-- Balken über beiden Hälsen, ansteigend. -->
+                <path
+                    android:fillColor="#FFFFFFFF"
+                    android:pathData="M150,214 L338,166 v52 L150,266 z" />
+                <!-- Hälse, als Pfad statt als Rechteck. -->
+                <path
+                    android:fillColor="#FFFFFFFF"
+                    android:pathData="M150,214 h26 v150 h-26 z" />
+                <path
+                    android:fillColor="#FFFFFFFF"
+                    android:pathData="M312,172.64 h26 v143.36 h-26 z" />
+                <!-- Notenköpfe, gekippt wie in der Notenschrift. Ein Kreis
+                     aus zwei Halbbögen; eine Ellipse kennt das Format nicht. -->
+                <group
+                    android:pivotX="120"
+                    android:pivotY="366"
+                    android:rotation="-20">
+                    <path
+                        android:fillColor="#FFFFFFFF"
+                        android:pathData="M68,366 a52,40 0 1,0 104,0 a52,40 0 1,0 -104,0 z" />
+                </group>
+                <group
+                    android:pivotX="282"
+                    android:pivotY="318"
+                    android:rotation="-20">
+                    <path
+                        android:fillColor="#FFFFFFFF"
+                        android:pathData="M230,318 a52,40 0 1,0 104,0 a52,40 0 1,0 -104,0 z" />
+                </group>
+            </group>
+        </group>
+    </group>
+</vector>

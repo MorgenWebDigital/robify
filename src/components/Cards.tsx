@@ -3,10 +3,11 @@ import { t } from "../lib/i18n";
 import { api } from "../lib/api";
 import { albumCover, playlistCover } from "../lib/cover";
 import { formatDuration, plural, releaseLabel } from "../lib/format";
+import { mixName } from "../lib/mix";
 import { Cover } from "./Cover";
 import { ArtistAvatar } from "./ArtistEditor";
 import { ChevronLeftIcon, PlaylistIcon, PlayIcon } from "./Icons";
-import type { Album, Artist, Playlist } from "../types";
+import type { Album, Artist, Playlist, WeeklyMixSummary } from "../types";
 
 export function AlbumCard({ album }: { album: Album }) {
   const play = async (event: React.MouseEvent) => {
@@ -49,6 +50,36 @@ export function AlbumCard({ album }: { album: Album }) {
         {[releaseLabel(album.releaseType), album.year, album.artistName]
           .filter(Boolean)
           .join(" · ")}
+      </p>
+    </Link>
+  );
+}
+
+/**
+ * Ein Wochenmix als Kachel, in derselben Form wie ein Release.
+ *
+ * Steht in den Karten und nicht auf der Startseite, weil zwei Seiten sie
+ * zeigen: die Startseite als Vorschau, die Übersicht als vollständige Liste.
+ */
+export function MixKachel({ mix }: { mix: WeeklyMixSummary }) {
+  return (
+    <Link
+      to={`/mix/${mix.offset}`}
+      className="group rounded-xl p-3 transition hover:bg-ink-800"
+    >
+      <div className="relative">
+        <PlaylistMosaic
+          albumIds={mix.coverAlbumIds}
+          name={mixName(mix)}
+          size="aspect-square w-full"
+        />
+        <span className="accent-bg absolute end-2 bottom-2 grid h-10 w-10 translate-y-2 place-items-center rounded-full opacity-0 shadow-xl transition group-hover:translate-y-0 group-hover:opacity-100">
+          <PlayIcon size={18} className="ml-0.5" />
+        </span>
+      </div>
+      <p className="mt-3 truncate text-sm font-medium">{mixName(mix)}</p>
+      <p className="truncate text-xs text-mute">
+        {mix.offset === 0 ? t("Diese Woche") : plural(mix.trackCount, "Titel")}
       </p>
     </Link>
   );
@@ -311,16 +342,32 @@ const GRID_COLUMNS = {
   lg: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
 } as const;
 
+/*
+ * Aufteilung für eine Vorschau von genau drei Kacheln neben „Alle ansehen“.
+ *
+ * Wie `md`, nur auf dem Telefon dreispaltig statt zweispaltig: Zwei Spalten
+ * ließen die dritte Kachel allein in einer zweiten Reihe stehen, und das sieht
+ * nach einer abgeschnittenen Liste aus, nicht nach einer Auswahl.
+ *
+ * Als eigene Angabe und nicht als vierte Größe: `GridSize` steht auch in den
+ * Einstellungen für die Kachelgröße der Playlists, und dort gibt es nur drei.
+ */
+const VORSCHAU_SPALTEN = "grid-cols-3 lg:grid-cols-4 xl:grid-cols-5";
+
 export type GridSize = keyof typeof GRID_COLUMNS;
 
 export function Grid({
   children,
   size = "md",
+  vorschau = false,
 }: {
   children: React.ReactNode;
   size?: GridSize;
+  /** Drei Kacheln als Ausschnitt, der Rest hinter „Alle ansehen“. */
+  vorschau?: boolean;
 }) {
-  return <div className={`grid gap-1 ${GRID_COLUMNS[size]}`}>{children}</div>;
+  const spalten = vorschau ? VORSCHAU_SPALTEN : GRID_COLUMNS[size];
+  return <div className={`grid gap-1 ${spalten}`}>{children}</div>;
 }
 
 /** Playlist als Zeile, dieselben Angaben, nur platzsparend. */

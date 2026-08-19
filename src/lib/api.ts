@@ -279,6 +279,19 @@ export function errorMessage(error: unknown): string {
         ? error.message
         : String(error);
 
+  return meldungText(roh);
+}
+
+/**
+ * Übersetzt eine vom Rust-Teil gebaute Meldung.
+ *
+ * Nicht nur Fehler reisen so: Auch was ein Download gerade tut — „Quelle wird
+ * gelesen…“ — kommt als Vorlage samt Werten an und wird hier zu einem Satz in
+ * der eingestellten Sprache. Steht die Vorlage nicht in der Tabelle, gibt `t`
+ * sie unverändert zurück; eine wörtliche Meldung von yt-dlp bleibt also, wie
+ * sie ist.
+ */
+export function meldungText(roh: string): string {
   return roh
     .split(ABSATZ)
     .map((teil) => {

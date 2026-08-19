@@ -4,19 +4,27 @@ import { Link } from "react-router-dom";
 import {
   AlbumCard,
   Grid,
+  MixKachel,
   PageHeader,
-  PlaylistMosaic,
   SectionTitle,
 } from "../components/Cards";
 import { EmptyState } from "../components/EmptyState";
-import { PlayIcon, SparkIcon } from "../components/Icons";
+import { SparkIcon } from "../components/Icons";
 import { TrackList } from "../components/TrackList";
 import { api, fallback } from "../lib/api";
 import { begruessung, wochentagUndTag } from "../lib/datum";
 import { formatDuration, plural } from "../lib/format";
-import { mixName } from "../lib/mix";
 import { useLibrary } from "../store/library";
 import type { Album, Track, WeeklyMixSummary } from "../types";
+
+/**
+ * Wie viele Kacheln eine Vorschau auf der Startseite zeigt.
+ *
+ * Die Startseite ist ein Überblick, keine Liste. Drei Kacheln passen auf einem
+ * Telefon nebeneinander, ohne dass etwas abgeschnitten wirkt, und darunter
+ * beginnt sofort der nächste Abschnitt statt der fünften Reihe Alben.
+ */
+const VORSCHAU = 3;
 
 export function Home() {
   const revision = useLibrary((s) => s.revision);
@@ -39,7 +47,7 @@ export function Home() {
       setMixes(mixValue);
       setPlayed(playedValue);
       setRecent(recentValue);
-      setAlbums(albumValue.slice(0, 10));
+      setAlbums(albumValue);
     });
     return () => {
       cancelled = true;
@@ -96,39 +104,31 @@ export function Home() {
             </>
           )}
 
-          <SectionTitle>{t("Wochenmix")}</SectionTitle>
+          {/* Drei Kacheln, der Rest hinter „Alle ansehen“. Vorher lag hier
+              eine waagerechte Reihe mit bis zu zwölf Wochen zum Schieben; auf
+              einem Telefon sah man davon zweieinhalb und ahnte nicht, dass es
+              weiterging. */}
+          <SectionTitle
+            action={
+              mixes.length > VORSCHAU ? (
+                <Link
+                  to="/mixes"
+                  className="text-sm text-mute hover:text-fg hover:underline"
+                >
+                  {t("Alle ansehen")}
+                </Link>
+              ) : undefined
+            }
+          >
+            {t("Wochenmix")}
+          </SectionTitle>
 
           {mixes.length > 0 ? (
-            // Waagerechte Reihe: links die laufende Woche, rechts die älteren.
-            <ul className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2">
-              {mixes.map((mix) => (
-                <li key={mix.weekKey} className="w-40 shrink-0 snap-start">
-                  <Link
-                    to={`/mix/${mix.offset}`}
-                    className="group block rounded-xl p-2 transition hover:bg-ink-800"
-                  >
-                    <div className="relative">
-                      <PlaylistMosaic
-                        albumIds={mix.coverAlbumIds}
-                        name={mixName(mix)}
-                        size="h-36 w-36"
-                      />
-                      <span className="accent-bg absolute end-2 bottom-2 grid h-10 w-10 translate-y-2 place-items-center rounded-full opacity-0 shadow-xl transition group-hover:translate-y-0 group-hover:opacity-100">
-                        <PlayIcon size={16} />
-                      </span>
-                    </div>
-                    <p className="mt-2 truncate text-sm font-medium">
-                      {mixName(mix)}
-                    </p>
-                    <p className="truncate text-xs text-mute">
-                      {mix.offset === 0
-                        ? t("Diese Woche")
-                        : plural(mix.trackCount, "Titel")}
-                    </p>
-                  </Link>
-                </li>
+            <Grid vorschau>
+              {mixes.slice(0, VORSCHAU).map((mix) => (
+                <MixKachel key={mix.weekKey} mix={mix} />
               ))}
-            </ul>
+            </Grid>
           ) : (
             <p className="rounded-xl border border-dashed border-ink-700 px-5 py-8 text-center text-sm text-mute">
               {t("Der Wochenmix entsteht, sobald du etwas gehört hast.")}
@@ -139,18 +139,20 @@ export function Home() {
             <>
               <SectionTitle
                 action={
-                  <Link
-                    to="/library"
-                    className="text-sm text-mute hover:text-fg hover:underline"
-                  >
-                    {t("Alle ansehen")}
-                  </Link>
+                  albums.length > VORSCHAU ? (
+                    <Link
+                      to="/library"
+                      className="text-sm text-mute hover:text-fg hover:underline"
+                    >
+                      {t("Alle ansehen")}
+                    </Link>
+                  ) : undefined
                 }
               >
                 {t("Aus deiner Bibliothek")}
               </SectionTitle>
-              <Grid>
-                {albums.map((album) => (
+              <Grid vorschau>
+                {albums.slice(0, VORSCHAU).map((album) => (
                   <AlbumCard key={album.id} album={album} />
                 ))}
               </Grid>

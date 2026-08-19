@@ -17,6 +17,7 @@ import { ArtistsPage } from "./pages/ArtistsPage";
 import { DownloaderPage } from "./pages/DownloaderPage";
 import { Home } from "./pages/Home";
 import { LibraryPage } from "./pages/LibraryPage";
+import { MixesPage } from "./pages/MixesPage";
 import { PlaylistDetail } from "./pages/PlaylistDetail";
 import { FavoritesPage } from "./pages/FavoritesPage";
 import { PlaylistsPage } from "./pages/PlaylistsPage";
@@ -135,6 +136,7 @@ export function App() {
                   <Route path="/playlists" element={<PlaylistsPage />} />
                   <Route path="/favorites" element={<FavoritesPage />} />
                   <Route path="/playlist/:id" element={<PlaylistDetail />} />
+                  <Route path="/mixes" element={<MixesPage />} />
                   <Route path="/mix/:offset" element={<WeeklyMixDetail />} />
                   <Route path="/wrapped" element={<WrappedPage />} />
                   <Route path="/downloader" element={<DownloaderPage />} />

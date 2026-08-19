@@ -12,7 +12,7 @@ import { Auswahl } from "../components/Auswahl";
 import { MetadataForm } from "../components/MetadataEditor";
 import { Button, Field, inputClass, Modal } from "../components/Modal";
 import { DownloadHinweis } from "../components/Rechtliches";
-import { api, errorMessage, fallback } from "../lib/api";
+import { api, errorMessage, fallback, meldungText } from "../lib/api";
 import { formatBytes, formatTime, plural } from "../lib/format";
 import { useDownloader, type Job } from "../store/downloader";
 import { useLibrary } from "../store/library";
@@ -402,6 +402,79 @@ export function DownloaderPage() {
         </div>
       </section>
 
+      {jobs.length > 0 && (
+        <section className="mb-6">
+          <h2 className="mb-3 text-xl font-semibold tracking-tight">
+            {t("Downloads")}
+          </h2>
+          <ul className="space-y-2">
+            {jobs.map((job) => (
+              <li key={job.id} className="surface p-4">
+                <div className="flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{job.label}</p>
+                    {job.error ? (
+                      // Der Fehler ist das Wichtigste an einem gescheiterten
+                      // Auftrag und darf nicht in einer Zeile verschwinden:
+                      // Robify erklärt darin, woran es lag und was hilft, und
+                      // hängt die wörtliche Meldung der Quelle an. Abgeschnitten
+                      // blieb davon „Die Quelle hat den Zugriff abgelehnt (403).
+                      // Das k…“ übrig.
+                      <p className="text-xs text-mute">{job.error}</p>
+                    ) : (
+                      <p className="truncate text-xs text-mute">
+                        {job.outcome
+                          ? t("Fertig, Metadaten prüfen")
+                          : describe(job.progress)}
+                      </p>
+                    )}
+                  </div>
+
+                  {job.outcome ? (
+                    <Button
+                      onClick={() =>
+                        setReview({ job, metadata: job.outcome!.metadata })
+                      }
+                      variant="primary"
+                    >
+                      <CheckIcon size={16} />
+                      {t("Übernehmen")}
+                    </Button>
+                  ) : job.error ? (
+                    <Button
+                      onClick={() => removeJob(job.id)}
+                      variant="ghost"
+                      aria-label={t("Eintrag entfernen")}
+                    >
+                      <CloseIcon size={16} />
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => void api.cancelDownload(job.id)}
+                      variant="outline"
+                    >
+                      {t("Abbrechen")}
+                    </Button>
+                  )}
+                </div>
+
+                {!job.outcome && !job.error && (
+                  <div className="mt-3 h-1 overflow-hidden rounded-full bg-ink-700">
+                    <div
+                      className="h-full rounded-full transition-[width]"
+                      style={{
+                        width: `${job.progress?.percent ?? 0}%`,
+                        background: "var(--accent)",
+                      }}
+                    />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {plan && (
         <section className="surface mb-6 p-5">
           <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
@@ -485,87 +558,22 @@ export function DownloaderPage() {
                 <span className="shrink-0 text-xs text-mute tabular-nums">
                   {item.durationMs ? formatTime(item.durationMs) : "unbekannt"}
                 </span>
+                {/* Die Trefferliste geht weg, sobald einer davon geladen
+                    wird. Sie hat ihren Zweck erfüllt, und darunter stand
+                    bisher der Auftrag, den man erst durch zehn Treffer
+                    hindurch suchen musste. Die Liste kommt mit derselben
+                    Suche zurück. */}
                 <Button
-                  onClick={() => void download(item, item.title, false)}
+                  onClick={() => {
+                    setPlan(null);
+                    void download(item, item.title, false);
+                  }}
                   variant={item.alreadyInLibrary ? "ghost" : "outline"}
                   className="shrink-0"
                 >
                   <DownloadIcon size={16} />
                   {item.alreadyInLibrary ? t("Trotzdem") : t("Laden")}
                 </Button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {jobs.length > 0 && (
-        <section className="mb-6">
-          <h2 className="mb-3 text-xl font-semibold tracking-tight">
-            {t("Downloads")}
-          </h2>
-          <ul className="space-y-2">
-            {jobs.map((job) => (
-              <li key={job.id} className="surface p-4">
-                <div className="flex items-center gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{job.label}</p>
-                    {job.error ? (
-                      // Der Fehler ist das Wichtigste an einem gescheiterten
-                      // Auftrag und darf nicht in einer Zeile verschwinden:
-                      // Robify erklärt darin, woran es lag und was hilft, und
-                      // hängt die wörtliche Meldung der Quelle an. Abgeschnitten
-                      // blieb davon „Die Quelle hat den Zugriff abgelehnt (403).
-                      // Das k…“ übrig.
-                      <p className="text-xs text-mute">{job.error}</p>
-                    ) : (
-                      <p className="truncate text-xs text-mute">
-                        {job.outcome
-                          ? t("Fertig, Metadaten prüfen")
-                          : describe(job.progress)}
-                      </p>
-                    )}
-                  </div>
-
-                  {job.outcome ? (
-                    <Button
-                      onClick={() =>
-                        setReview({ job, metadata: job.outcome!.metadata })
-                      }
-                      variant="primary"
-                    >
-                      <CheckIcon size={16} />
-                      {t("Übernehmen")}
-                    </Button>
-                  ) : job.error ? (
-                    <Button
-                      onClick={() => removeJob(job.id)}
-                      variant="ghost"
-                      aria-label={t("Eintrag entfernen")}
-                    >
-                      <CloseIcon size={16} />
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={() => void api.cancelDownload(job.id)}
-                      variant="outline"
-                    >
-                      {t("Abbrechen")}
-                    </Button>
-                  )}
-                </div>
-
-                {!job.outcome && !job.error && (
-                  <div className="mt-3 h-1 overflow-hidden rounded-full bg-ink-700">
-                    <div
-                      className="h-full rounded-full transition-[width]"
-                      style={{
-                        width: `${job.progress?.percent ?? 0}%`,
-                        background: "var(--accent)",
-                      }}
-                    />
-                  </div>
-                )}
               </li>
             ))}
           </ul>
@@ -626,11 +634,22 @@ export function DownloaderPage() {
   );
 }
 
+/**
+ * Was der Auftrag gerade tut, in einem Satz.
+ *
+ * Die Zwischenstände kommen aus dem Rust-Teil als Vorlage samt Werten und
+ * werden hier übersetzt — vorher standen „Quelle wird gelesen…“ und
+ * „Metadaten werden gesucht…“ auch über einer englischen Oberfläche auf
+ * Deutsch.
+ */
 function describe(progress: DownloadProgress | null): string {
-  if (!progress) return "Wird vorbereitet…";
+  if (!progress) return t("Wird vorbereitet…");
   if (progress.status === "processing")
-    return progress.message ?? "Wird umgewandelt…";
-  if (progress.status === "starting") return progress.message ?? "Startet…";
+    return progress.message
+      ? meldungText(progress.message)
+      : t("Wird umgewandelt…");
+  if (progress.status === "starting")
+    return progress.message ? meldungText(progress.message) : t("Startet…");
 
   const parts = [`${Math.round(progress.percent)} %`];
   if (progress.totalBytes) {

@@ -332,6 +332,11 @@ h4 {
   .pill-bar > .pill-btn {
     height: calc(2.25rem - 2px);
     min-width: calc(2.25rem - 2px);
+    /* Enger an der Schrift: Vier Möglichkeiten mit ausgeschriebenen Namen —
+       „Alles“, „Letzter Monat“, „Letztes Jahr“, „Aus“ — füllten im Rückblick
+       jeden der 338 Bildpunkte bis zum Rand aus. Die Reihe sah gestopft aus,
+       und in einer Sprache mit längeren Wörtern liefe sie hinaus. */
+    padding-inline: 0.625rem;
   }
 
   /*

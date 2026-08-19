@@ -2390,7 +2390,12 @@ async fn ensure_playable<R: Runtime>(
             job_id,
             "processing",
             99.0,
-            Some(format!("{format} wird in ein abspielbares Format gebracht…")),
+            // Über die Vorlage, nicht fertig zusammengesetzt: Die Oberfläche
+            // setzt den Satz in ihrer Sprache zusammen.
+            Some(crate::meldung::bauen(
+                "{0} wird in ein abspielbares Format gebracht…",
+                &[&format],
+            )),
         ),
     );
 

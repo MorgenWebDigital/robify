@@ -253,7 +253,10 @@ class Wiedergabedienst : Service() {
                 .setContentText(Wiedergabe.kuenstler)
                 .setSubText(Wiedergabe.album.ifEmpty { null })
                 .setLargeIcon(Wiedergabe.cover)
-                .setSmallIcon(android.R.drawable.ic_media_play)
+                // Unser Zeichen, nicht das Dreieck des Systems: Es steht
+                // oben links in der Benachrichtigung, in der Statusleiste und
+                // im Player auf dem Sperrbildschirm.
+                .setSmallIcon(R.drawable.ic_notification)
                 .setContentIntent(oeffnen)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 // Der laufende Titel ist keine Nachricht, die man wegwischt.

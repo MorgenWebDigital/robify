@@ -56,6 +56,7 @@ const FERTIG = [
   "pages/FavoritesPage.tsx",
   "pages/Home.tsx",
   "pages/LibraryPage.tsx",
+  "pages/MixesPage.tsx",
   "pages/PlaylistDetail.tsx",
   "pages/PlaylistsPage.tsx",
   "pages/SettingsPage.tsx",

@@ -23,6 +23,8 @@ const YTDLP_FASSUNG = "0.18.1";
 const COMMONS_IO_FASSUNG = "2.16.1";
 /** Pfad zum Manifest der App; wird bei jedem `tauri android init` neu erzeugt. */
 const MANIFEST = "src-tauri/gen/android/app/src/main/AndroidManifest.xml";
+const DRAWABLE = "src-tauri/gen/android/app/src/main/res/drawable";
+const GRADLE_EIGENSCHAFTEN = "src-tauri/gen/android/gradle.properties";
 /** Fassung von `androidx.media`; bringt MediaSession und die Medientasten mit. */
 const MEDIA_FASSUNG = "1.7.0";
 
@@ -315,6 +317,10 @@ function systemplayerEinbinden() {
     join(PAKET_ORDNER, "Wiedergabe.kt"),
   );
 
+  // Das Zeichen für die Benachrichtigung. Ohne es stünde dort das Dreieck des
+  // Systems, dasselbe wie bei jeder anderen App, die Ton abspielt.
+  copyFileSync("src-tauri/android/ic_notification.xml", join(DRAWABLE, "ic_notification.xml"));
+
   const manifest = readFileSync(MANIFEST, "utf8");
   if (manifest.includes("Wiedergabedienst")) {
     console.log("Systemplayer: schon im Manifest");
@@ -504,9 +510,49 @@ function dateizugriffErbitten() {
   console.log("Dateizugriff: Recht ins Manifest getragen");
 }
 
+/**
+ * Hält den Speicherhunger des Baus im Zaum.
+ *
+ * Gradle startet einen Hintergrunddienst, der zwischen zwei Bauläufen stehen
+ * bleibt, und Kotlin einen zweiten daneben. Mit den Vorgabewerten belegten die
+ * beiden zusammen über ein Gigabyte, und das auf einem Rechner, auf dem
+ * nebenher noch etwas anderes läuft — beim Bauen ging dem Gerät der Speicher
+ * aus, samt Auslagerungsdatei.
+ *
+ * Anderthalb Gigabyte reichen für ein Projekt dieser Größe bequem; zwei
+ * gleichzeitige Arbeiter statt so vieler, wie der Rechner Kerne hat, kosten
+ * ein paar Sekunden und sparen ein Vielfaches davon an Speicher.
+ */
+function speicherZuegeln() {
+  const alt = readFileSync(GRADLE_EIGENSCHAFTEN, "utf8");
+  if (alt.includes("workers.max")) {
+    console.log("Speicher: Grenzen schon gesetzt");
+    return;
+  }
+
+  const neu = [
+    alt
+      .replace(
+        "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8",
+        "org.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8",
+      )
+      .trimEnd(),
+    "",
+    "# Grenzen von scripts/android-nachruesten.mjs, damit der Bau den Rechner",
+    "# nicht leerräumt.",
+    "org.gradle.workers.max=2",
+    "kotlin.daemon.jvmargs=-Xmx768m",
+    "",
+  ].join("\n");
+
+  writeFileSync(GRADLE_EIGENSCHAFTEN, neu);
+  console.log("Speicher: Grenzen für Gradle und Kotlin gesetzt");
+}
+
 zurueckKnopfAnschalten();
 zertifikatspruefungEinbinden();
 ytdlpEinbinden();
 systemplayerEinbinden();
 benachrichtigungenErbitten();
 dateizugriffErbitten();
+speicherZuegeln();
