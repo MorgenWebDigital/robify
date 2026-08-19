@@ -22,6 +22,7 @@ use jni::sys::{jint, JNI_VERSION_1_6};
 use jni::JavaVM;
 use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 /// Ist der Griff schon weitergereicht?
@@ -51,6 +52,56 @@ static WIEDERGABE_KLASSE: OnceLock<GlobalRef> = OnceLock::new();
 /// Die vorgemerkte Klasse für den Player des Systems.
 pub fn wiedergabe_klasse() -> Option<&'static GlobalRef> {
     WIEDERGABE_KLASSE.get()
+}
+
+/// Die Brückenklasse für Dateien aus der Auswahl von Android.
+static DATEIEN_KLASSE: OnceLock<GlobalRef> = OnceLock::new();
+
+/// Die vorgemerkte Klasse, die `content://`-Adressen zu Dateien macht.
+pub fn dateien_klasse() -> Option<&'static GlobalRef> {
+    DATEIEN_KLASSE.get()
+}
+
+/// Kopiert eine `content://`-Adresse in den Zielordner.
+///
+/// Die Dateiauswahl von Android gibt keinen Pfad zurück, sondern eine Adresse,
+/// hinter der genauso gut ein Eintrag in einer Cloud stehen kann. Erst die
+/// Kopie ist eine Datei, die sich einlesen lässt.
+pub fn datei_holen(adresse: &str, zielordner: &Path) -> Option<PathBuf> {
+    holen_versuchen(adresse, zielordner).ok().filter(|p| p.is_file())
+}
+
+fn holen_versuchen(adresse: &str, zielordner: &Path) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    use jni::objects::{JObject, JString, JValue};
+
+    let klasse = dateien_klasse().ok_or("Die Brücke zu den Dateien fehlt")?;
+
+    let kontext = ndk_context::android_context();
+    let vm = unsafe { JavaVM::from_raw(kontext.vm().cast()) }?;
+    let mut env = vm.attach_current_thread()?;
+    let anwendung = unsafe { JObject::from_raw(kontext.context().cast()) };
+
+    let adresse = env.new_string(adresse)?;
+    let ordner = env.new_string(zielordner.to_string_lossy().as_ref())?;
+
+    let ergebnis = env
+        .call_static_method(
+            klasse,
+            "holen",
+            "(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;",
+            &[
+                JValue::Object(&anwendung),
+                JValue::Object(&adresse),
+                JValue::Object(&ordner),
+            ],
+        )?
+        .l()?;
+
+    let pfad: String = env.get_string(&JString::from(ergebnis))?.into();
+    if pfad.is_empty() {
+        return Err("Die Datei ließ sich nicht holen".into());
+    }
+    Ok(PathBuf::from(pfad))
 }
 
 /// Der Stamm des Gerätespeichers, meist `/storage/emulated/0`.
@@ -163,6 +214,9 @@ fn umgebung_weiterreichen(vm: &JavaVM) -> Result<(), Box<dyn std::error::Error>>
 
     let anzeige = env.find_class("de/robify/player/Wiedergabe")?;
     let _ = WIEDERGABE_KLASSE.set(env.new_global_ref(&anzeige)?);
+
+    let dateien = env.find_class("de/robify/player/Dateien")?;
+    let _ = DATEIEN_KLASSE.set(env.new_global_ref(&dateien)?);
 
     // Landet im Systemprotokoll und ist beim Suchen nach Tonproblemen die
     // erste Zeile, nach der man schaut.

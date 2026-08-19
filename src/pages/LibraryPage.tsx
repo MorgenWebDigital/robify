@@ -285,39 +285,62 @@ export function LibraryPage() {
 
         {/* Ein Knopf, zwei Wege: Ein ganzer Ordner ist der übliche Fall,
             einzelne Dateien braucht man trotzdem. Zwei Knöpfe nebeneinander
-            wären dafür zu viel. */}
-        <Menu
-          align="left"
-          items={[
-            {
-              label: t("Ordner wählen …"),
-              icon: <FolderIcon size={16} />,
-              onSelect: () => void importFolder(),
-            },
-            {
-              label: t("Einzelne Dateien wählen …"),
-              icon: <PlusIcon size={16} />,
-              onSelect: () => void importFiles(),
-            },
-          ]}
-          trigger={({ toggle }) => (
-            <button
-              type="button"
-              onClick={toggle}
-              disabled={importing}
-              title={importing ? t("Importiere…") : t("Importieren")}
-              className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
-            >
-              <FolderIcon size={16} />
-              <span className="beschriftung truncate">
-                {importing ? t("Importiere…") : t("Importieren")}
-              </span>
-              {/* Der Pfeil gehört zur Beschriftung: Im Kreis säße er neben dem
-                  Ordner und machte aus dem Zeichen ein Gedränge. */}
-              <ChevronDownIcon size={14} className="beschriftung" />
-            </button>
-          )}
-        />
+            wären dafür zu viel.
+
+            Auf dem Telefon gibt es nur einen Weg: Android hat keine
+            Ordnerauswahl, die Tauri anbieten könnte — der Aufruf endete dort
+            wortwörtlich mit „Folder picker is not implemented on mobile“.
+            Dann soll der Knopf auch kein Menü aufklappen, in dem eine von
+            zwei Möglichkeiten sicher scheitert; er führt direkt zur
+            Dateiauswahl. Ganze Ordner kommen dort über „Eigene Songs“
+            herein. */}
+        {settings?.festeOrte ? (
+          <button
+            type="button"
+            onClick={() => void importFiles()}
+            disabled={importing}
+            title={importing ? t("Importiere…") : t("Dateien wählen")}
+            className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
+          >
+            <FolderIcon size={16} />
+            <span className="beschriftung truncate">
+              {importing ? t("Importiere…") : t("Dateien wählen")}
+            </span>
+          </button>
+        ) : (
+          <Menu
+            align="left"
+            items={[
+              {
+                label: t("Ordner wählen …"),
+                icon: <FolderIcon size={16} />,
+                onSelect: () => void importFolder(),
+              },
+              {
+                label: t("Einzelne Dateien wählen …"),
+                icon: <PlusIcon size={16} />,
+                onSelect: () => void importFiles(),
+              },
+            ]}
+            trigger={({ toggle }) => (
+              <button
+                type="button"
+                onClick={toggle}
+                disabled={importing}
+                title={importing ? t("Importiere…") : t("Importieren")}
+                className="pill-btn is-raised aktionsknopf aktionsknopf-kurz"
+              >
+                <FolderIcon size={16} />
+                <span className="beschriftung truncate">
+                  {importing ? t("Importiere…") : t("Importieren")}
+                </span>
+                {/* Der Pfeil gehört zur Beschriftung: Im Kreis säße er neben
+                    dem Ordner und machte aus dem Zeichen ein Gedränge. */}
+                <ChevronDownIcon size={14} className="beschriftung" />
+              </button>
+            )}
+          />
+        )}
 
         {/* Die Suche als Knopf, links neben dem Abspielen. Vorn stand sie im
             Weg: Auf einem Telefon nahm sie die halbe Reihe und war trotzdem

@@ -317,6 +317,9 @@ function systemplayerEinbinden() {
     join(PAKET_ORDNER, "Wiedergabe.kt"),
   );
 
+  // Macht aus einer Adresse der Dateiauswahl eine Datei mit Pfad.
+  copyFileSync("src-tauri/android/Dateien.kt", join(PAKET_ORDNER, "Dateien.kt"));
+
   // Das Zeichen für die Benachrichtigung. Ohne es stünde dort das Dreieck des
   // Systems, dasselbe wie bei jeder anderen App, die Ton abspielt.
   copyFileSync("src-tauri/android/ic_notification.xml", join(DRAWABLE, "ic_notification.xml"));

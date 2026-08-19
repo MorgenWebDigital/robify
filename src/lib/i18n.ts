@@ -3386,6 +3386,14 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "تعذّرت الكتابة إلى الحافظة.",
     zh: "无法写入剪贴板。",
   },
+  "Dateien wählen": {
+    en: "Choose files",
+    es: "Elegir archivos",
+    fr: "Choisir des fichiers",
+    ru: "Выбрать файлы",
+    ar: "اختيار ملفات",
+    zh: "选择文件",
+  },
   "Wochenmix {0}": {
     en: "Weekly Mix {0}",
     es: "Mezcla semanal {0}",

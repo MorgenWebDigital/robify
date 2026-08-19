@@ -27,7 +27,7 @@ use tauri::{Emitter, Manager};
 /// Der Name steht fest und wandert nicht mit der Sprache der Oberfläche mit:
 /// Ein Ordner, der beim Umschalten auf Englisch plötzlich anders heißt, ließe
 /// die darin abgelegten Dateien verwaist zurück.
-const EIGENE_SONGS: &str = "Eigene Songs";
+pub(crate) const EIGENE_SONGS: &str = "Eigene Songs";
 
 /// Kennung vor Version 0.1.0.
 ///

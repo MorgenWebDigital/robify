@@ -30,13 +30,47 @@ pub fn library_stats(state: State<'_, AppState>) -> CmdResult<LibraryStats> {
     Ok(library::library_stats(&conn)?)
 }
 
+/// Was die Dateiauswahl von Android zurückgibt, statt eines Pfades.
+const INHALTSADRESSE: &str = "content://";
+
+/// Macht aus dem, was die Dateiauswahl liefert, einlesbare Pfade.
+///
+/// Auf dem Rechner ist ein gewählter Eintrag ein Pfad und bleibt es. Auf einem
+/// Telefon nicht: Dort kommt eine Adresse wie
+/// `content://com.android.externalstorage.documents/document/primary%3A…`
+/// zurück, hinter der genauso gut ein Eintrag in einer Cloud stehen kann. Wer
+/// sie als Pfad behandelt, findet nichts — die Auswahl endete bisher wortlos
+/// mit „0 Titel importiert“.
+fn adressen_aufloesen(_state: &AppState, paths: Vec<String>) -> Vec<PathBuf> {
+    paths
+        .into_iter()
+        .filter_map(|eintrag| {
+            if !eintrag.starts_with(INHALTSADRESSE) {
+                return Some(PathBuf::from(eintrag));
+            }
+
+            #[cfg(target_os = "android")]
+            {
+                // Derselbe Ordner, in den man eigene Musik auch von Hand legt.
+                let ziel = _state.library_dir().join(crate::EIGENE_SONGS);
+                crate::android::datei_holen(&eintrag, &ziel)
+            }
+
+            // Anderswo gibt es solche Adressen nicht; kämen sie doch, wäre
+            // ein übersprungener Eintrag besser als ein Pfad ins Leere.
+            #[cfg(not(target_os = "android"))]
+            None
+        })
+        .collect()
+}
+
 #[tauri::command]
 pub fn scan_folders(
     app: AppHandle,
     state: State<'_, AppState>,
     paths: Vec<String>,
 ) -> CmdResult<ScanResult> {
-    let roots: Vec<PathBuf> = paths.into_iter().map(PathBuf::from).collect();
+    let roots: Vec<PathBuf> = adressen_aufloesen(&state, paths);
     let result = scanner::scan(&app, &state.db, roots)?;
 
     // Ein Scan bringt oft viele Künstler auf einmal mit. Die Obergrenze
