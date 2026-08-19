@@ -18,3 +18,6 @@ src-tauri/gen/android/
 src-tauri/gen/apple/
 *.keystore
 key.properties
+
+# Beiseitegelegtes: gehört nicht ins Veröffentlichte.
+Archive/
