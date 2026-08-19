@@ -3310,6 +3310,15 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "تمت إضافة {0} إلى «{1}»",
     zh: "已将 {0} 添加到“{1}”",
   },
+  "Eigene Dateien kannst du in „Robify/Eigene Songs“ ablegen; beim nächsten Start kommen sie dazu.":
+    {
+      en: "Put your own files in “Robify/Eigene Songs”; they join the library on the next start.",
+      es: "Puedes poner tus propios archivos en «Robify/Eigene Songs»; se añadirán en el próximo inicio.",
+      fr: "Tu peux déposer tes propres fichiers dans « Robify/Eigene Songs » ; ils s'ajouteront au prochain démarrage.",
+      ru: "Свои файлы можно положить в «Robify/Eigene Songs» — при следующем запуске они попадут в библиотеку.",
+      ar: "يمكنك وضع ملفاتك الخاصة في «Robify/Eigene Songs»، وستُضاف عند التشغيل التالي.",
+      zh: "你可以把自己的文件放进“Robify/Eigene Songs”，下次启动时会自动加入。",
+    },
   "Die Titel liegen im Ordner „Robify“ im Gerätespeicher, alles Übrige im Ordner „.robify“ daneben.":
     {
       en: "Tracks live in the “Robify” folder on the device storage, everything else in “.robify” beside it.",

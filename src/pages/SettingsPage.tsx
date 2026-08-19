@@ -200,11 +200,18 @@ export function SettingsPage() {
               wählen. Statt eines Feldes, das nur seinen eigenen Pfad zeigt,
               ein Satz, der sagt, wo die Musik liegt. */}
           {settings.festeOrte ? (
-            <p className="text-sm text-mute">
-              {t(
-                "Die Titel liegen im Ordner „Robify“ im Gerätespeicher, alles Übrige im Ordner „.robify“ daneben.",
-              )}
-            </p>
+            <div className="space-y-1.5 text-sm text-mute">
+              <p>
+                {t(
+                  "Die Titel liegen im Ordner „Robify“ im Gerätespeicher, alles Übrige im Ordner „.robify“ daneben.",
+                )}
+              </p>
+              <p>
+                {t(
+                  "Eigene Dateien kannst du in „Robify/Eigene Songs“ ablegen; beim nächsten Start kommen sie dazu.",
+                )}
+              </p>
+            </div>
           ) : (
             <Field
               label={t("Zielordner")}

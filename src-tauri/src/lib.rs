@@ -20,7 +20,14 @@ use state::AppState;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::http::{Response, StatusCode};
-use tauri::Manager;
+use tauri::{Emitter, Manager};
+
+/// Ordner im Musikordner, in den man eigene Dateien legt.
+///
+/// Der Name steht fest und wandert nicht mit der Sprache der Oberfläche mit:
+/// Ein Ordner, der beim Umschalten auf Englisch plötzlich anders heißt, ließe
+/// die darin abgelegten Dateien verwaist zurück.
+const EIGENE_SONGS: &str = "Eigene Songs";
 
 /// Kennung vor Version 0.1.0.
 ///
@@ -178,6 +185,45 @@ fn beschreibbar(ordner: &Path) -> bool {
     gelungen
 }
 
+/// Liest ein, was seit dem letzten Mal im Ordner „Eigene Songs“ gelandet ist.
+///
+/// Der Ordner ist der Weg für Musik, die nicht über den Downloader kommt:
+/// Dateien vom Rechner, aus einer anderen App, von einer Speicherkarte. Wer
+/// etwas hineinlegt, soll es beim nächsten Öffnen in der Bibliothek finden,
+/// ohne irgendwo einen Knopf zu suchen.
+///
+/// Nur das Neue: Für jede Datei wären sonst bei jedem Start die Tags zu lesen,
+/// und das ist bei ein paar hundert Titeln eine spürbare Wartezeit. Was schon
+/// in der Bibliothek steht, bleibt unangetastet.
+///
+/// Die Dateien bleiben liegen, wo sie sind. Sie in Künstler- und Albumordner
+/// einzusortieren wäre ordentlicher, nähme aber jemandem, der seine Sammlung
+/// selbst ordnet, genau diese Ordnung weg.
+fn eigene_songs_einlesen(app: &tauri::AppHandle, ordner: &Path) -> usize {
+    let state = app.state::<AppState>();
+    let bekannt = {
+        let conn = state.db.lock();
+        library::known_paths(&conn).unwrap_or_default()
+    };
+
+    let neue: Vec<std::path::PathBuf> = scanner::collect_audio_files(&[ordner.to_path_buf()])
+        .into_iter()
+        .filter(|pfad| !bekannt.contains(pfad.to_string_lossy().as_ref()))
+        .collect();
+
+    let mut gelesen = 0;
+    for pfad in neue {
+        // Die Sperre je Datei nehmen und wieder abgeben: Der Player und die
+        // Oberfläche greifen währenddessen weiter auf dieselbe Datenbank zu.
+        let conn = state.db.lock();
+        match scanner::import_file(&conn, &pfad, Some("lokal")) {
+            Ok(_) => gelesen += 1,
+            Err(fehler) => eprintln!("{} nicht eingelesen: {fehler}", pfad.display()),
+        }
+    }
+    gelesen
+}
+
 /// Bedient `robify://localhost/cover/album/<id>` bzw. `/cover/track/<id>`.
 /// Cover werden so direkt aus der Datenbank ausgeliefert, ohne sie als
 /// Base64 durch die IPC-Brücke zu schicken.
@@ -322,6 +368,14 @@ pub fn run() {
 
             let player = player::spawn(handle.clone(), db_path.clone())?;
 
+            // Der Ablageordner für eigene Dateien. Angelegt wird er auch dann,
+            // wenn niemand ihn benutzt: Ein leerer Ordner mit klarem Namen
+            // sagt, wohin die eigene Musik gehört; ein fehlender sagt nichts.
+            let eigene = feste_orte.then(|| default_library_dir.join(EIGENE_SONGS));
+            if let Some(ordner) = &eigene {
+                let _ = std::fs::create_dir_all(ordner);
+            }
+
             app.manage(AppState {
                 db: parking_lot::Mutex::new(conn),
                 db_path,
@@ -331,6 +385,19 @@ pub fn run() {
                 player,
                 downloads: Arc::new(downloader::DownloadRegistry::default()),
             });
+
+            // Im Hintergrund: Tags zu lesen dauert, und der Start soll darauf
+            // nicht warten. Der Zustand steht schon, der Faden findet ihn.
+            if let Some(ordner) = eigene {
+                let nebenher = handle.clone();
+                std::thread::spawn(move || {
+                    let gelesen = eigene_songs_einlesen(&nebenher, &ordner);
+                    if gelesen > 0 {
+                        eprintln!("{gelesen} eigene Titel eingelesen");
+                        let _ = nebenher.emit("library:changed", ());
+                    }
+                });
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
