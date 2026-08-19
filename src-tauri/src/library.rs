@@ -1,3 +1,6 @@
+//! everything the library holds: artists, albums, tracks, playlists and the
+//! queries the ui reads them through.
+
 use crate::db::{key_of, now};
 use crate::models::*;
 use anyhow::{anyhow, Result};
@@ -18,14 +21,14 @@ JOIN artists ar ON ar.id = t.artist_id
 JOIN albums  al ON al.id = t.album_id
 "#;
 
-/// Trennzeichen für mehrere Künstler in einem Textfeld.
+/// separator for several artists inside one text field.
 const ARTIST_SEPARATOR: char = ';';
 
-/// Wörter, hinter denen Gastkünstler folgen.
+/// words that guest artists follow.
 const FEATURE_MARKERS: [&str; 5] = [" feat. ", " feat ", " ft. ", " ft ", " featuring "];
 
-/// Zerlegt „A; B; C“ in einzelne Namen. Kommas und Ampersands bleiben
-/// unangetastet, sonst zerfielen Bandnamen wie „Earth, Wind & Fire“.
+/// splits "A; B; C" into single names. commas and ampersands stay untouched,
+/// otherwise band names such as "Earth, Wind & Fire" would fall apart.
 pub fn split_artists(value: &str) -> Vec<String> {
     value
         .split(ARTIST_SEPARATOR)
@@ -39,8 +42,8 @@ pub fn join_artists(names: &[String]) -> String {
     names.join("; ")
 }
 
-/// Trennt ein Künstlerfeld in Haupt- und Gastkünstler. Ein enthaltenes
-/// „feat.“ schiebt alles Folgende zu den Gästen.
+/// splits an artist field into lead and guest artists. a "feat." inside it
+/// pushes everything after it over to the guests.
 pub fn parse_artist_field(value: &str) -> (Vec<String>, Vec<String>) {
     let lower = value.to_lowercase();
     for marker in FEATURE_MARKERS {
@@ -53,12 +56,13 @@ pub fn parse_artist_field(value: &str) -> (Vec<String>, Vec<String>) {
     (split_artists(value), Vec::new())
 }
 
-/// Hinweise auf die Machart, die im Songtitel nichts zu suchen haben.
-/// Gastkünstler stehen ebenfalls in Klammern und bleiben deshalb erhalten,
-/// entfernt wird nur, was ausschließlich aus diesen Wörtern besteht.
+/// hints about the production that have no business in a song title.
+///
+/// guest artists stand in brackets as well and are therefore kept, only what
+/// consists of nothing but these words is removed.
 const TITLE_TAGS: [&str; 21] = [
     "official",
-    // Deutsche Uploads schreiben „(Offizielles Video)“.
+    // german uploads write "(Offizielles Video)"
     "offiziell",
     "offizielle",
     "offizielles",
@@ -81,7 +85,7 @@ const TITLE_TAGS: [&str; 21] = [
     "remastered",
 ];
 
-/// Entfernt Klammerzusätze, die nur die Machart beschreiben.
+/// strips bracketed suffixes that only describe the production.
 fn strip_title_tags(raw: &str) -> String {
     let mut out = String::with_capacity(raw.len());
     let mut rest = raw;
@@ -94,7 +98,7 @@ fn strip_title_tags(raw: &str) -> String {
         let inner = &rest[start + 1..start + offset];
 
         out.push_str(&rest[..start]);
-        // Nur wegwerfen, wenn ausschließlich Machart-Wörter drinstehen.
+        // throw away only where nothing but production words stand inside
         let nur_hinweise = !inner.trim().is_empty()
             && crate::online::normalize_words(inner)
                 .split(' ')
@@ -110,20 +114,20 @@ fn strip_title_tags(raw: &str) -> String {
     out.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// Zerlegt einen Videotitel der Form „Künstler - Titel“.
+/// splits a video title of the form "artist - title".
 ///
-/// Nötig, weil Lyric-, Sampler- und Repost-Kanäle keine Musikfelder mitgeben:
-/// Dort steckt beides im Titel, und ohne Zerlegung landet der ganze Videotitel
-/// als Songtitel und der Kanalname als Künstler in der Bibliothek.
+/// needed because lyric, sampler and repost channels supply no music fields:
+/// both sit in the title there, and without splitting the entire video title
+/// lands in the library as the song title and the channel name as the artist.
 ///
-/// Steht der Kanalname auf der rechten Seite („Oft Gefragt - AnnenMayKantereit“),
-/// sind die Hälften vertauscht, dann wird gedreht.
+/// where the channel name stands on the right ("Oft Gefragt -
+/// AnnenMayKantereit") the halves are swapped, and it turns them around.
 pub fn split_video_title(raw: &str, uploader: Option<&str>) -> Option<(String, String)> {
     let cleaned = strip_title_tags(raw);
 
-    // Auch mit Leerzeichen nur auf einer Seite: „The Killers- Mr. Brightside“
-    // blieb sonst ungetrennt, und der Kanalname wurde zum Künstler. Ein
-    // blanker Bindestrich fehlt bewusst, er steckt in „Jay-Z“ und „T-Pain“.
+    // with a space on one side only too: "The Killers- Mr. Brightside" stayed
+    // unsplit otherwise and the channel name became the artist. a bare hyphen
+    // is deliberately absent, it sits inside "Jay-Z" and "T-Pain"
     for separator in [
         " - ", " – ", ", ", " -- ", " | ", " ~ ", " • ", "- ", "– ", " -", " –",
     ] {
@@ -155,9 +159,10 @@ pub fn split_video_title(raw: &str, uploader: Option<&str>) -> Option<(String, S
     None
 }
 
-/// Macht aus einem Kanalnamen den vermuteten Künstlernamen.
-/// YouTube hängt an automatisch erzeugte Kanäle „ - Topic“ an, Labelkanäle
-/// enden oft auf „VEVO“.
+/// turns a channel name into the presumed artist name.
+///
+/// youtube appends " - Topic" to automatically generated channels, and label
+/// channels often end in "VEVO".
 fn channel_to_artist(name: &str) -> String {
     let mut cleaned = name.trim();
     for suffix in [" - Topic", " - topic", " - TOPIC"] {
@@ -174,12 +179,12 @@ fn channel_to_artist(name: &str) -> String {
     cleaned
 }
 
-/// Stellt den Künstler nach vorn, unter dessen Konto der Titel veröffentlicht
-/// wurde, die Übrigen werden zu Gastkünstlern.
+/// moves the artist whose account published the track to the front, the
+/// others become guest artists.
 ///
-/// Greift nur, wenn der Kanal tatsächlich einem der Beteiligten entspricht.
-/// Bei Label-, Sampler- oder Repost-Kanälen bleibt die Reihenfolge, wie sie
-/// die Metadatenquelle geliefert hat.
+/// takes effect only where the channel actually matches one of the
+/// participants. with label, sampler or repost channels the order stays as
+/// the metadata source delivered it.
 pub fn promote_uploader(
     artist_field: &str,
     featured_field: Option<&str>,
@@ -198,7 +203,7 @@ pub fn promote_uploader(
 
     let position = everyone.iter().position(|name| {
         crate::online::looks_like_same(name, &uploader)
-            // Kanäle wie „PA69 Official“ enthalten den Namen als Wortfolge.
+            // channels such as "PA69 Official" carry the name as a word sequence
             || crate::online::contains_word_sequence(
                 &crate::online::normalize_for_match(&uploader),
                 &crate::online::normalize_for_match(name),
@@ -240,8 +245,8 @@ fn map_track(row: &Row) -> rusqlite::Result<Track> {
     })
 }
 
-/// Lädt die Beteiligten für eine ganze Trefferliste in einer Abfrage,
-/// sonst gäbe es pro Titel eine eigene Runde zur Datenbank.
+// loads the participants for a whole result list in one query, otherwise
+// there would be a round trip to the database per track
 fn attach_artists(conn: &Connection, tracks: &mut [Track]) -> Result<()> {
     if tracks.is_empty() {
         return Ok(());
@@ -281,7 +286,7 @@ fn attach_artists(conn: &Connection, tracks: &mut [Track]) -> Result<()> {
 
     for track in tracks.iter_mut() {
         track.artists = by_track.remove(&track.id).unwrap_or_else(|| {
-            // Fällt nur an, wenn die Verknüpfung fehlt, dann der Hauptkünstler.
+            // only comes up where the link is missing, then the lead artist
             vec![TrackArtist {
                 id: track.artist_id,
                 name: track.artist_name.clone(),
@@ -292,7 +297,7 @@ fn attach_artists(conn: &Connection, tracks: &mut [Track]) -> Result<()> {
     Ok(())
 }
 
-/// Schreibt die Beteiligten eines Titels neu.
+/// rewrites the participants of a track.
 pub fn set_track_artists(
     conn: &Connection,
     track_id: i64,
@@ -332,7 +337,7 @@ pub fn set_track_artists(
     Ok(primary)
 }
 
-// ---------------------------------------------------------------- Upserts
+// --- upserts ---
 
 pub fn upsert_artist(conn: &Connection, name: &str) -> Result<i64> {
     let name = crate::db::clean_text(name);
@@ -351,7 +356,7 @@ pub fn upsert_artist(conn: &Connection, name: &str) -> Result<i64> {
         return Ok(id);
     }
 
-    // Sortiername ohne führenden Artikel, damit "The Beatles" unter B steht.
+    // sort name without a leading article so "The Beatles" stands under b
     let sort_name = strip_leading_article(name);
     conn.execute(
         "INSERT INTO artists (name, sort_name, name_key, created_at) VALUES (?1, ?2, ?3, ?4)",
@@ -376,8 +381,8 @@ pub fn upsert_album(
     year: Option<i64>,
     release_type: Option<ReleaseType>,
 ) -> Result<i64> {
-    // Unsichtbare Zeichen aus fremden Titeln fliegen raus, sonst stehen
-    // zwei scheinbar gleiche Alben nebeneinander.
+    // invisible characters from foreign titles fly out, otherwise two
+    // seemingly equal albums stand next to each other
     let title = crate::db::clean_text(title);
     let title = if title.is_empty() {
         "Unbekanntes Album"
@@ -424,9 +429,9 @@ pub fn upsert_album(
 pub struct TrackInsert {
     pub path: String,
     pub title: String,
-    /// Rohes Künstlerfeld; darf mehrere Namen und ein „feat.“ enthalten.
+    /// raw artist field, may hold several names and a "feat.".
     pub artist: String,
-    /// Zusätzliche Gastkünstler, mit Semikolon getrennt.
+    /// additional guest artists, separated by semicolons.
     pub featured_artists: Option<String>,
     pub album: Option<String>,
     pub album_artist: Option<String>,
@@ -441,13 +446,11 @@ pub struct TrackInsert {
     pub source_url: Option<String>,
 }
 
-/// Legt einen Titel an bzw. aktualisiert ihn anhand des Dateipfads.
-/// Ohne Albumangabe landet der Titel in einem gleichnamigen Single-Release.
-/// Sucht einen früher entfernten Titel desselben Künstlers mit gleichem Namen.
-///
-/// Verglichen wird über `db::key_of`, also ohne Groß- und Kleinschreibung,
-/// Satzzeichen und unsichtbare Zeichen. Gibt es mehrere, gewinnt der zuletzt
-/// entfernte.
+// looks for a previously removed track of the same artist with the same name.
+//
+// the comparison runs through `db::key_of`, so without case, punctuation and
+// invisible characters. where several exist, the most recently removed one
+// wins
 fn entfernten_titel_finden(
     conn: &Connection,
     artist_id: i64,
@@ -473,16 +476,16 @@ fn entfernten_titel_finden(
         .map(|(id, _)| id))
 }
 
-/// Sucht einen bereits vorhandenen Titel desselben Künstlers mit gleichem
-/// Namen und ähnlicher Länge.
-///
-/// Der Name allein genügt nicht: Albumfassung und Single-Fassung heißen gleich
-/// und sind verschiedene Aufnahmen. Erst zusammen mit der Laufzeit wird daraus
-/// „derselbe Titel“, deshalb die Toleranz von fünf Sekunden, die Kodierungs-
-/// und Schnittunterschiede abdeckt, ohne einen Remix mit einzufangen.
-///
-/// Ist die Länge unbekannt (null), wird nicht zusammengelegt: Lieber ein
-/// doppelter Eintrag als ein verschluckter Titel.
+// looks for an already present track of the same artist with the same name
+// and a similar length.
+//
+// the name alone does not do: album version and single version carry the same
+// name and are different recordings. only together with the running time does
+// it become the same track, hence the tolerance of five seconds, which covers
+// differences in encoding and editing without catching a remix.
+//
+// where the length is unknown (zero) nothing is merged: better a duplicate
+// row than a swallowed track
 fn doppelten_titel_finden(
     conn: &Connection,
     artist_id: i64,
@@ -533,7 +536,7 @@ pub fn upsert_track(conn: &Connection, t: &TrackInsert) -> Result<i64> {
             }
         }
     }
-    // Wer schon Hauptkünstler ist, taucht nicht zusätzlich als Gast auf.
+    // whoever is already a lead artist does not show up as a guest as well
     featured.retain(|name| !main.contains(name));
 
     let track_artist_id = upsert_artist(conn, &main[0])?;
@@ -548,11 +551,11 @@ pub fn upsert_track(conn: &Connection, t: &TrackInsert) -> Result<i64> {
     };
     let album_id = upsert_album(conn, album_artist_id, &album_title, t.year, release_type)?;
 
-    // Erst am Pfad, dann an einem früher entfernten Titel desselben Künstlers
-    // festmachen. Der zweite Fall ist der wichtige: Wer einen gelöschten Titel
-    // erneut lädt, bekommt eine andere Datei, soll aber seine Hörhistorie
-    // behalten. Ohne diesen Griff entstünde ein zweiter Eintrag und die alten
-    // Wiedergaben blieben an der Leiche hängen.
+    // fasten it to the path first, then to a previously removed track of the
+    // same artist. the second case is the important one: whoever loads a
+    // deleted track again gets a different file but is to keep their
+    // listening history. without this reach a second row would appear and the
+    // old plays would hang on the corpse
     let existing = conn
         .query_row("SELECT id FROM tracks WHERE path = ?1", [&t.path], |r| {
             r.get::<_, i64>(0)
@@ -584,9 +587,9 @@ pub fn upsert_track(conn: &Connection, t: &TrackInsert) -> Result<i64> {
         return Ok(id);
     }
 
-    // Derselbe Titel, andere Datei: nicht ein zweites Mal aufnehmen. Das
-    // passiert beim Import einer Kopie und beim erneuten Laden eines Titels,
-    // der schon in der Bibliothek liegt.
+    // the same track, a different file: do not take it in a second time. that
+    // happens when importing a copy and when loading a track that already
+    // lies in the library
     if let Some(id) =
         doppelten_titel_finden(conn, track_artist_id, &t.title, t.duration_ms, &t.path)?
     {
@@ -618,7 +621,7 @@ pub fn upsert_track(conn: &Connection, t: &TrackInsert) -> Result<i64> {
     Ok(track_id)
 }
 
-/// Ordnet alle nicht manuell gesetzten Releases anhand der Titelanzahl ein.
+/// classifies every release not set by hand from its track count.
 pub fn refresh_release_types(conn: &Connection) -> Result<()> {
     let mut stmt = conn.prepare(
         "SELECT al.id, COUNT(t.id)
@@ -640,7 +643,7 @@ pub fn refresh_release_types(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Entfernt Künstler und Alben ohne verbleibende Titel.
+/// removes artists and albums with no tracks left.
 pub fn prune_empty(conn: &Connection) -> Result<()> {
     conn.execute(
         "DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks)",
@@ -655,7 +658,7 @@ pub fn prune_empty(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-// ---------------------------------------------------------------- Abfragen
+// --- queries ---
 
 pub fn list_tracks(conn: &Connection, search: Option<&str>, limit: i64) -> Result<Vec<Track>> {
     let sql = format!(
@@ -796,7 +799,7 @@ pub fn list_albums(conn: &Connection, search: Option<&str>) -> Result<Vec<Album>
     Ok(out.into_iter().filter(|a| a.track_count > 0).collect())
 }
 
-/// Alle Releases eines Künstlers, das Frontend gruppiert nach `releaseType`.
+/// every release of an artist, the frontend groups them by `releaseType`.
 pub fn artist_releases(conn: &Connection, artist_id: i64) -> Result<Vec<Album>> {
     let sql = format!(
         "{ALBUM_SELECT} WHERE al.artist_id = ?1
@@ -829,7 +832,7 @@ pub fn album_tracks(conn: &Connection, album_id: i64) -> Result<Vec<Track>> {
     Ok(out)
 }
 
-/// Alle Titel, an denen der Künstler beteiligt ist, auch als Gast.
+/// every track the artist takes part in, as a guest too.
 pub fn artist_tracks(conn: &Connection, artist_id: i64) -> Result<Vec<Track>> {
     let sql = format!(
         "{TRACK_SELECT}
@@ -848,7 +851,7 @@ pub fn artist_tracks(conn: &Connection, artist_id: i64) -> Result<Vec<Track>> {
     Ok(out)
 }
 
-/// Titel, bei denen der Künstler nur zu Gast ist.
+/// tracks the artist is only a guest on.
 pub fn artist_features(conn: &Connection, artist_id: i64) -> Result<Vec<Track>> {
     let sql = format!(
         "{TRACK_SELECT}
@@ -867,11 +870,11 @@ pub fn artist_features(conn: &Connection, artist_id: i64) -> Result<Vec<Track>> 
     Ok(out)
 }
 
-/// Die Favoriten in ihrer selbst gewählten Ordnung.
+/// the favourites in the order chosen for them.
 ///
-/// `added_at` bleibt als zweites Merkmal stehen: Wer noch nie umsortiert hat,
-/// sieht weiterhin das Zuletztgemerkte oben, und zwei Titel mit derselben
-/// Stelle stehen nicht willkürlich zueinander.
+/// `added_at` stays as a second criterion: whoever has never reordered still
+/// sees the last one marked on top, and two tracks sharing a position do not
+/// stand arbitrarily to each other.
 pub fn favorite_tracks(conn: &Connection) -> Result<Vec<Track>> {
     let sql = format!("{TRACK_SELECT} WHERE t.favorite = 1 AND t.deleted_at IS NULL
          ORDER BY t.favorite_position, t.added_at DESC");
@@ -889,8 +892,8 @@ pub fn set_favorite(conn: &Connection, track_id: i64, favorite: bool) -> Result<
         "UPDATE tracks SET favorite = ?2 WHERE id = ?1",
         params![track_id, i64::from(favorite)],
     )?;
-    // Neu gemerkt heißt oben: Man sucht gerade das, was man eben angetippt
-    // hat. Eine Stelle vor der bisher ersten, ohne alle anderen anzufassen.
+    // newly marked means on top: what one just tapped is what one is looking
+    // for. a position before the previously first, without touching the rest
     if favorite {
         conn.execute(
             "UPDATE tracks SET favorite_position =
@@ -902,7 +905,7 @@ pub fn set_favorite(conn: &Connection, track_id: i64, favorite: bool) -> Result<
     Ok(())
 }
 
-/// Setzt die Reihenfolge der Favoriten neu (Ziehen und Ablegen im Frontend).
+/// sets the order of the favourites anew, driven by drag and drop in the ui.
 pub fn reorder_favorites(conn: &Connection, track_ids: &[i64]) -> Result<()> {
     for (stelle, track_id) in track_ids.iter().enumerate() {
         conn.execute(
@@ -913,10 +916,10 @@ pub fn reorder_favorites(conn: &Connection, track_ids: &[i64]) -> Result<()> {
     Ok(())
 }
 
-/// Titel, deren Datei nicht mehr existiert.
+/// tracks whose file no longer exists.
 ///
-/// Dateien verschwinden außerhalb der App, verschoben, umbenannt, gelöscht.
-/// Der Eintrag bleibt dann als Leiche stehen und lässt sich nicht abspielen.
+/// files disappear outside the app: moved, renamed, deleted. the row then
+/// stands as a corpse and cannot be played.
 pub fn tracks_without_file(conn: &Connection) -> Result<Vec<(i64, String)>> {
     let mut stmt = conn.prepare("SELECT id, path FROM tracks WHERE deleted_at IS NULL ORDER BY id")?;
     let alle: Vec<(i64, String)> = stmt
@@ -929,7 +932,7 @@ pub fn tracks_without_file(conn: &Connection) -> Result<Vec<(i64, String)>> {
         .collect())
 }
 
-/// Alle bekannten Dateipfade. Grundlage, um Verwaistes zu erkennen.
+/// every known file path, the basis for recognising orphans.
 pub fn known_paths(conn: &Connection) -> Result<std::collections::HashSet<String>> {
     let mut stmt = conn.prepare("SELECT path FROM tracks WHERE deleted_at IS NULL")?;
     let pfade = stmt
@@ -938,11 +941,11 @@ pub fn known_paths(conn: &Connection) -> Result<std::collections::HashSet<String
     Ok(pfade)
 }
 
-/// Sieht dieser Titel nach einem Dateinamen statt nach einem Songtitel aus?
+/// whether this title looks like a filename rather than a song title.
 ///
-/// Ohne Tags nimmt der Import den Dateinamen als Titel. Typisch sind dann
-/// Unterstriche statt Leerzeichen, eine vorangestellte Nummer („03 - “) oder
-/// ein Trennstrich, hinter dem eigentlich der Künstler steckt.
+/// without tags the import takes the filename as the title. typical then are
+/// underscores instead of spaces, a leading number ("03 - ") or a separator
+/// with the artist hiding behind it.
 pub fn looks_like_filename(title: &str) -> bool {
     let t = title.trim();
     if t.is_empty() {
@@ -951,24 +954,24 @@ pub fn looks_like_filename(title: &str) -> bool {
     if t.contains('_') {
         return true;
     }
-    // „03 - Titel“, „03. Titel“, „03 Titel“
+    // "03 - Titel", "03. Titel", "03 Titel"
     let mut zeichen = t.chars();
     let ziffern: String = zeichen.by_ref().take_while(|c| c.is_ascii_digit()).collect();
     if ziffern.len() >= 2 && t.len() > ziffern.len() {
         return true;
     }
-    // Ein Trennstrich deutet auf „Künstler - Titel“ im Dateinamen hin.
+    // a separator hints at "artist - title" in the filename
     t.contains(" - ")
 }
 
-/// Titel, deren Angaben unzuverlässig wirken und ein Nachschlagen lohnen.
+/// tracks whose details look unreliable and are worth looking up.
 ///
-/// Kriterien: kein erkennbarer Künstler, ein Titel, der wie ein Dateiname
-/// aussieht, oder ein fehlendes Album. Alles drei entsteht beim Import von
-/// Dateien ohne brauchbare Tags.
+/// the criteria: no recognisable artist, a title that looks like a filename,
+/// or a missing album. all three come out of importing files without usable
+/// tags.
 ///
-/// Nur lokal importierte Titel: Was der Downloader geholt hat, ist bereits
-/// beim Laden geprüft und angereichert worden.
+/// locally imported tracks only: what the downloader fetched was checked and
+/// enriched while loading.
 pub fn tracks_with_weak_metadata(conn: &Connection, limit: usize) -> Result<Vec<Track>> {
     let sql = format!(
         "{TRACK_SELECT}
@@ -988,18 +991,18 @@ pub fn tracks_with_weak_metadata(conn: &Connection, limit: usize) -> Result<Vec<
         .collect())
 }
 
-/// Die Prüfung hinter `tracks_with_weak_metadata`, einzeln benutzbar.
+/// the check behind `tracks_with_weak_metadata`, usable on its own.
 pub fn weak_metadata(track: &Track) -> bool {
     track.artist_name == "Unbekannter Künstler"
         || looks_like_filename(&track.title)
         || track.album_title.trim() == track.title.trim()
 }
 
-/// Alle lokal importierten Titel, bei denen etwas nachzuschlagen lohnt:
-/// unsichere Angaben, fehlendes Cover oder fehlende Lyrics.
+/// every locally imported track worth looking something up for: uncertain
+/// details, a missing cover or missing lyrics.
 ///
-/// Getrennt von `tracks_with_weak_metadata`, weil hier auch sauber getaggte
-/// Dateien dabei sind, denen fehlt nur das Beiwerk.
+/// kept apart from `tracks_with_weak_metadata` because cleanly tagged files
+/// are among them here, only missing the trimmings.
 pub fn tracks_needing_lookup(conn: &Connection, limit: usize) -> Result<Vec<Track>> {
     let sql = format!(
         "{TRACK_SELECT}
@@ -1019,8 +1022,9 @@ pub fn tracks_needing_lookup(conn: &Connection, limit: usize) -> Result<Vec<Trac
         .collect())
 }
 
-/// Künstler eines Titels, zu denen weder Bild noch Beschreibung vorliegen.
-/// Grundlage dafür, die Angaben beim ersten Titel automatisch nachzuladen.
+/// artists of a track for whom neither image nor description is on hand.
+///
+/// the basis for fetching the details automatically at the first track.
 pub fn artists_missing_metadata(
     conn: &Connection,
     track_id: i64,
@@ -1040,8 +1044,8 @@ pub fn artists_missing_metadata(
     with_titles(conn, gefunden)
 }
 
-/// Dasselbe für die gesamte Bibliothek, nach einem Ordner-Scan gibt es oft
-/// viele neue Künstler auf einmal. `limit` hält die Zahl der Abfragen im Zaum.
+/// the same for the whole library, a folder scan often brings many new
+/// artists at once. `limit` keeps the number of queries in check.
 pub fn all_artists_missing_metadata(
     conn: &Connection,
     limit: i64,
@@ -1058,9 +1062,10 @@ pub fn all_artists_missing_metadata(
     with_titles(conn, gefunden)
 }
 
-/// Ergänzt je Künstler ein paar Titel aus der Bibliothek.
+/// adds a few tracks from the library per artist.
 ///
-/// Sie dienen als Beleg bei Namensgleichheit: Wer sie führt, ist gemeint.
+/// they serve as evidence where names collide: whoever carries them is the
+/// one meant.
 fn with_titles(
     conn: &Connection,
     artists: Vec<(i64, String)>,
@@ -1078,7 +1083,7 @@ fn with_titles(
     Ok(out)
 }
 
-/// Profilbild eines Künstlers.
+/// profile image of an artist.
 pub fn set_artist_image(conn: &Connection, artist_id: i64, data: &[u8], mime: &str) -> Result<()> {
     conn.execute(
         "UPDATE artists SET image = ?2, image_mime = ?3 WHERE id = ?1",
@@ -1098,8 +1103,8 @@ pub fn artist_image(conn: &Connection, artist_id: i64) -> Result<Option<(Vec<u8>
     Ok(row.and_then(|(data, mime)| data.map(|d| (d, mime))))
 }
 
-/// Ändert die Stammdaten eines Künstlers. Ein Name, den es schon gibt, wird
-/// abgelehnt, sonst gäbe es zwei Einträge für denselben Künstler.
+/// changes the master data of an artist. a name already taken is refused,
+/// otherwise there would be two rows for the same artist.
 pub fn update_artist(
     conn: &Connection,
     artist_id: i64,
@@ -1139,7 +1144,7 @@ pub fn update_artist(
     Ok(())
 }
 
-/// Ändert Titel, Jahr und Einordnung eines Releases.
+/// changes title, year and classification of a release.
 pub fn update_album(
     conn: &Connection,
     album_id: i64,
@@ -1166,7 +1171,7 @@ pub fn update_album(
     Ok(())
 }
 
-// ---------------------------------------------------------------- Cover
+// --- covers ---
 
 pub fn set_album_cover(conn: &Connection, album_id: i64, data: &[u8], mime: &str) -> Result<()> {
     conn.execute(
@@ -1199,7 +1204,7 @@ pub fn track_cover(conn: &Connection, track_id: i64) -> Result<Option<(Vec<u8>, 
     }
 }
 
-// ---------------------------------------------------------------- Lyrics
+// --- lyrics ---
 
 pub fn set_lyrics(
     conn: &Connection,
@@ -1238,9 +1243,9 @@ pub fn get_lyrics(conn: &Connection, track_id: i64) -> Result<Option<Lyrics>> {
     Ok(row)
 }
 
-// ---------------------------------------------------------------- Playlists
+// --- playlists ---
 
-/// Gibt es schon eine Playlist dieses Namens?
+/// whether a playlist of this name exists already.
 pub fn playlist_name_taken(conn: &Connection, name: &str) -> Result<bool> {
     let anzahl: i64 = conn.query_row(
         "SELECT COUNT(*) FROM playlists WHERE name = ?1 AND deleted_at IS NULL",
@@ -1250,12 +1255,12 @@ pub fn playlist_name_taken(conn: &Connection, name: &str) -> Result<bool> {
     Ok(anzahl > 0)
 }
 
-/// Zuletzt gespielte Titel, jeder nur einmal und der jüngste zuerst.
+/// recently played tracks, each of them once and the youngest first.
 pub fn recently_played(conn: &Connection, limit: i64) -> Result<Vec<Track>> {
-    // Über `tracks.last_played_at` und nicht über `plays`: Dort steht nur,
-    // was lange genug lief, um in der Statistik zu zählen — dreißig Sekunden.
-    // Ein Titel, den man kurz angehört und dann weitergeschaltet hat, fehlte
-    // damit ausgerechnet an der Stelle, an der man ihn wiedersucht.
+    // through `tracks.last_played_at` and not through `plays`: only what ran
+    // long enough to count in the statistics stands there, thirty seconds. a
+    // track heard briefly and then skipped was missing at exactly the place
+    // where one looks for it again
     let sql = format!(
         "{TRACK_SELECT}
          WHERE t.deleted_at IS NULL AND t.last_played_at IS NOT NULL
@@ -1271,7 +1276,7 @@ pub fn recently_played(conn: &Connection, limit: i64) -> Result<Vec<Track>> {
     Ok(tracks)
 }
 
-/// Hinterlegt ein eigenes Bild für die Playlist. `None` nimmt es wieder weg.
+/// stores an image of its own for the playlist. `None` takes it away again.
 pub fn set_playlist_cover(
     conn: &Connection,
     playlist_id: i64,
@@ -1302,9 +1307,9 @@ pub fn playlist_cover(conn: &Connection, playlist_id: i64) -> Result<Option<(Vec
 }
 
 pub fn create_playlist(conn: &Connection, name: &str, description: Option<&str>) -> Result<i64> {
-    // Eine neue Playlist steht vorn, wie bisher auch: Die Ordnung lief nach
-    // Anlagedatum, neueste zuerst. Statt alle anderen weiterzuschieben,
-    // bekommt sie eine Stelle vor der bisher ersten.
+    // a new playlist stands at the front, as it always did: the order ran by
+    // creation date, newest first. instead of pushing all the others along it
+    // gets a position before the previously first
     conn.execute(
         "INSERT INTO playlists (name, description, created_at, position)
          VALUES (?1, ?2, ?3, (SELECT COALESCE(MIN(position), 1) - 1 FROM playlists))",
@@ -1313,12 +1318,12 @@ pub fn create_playlist(conn: &Connection, name: &str, description: Option<&str>)
     Ok(conn.last_insert_rowid())
 }
 
-/// Legt die Reihenfolge der Sammlung neu fest.
+/// sets the order of the collection anew.
 ///
-/// `ids` ist die vollständige Liste in der gewünschten Ordnung. Playlists, die
-/// nicht darin vorkommen, etwa weil sie inzwischen von woanders angelegt
-/// wurden, behalten ihre Stelle vor allen anderen: Sie bekommen keine neue
-/// Nummer, und die vergebenen beginnen bei eins.
+/// `ids` is the complete list in the order wanted. playlists not in it,
+/// created from somewhere else in the meantime for instance, keep their place
+/// before all others: they get no new number, and the numbers handed out
+/// start at one.
 pub fn reorder_playlists(conn: &Connection, ids: &[i64]) -> Result<()> {
     let tx = conn.unchecked_transaction()?;
     {
@@ -1344,8 +1349,8 @@ pub fn update_playlist(
     Ok(())
 }
 
-/// Entfernt eine Playlist. Wie bei Titeln nur markiert, damit sich der Griff
-/// zurücknehmen lässt, ohne die enthaltenen Titel neu einsammeln zu müssen.
+/// removes a playlist. as with tracks it is only marked, so the action can be
+/// undone without having to collect the tracks inside again.
 pub fn delete_playlist(conn: &Connection, id: i64) -> Result<()> {
     conn.execute(
         "UPDATE playlists SET deleted_at = ?2 WHERE id = ?1",
@@ -1426,11 +1431,11 @@ pub fn playlist_tracks(conn: &Connection, playlist_id: i64) -> Result<Vec<Track>
     Ok(out)
 }
 
-/// Zählt je Playlist, wie viele der Titel dort schon liegen.
+/// counts per playlist how many of the tracks already lie there.
 ///
-/// Grundlage für die Warnung im Hinzufügen-Dialog: Doppelte Einträge werden
-/// beim Einfügen stillschweigend übergangen, ohne Hinweis wundert man sich,
-/// warum die Playlist nicht länger wird.
+/// the basis for the warning in the add dialog: duplicate entries are skipped
+/// silently on insert, and without a hint one wonders why the playlist does
+/// not grow.
 pub fn playlists_containing(
     conn: &Connection,
     track_ids: &[i64],
@@ -1477,7 +1482,7 @@ pub fn remove_from_playlist(conn: &Connection, playlist_id: i64, track_id: i64) 
     Ok(())
 }
 
-/// Setzt die Reihenfolge komplett neu (Drag & Drop im Frontend).
+/// sets the order completely anew, driven by drag and drop in the ui.
 pub fn reorder_playlist(conn: &Connection, playlist_id: i64, track_ids: &[i64]) -> Result<()> {
     for (position, track_id) in track_ids.iter().enumerate() {
         conn.execute(
@@ -1488,18 +1493,18 @@ pub fn reorder_playlist(conn: &Connection, playlist_id: i64, track_ids: &[i64]) 
     Ok(())
 }
 
-// ---------------------------------------------------------------- Löschen
+// --- deletion ---
 
-/// Entfernt einen Titel aus der Bibliothek.
+/// removes a track from the library.
 ///
-/// Der Eintrag wird nur als entfernt markiert, nicht gelöscht. Grund ist die
-/// Hörhistorie: `plays` hängt per Fremdschlüssel am Titel und würde beim
-/// Löschen mitgehen, der Rückblick verlöre rückwirkend Stunden. So bleibt er
-/// vollständig, und legt man denselben Titel später wieder an, knüpft
-/// `upsert_track` an denselben Eintrag an und zählt einfach weiter.
+/// the row is only marked as removed, not deleted. the reason is the
+/// listening history: `plays` hangs off the track by foreign key and would go
+/// with it, and the review would lose hours retroactively. this way it stays
+/// complete, and creating the same track again later has `upsert_track` tie
+/// into the same row and simply carry on counting.
 ///
-/// Die Datei wandert in `papierkorb`, statt gelöscht zu werden. Nur so lässt
-/// sich der Griff zurücknehmen; eine gelöschte Datei ist weg.
+/// the file travels into `papierkorb` instead of being deleted. only that way
+/// can the action be undone, a deleted file is gone.
 pub fn delete_track(
     conn: &Connection,
     track_id: i64,
@@ -1516,7 +1521,7 @@ pub fn delete_track(
         "UPDATE tracks SET deleted_at = ?2, favorite = 0 WHERE id = ?1",
         params![track_id, now()],
     )?;
-    // Aus Playlists verschwindet er wirklich, dort wäre er nur eine Lücke.
+    // it really disappears from playlists, it would only be a gap there
     conn.execute(
         "DELETE FROM playlist_tracks WHERE track_id = ?1",
         [track_id],
@@ -1539,12 +1544,11 @@ pub fn delete_track(
     Ok(())
 }
 
-/// Räumt den Papierkorb auf: Was älter ist als `max_age`, verschwindet
-/// endgültig.
+/// clears the trash out: whatever is older than `max_age` goes for good.
 ///
-/// Ohne das wächst er unbegrenzt, jede gelöschte Datei bleibt für immer
-/// liegen. Die Frist gibt dem Zurücknehmen genug Zeit; danach ist die
-/// Entscheidung gefallen.
+/// without it the folder grows without bound, every deleted file staying
+/// forever. the deadline gives undoing enough time, after that the decision
+/// has been made.
 pub fn cleanup_trash(papierkorb: &std::path::Path, max_age: std::time::Duration) -> usize {
     let Ok(eintraege) = std::fs::read_dir(papierkorb) else {
         return 0;
@@ -1560,7 +1564,7 @@ pub fn cleanup_trash(papierkorb: &std::path::Path, max_age: std::time::Duration)
             .metadata()
             .and_then(|meta| meta.modified())
             .map(|zeit| zeit.elapsed().unwrap_or_default() > max_age)
-            // Ohne lesbaren Zeitstempel lieber stehen lassen.
+            // without a readable timestamp, better leave it standing
             .unwrap_or(false);
 
         if zu_alt && std::fs::remove_file(&pfad).is_ok() {
@@ -1570,20 +1574,19 @@ pub fn cleanup_trash(papierkorb: &std::path::Path, max_age: std::time::Duration)
     entfernt
 }
 
-/// Holt Titel von einem alten Bibliotheksordner an den neuen.
+/// fetches tracks from an old library folder to the new one.
 ///
-/// Nötig auf dem Telefon: Bis Fassung 0.1.0 lagen die Titel im eigenen Ordner
-/// der App, seither in `Robify` im Gerätespeicher. Die Bibliothek merkt sich
-/// aber vollständige Pfade, ein bloßes Verschieben ließe jeden Eintrag ins
-/// Leere zeigen.
+/// needed on a phone: until version 0.1.0 the tracks lay in the app's own
+/// folder, since then in `Robify` in the device storage. the library
+/// remembers complete paths though, and a plain move would leave every row
+/// pointing nowhere.
 ///
-/// Datei für Datei, und der Eintrag wird sofort nachgezogen: Bricht es
-/// mittendrin ab — kein Platz mehr, Erlaubnis entzogen —, zeigt kein einziger
-/// Eintrag auf eine Datei, die dort nicht liegt. Der Rest wandert beim
-/// nächsten Start.
+/// file by file, with the row pulled along immediately: where it breaks off
+/// midway, out of space or with the permission withdrawn, not a single row
+/// points at a file that is not there. the rest travels at the next start.
 ///
-/// Was nicht in der Bibliothek steht, wandert trotzdem mit; es lag im
-/// Musikordner und gehört dorthin.
+/// what is not in the library travels along anyway, it lay in the music
+/// folder and belongs there.
 pub fn bibliothek_umziehen(
     conn: &Connection,
     alt: &std::path::Path,
@@ -1596,7 +1599,7 @@ pub fn bibliothek_umziehen(
     let mut gewandert = 0;
     umziehen_rekursiv(conn, alt, alt, neu, &mut gewandert);
 
-    // Zurück bleiben leere Ordner; die dürfen weg, der Rest bleibt liegen.
+    // empty folders are left behind, those may go, the rest stays
     let _ = entleerte_ordner_entfernen(alt);
     gewandert
 }
@@ -1643,7 +1646,7 @@ fn umziehen_rekursiv(
     }
 }
 
-/// Räumt leere Ordner von unten nach oben weg.
+// clears empty folders away from the bottom up
 fn entleerte_ordner_entfernen(ordner: &std::path::Path) -> std::io::Result<()> {
     for eintrag in std::fs::read_dir(ordner)?.filter_map(Result::ok) {
         let pfad = eintrag.path();
@@ -1654,9 +1657,9 @@ fn entleerte_ordner_entfernen(ordner: &std::path::Path) -> std::io::Result<()> {
     std::fs::remove_dir(ordner)
 }
 
-/// Ablage im Papierkorb: Kennung des Titels plus ursprüngliche Endung. Über
-/// die Kennung findet das Wiederherstellen die Datei zielsicher wieder,
-/// unabhängig davon, wie sie ursprünglich hieß.
+// place in the trash: id of the track plus the original extension. through
+// the id, restoring finds the file again without fail, whatever it was called
+// originally
 fn papierkorb_datei(ordner: &std::path::Path, track_id: i64, quelle: &std::path::Path) -> std::path::PathBuf {
     match quelle.extension().and_then(|e| e.to_str()) {
         Some(endung) => ordner.join(format!("{track_id}.{endung}")),
@@ -1664,9 +1667,9 @@ fn papierkorb_datei(ordner: &std::path::Path, track_id: i64, quelle: &std::path:
     }
 }
 
-/// Nimmt das Entfernen zurück: Eintrag wieder sichtbar, Datei zurück an ihren
-/// Platz. Fehlt die Datei, bleibt der Eintrag trotzdem stehen; der Abgleich
-/// meldet ihn dann als fehlend.
+/// undoes the removal: the row visible again, the file back in its place.
+/// where the file is missing the row stays anyway, and the reconciliation
+/// pass reports it as missing then.
 pub fn restore_track(
     conn: &Connection,
     track_id: i64,
@@ -1740,7 +1743,7 @@ pub fn library_stats(conn: &Connection) -> Result<LibraryStats> {
 mod tests {
     use super::*;
 
-    /// Ein Ordner unter `target`, der sich nicht mit anderen Läufen beißt.
+    /// a folder under `target` that does not collide with other runs.
     fn testordner(name: &str) -> std::path::PathBuf {
         let pfad = std::env::temp_dir().join(format!("robify-umzug-{name}"));
         let _ = std::fs::remove_dir_all(&pfad);
@@ -1748,11 +1751,11 @@ mod tests {
         pfad
     }
 
-    /// Der Umzug auf dem Telefon: Datei wandert, Eintrag zeigt hinterher.
+    /// the move on a phone: the file travels, the row follows.
     ///
-    /// Der wunde Punkt ist nicht das Verschieben, sondern der Gleichlauf. Ein
-    /// Eintrag, der auf den alten Ort zeigt, während die Datei schon am neuen
-    /// liegt, ist ein Titel, der sich nicht mehr abspielen lässt.
+    /// the sore point is not the moving but keeping the two in step. a row
+    /// pointing at the old place while the file already lies at the new one
+    /// is a track that can no longer be played.
     #[test]
     fn umzug_zieht_die_eintraege_mit() {
         let basis = testordner("mit");
@@ -1793,7 +1796,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&basis);
     }
 
-    /// Was am Ziel schon liegt, wird nicht überschrieben.
+    /// what already lies at the target is not overwritten.
     #[test]
     fn umzug_laesst_vorhandenes_stehen() {
         let basis = testordner("vorhanden");
@@ -1816,8 +1819,8 @@ mod tests {
 
     #[test]
     fn zerlegt_videotitel_in_kuenstler_und_titel() {
-        // Genau die Fälle aus dem Messlauf, bei denen der Lyric-Kanal als
-        // Künstler in der Bibliothek landete.
+        // exactly the cases from the measured run where the lyric channel
+        // landed in the library as the artist
         assert_eq!(
             split_video_title("Nina Chuba - WILDBERRY LILLET [Lyrics]", Some("xTheLYRICS")),
             Some(("Nina Chuba".into(), "WILDBERRY LILLET".into()))
@@ -1827,7 +1830,7 @@ mod tests {
             Some(("Kendrick Lamar".into(), "Money Trees".into()))
         );
 
-        // Steht der Kanal rechts, sind die Hälften vertauscht.
+        // where the channel stands on the right, the halves are swapped
         assert_eq!(
             split_video_title(
                 "Oft Gefragt - AnnenMayKantereit (Offizielles Video)",
@@ -1836,22 +1839,22 @@ mod tests {
             Some(("AnnenMayKantereit".into(), "Oft Gefragt".into()))
         );
 
-        // Gedankenstrich statt Bindestrich.
+        // en dash instead of hyphen
         assert_eq!(
             split_video_title("PA69 – Tropical Island", Some("PA69")),
             Some(("PA69".into(), "Tropical Island".into()))
         );
 
-        // Leerzeichen nur auf einer Seite, aus dem Messlauf.
+        // a space on one side only, from the measured run
         assert_eq!(
             split_video_title("The Killers- Mr. Brightside", Some("Julia")),
             Some(("The Killers".into(), "Mr. Brightside".into()))
         );
 
-        // Ohne Trenner bleibt nichts zu zerlegen.
+        // without a separator there is nothing to split
         assert_eq!(split_video_title("Naked", Some("Yeat")), None);
 
-        // Bindestriche in Namen dürfen nicht zerreißen.
+        // hyphens inside names must not tear apart
         assert_eq!(split_video_title("Jay-Z", Some("Jay-Z")), None);
         assert_eq!(split_video_title("Blink-182", None), None);
         assert_eq!(
@@ -1862,12 +1865,12 @@ mod tests {
 
     #[test]
     fn gastkuenstler_ueberleben_die_titelreinigung() {
-        // Klammern tragen nicht nur Hinweise auf die Machart.
+        // brackets carry more than hints about the production
         assert_eq!(
             split_video_title("Drake - Passionfruit (feat. Someone)", None),
             Some(("Drake".into(), "Passionfruit (feat. Someone)".into()))
         );
-        // Gemischte Klammern: „Official Video“ raus, Fassung bleibt.
+        // mixed brackets: "Official Video" out, the version stays
         assert_eq!(
             split_video_title("Band - Lied (Live) (Official Video)", None),
             Some(("Band".into(), "Lied (Live)".into()))
@@ -1876,7 +1879,7 @@ mod tests {
 
     #[test]
     fn trennt_kuenstler_nur_am_semikolon() {
-        // Kommas und Ampersands gehören oft zum Bandnamen.
+        // commas and ampersands often belong to the band name
         assert_eq!(split_artists("Earth, Wind & Fire"), vec!["Earth, Wind & Fire"]);
         assert_eq!(split_artists("A; B; C"), vec!["A", "B", "C"]);
         assert_eq!(split_artists("  A ;  B  "), vec!["A", "B"]);
@@ -1897,7 +1900,7 @@ mod tests {
         assert_eq!(main, vec!["Calvin Harris", "Dua Lipa"]);
         assert!(featured.is_empty());
 
-        // Ohne Marker bleibt alles Hauptkünstler.
+        // without a marker everything stays a lead artist
         let (main, featured) = parse_artist_field("Daft Punk");
         assert_eq!(main, vec!["Daft Punk"]);
         assert!(featured.is_empty());
@@ -1905,19 +1908,19 @@ mod tests {
 
     #[test]
     fn kanal_wird_zum_hauptkuenstler() {
-        // Der Fall aus der Praxis: SoundCloud-Konto „PA69“.
+        // the case from practice: the soundcloud account "PA69"
         let (main, featured) =
             promote_uploader("PA69; Drunken Masters", None, "PA69").unwrap();
         assert_eq!(main, "PA69");
         assert_eq!(featured.as_deref(), Some("Drunken Masters"));
 
-        // Auch wenn der Kanal hinten in der Liste steht.
+        // even where the channel stands at the end of the list
         let (main, featured) =
             promote_uploader("Drunken Masters; PA69", None, "PA69").unwrap();
         assert_eq!(main, "PA69");
         assert_eq!(featured.as_deref(), Some("Drunken Masters"));
 
-        // Bereits als Gast geführt? Dann rückt er nach vorn.
+        // already listed as a guest, then it moves to the front
         let (main, featured) =
             promote_uploader("Kanye West", Some("Nicki Minaj"), "Nicki Minaj").unwrap();
         assert_eq!(main, "Nicki Minaj");
@@ -1934,10 +1937,10 @@ mod tests {
 
     #[test]
     fn fremde_kanaele_aendern_nichts() {
-        // Label-, Sampler- und Repost-Kanäle gehören zu keinem Beteiligten.
+        // label, sampler and repost channels belong to no participant
         assert!(promote_uploader("PA69; Drunken Masters", None, "Hip Hop Charts").is_none());
         assert!(promote_uploader("PA69; Drunken Masters", None, "").is_none());
-        // Bei einem einzelnen Künstler gibt es nichts umzustellen.
+        // with a single artist there is nothing to rearrange
         assert!(promote_uploader("PA69", None, "PA69").is_none());
     }
 

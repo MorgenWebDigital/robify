@@ -1,4 +1,4 @@
-//! Lesen und Schreiben von Audio-Tags (ID3, Vorbis, MP4 …) über `lofty`.
+//! reading and writing audio tags (id3, vorbis, mp4 and so on) through `lofty`.
 
 use crate::models::TrackMetadata;
 use anyhow::{anyhow, Result};
@@ -16,6 +16,7 @@ pub const AUDIO_EXTENSIONS: &[&str] = &[
     "mpc",
 ];
 
+/// whether the extension is one of the audio formats robify reads.
 pub fn is_audio_file(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
@@ -23,7 +24,7 @@ pub fn is_audio_file(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// Was beim Einlesen einer Datei herauskommt. Tags plus technische Daten.
+/// what reading a file yields: tags plus technical details.
 pub struct FileTags {
     pub metadata: TrackMetadata,
     pub duration_ms: i64,
@@ -31,10 +32,10 @@ pub struct FileTags {
     pub cover: Option<(Vec<u8>, String)>,
 }
 
-/// Jahreszahl aus den unterschiedlichen Datumsfeldern herausziehen.
-///
-/// yt-dlp schreibt das Datum kompakt als `20240111`. Ohne die Begrenzung auf
-/// vier Stellen landete diese Zahl unverändert als „Jahr“ in der Bibliothek.
+// pulls the year out of the various date fields.
+//
+// yt-dlp writes the date compactly as `20240111`. without the cut to four
+// digits that number landed in the library unchanged as the year
 fn parse_year(value: &str) -> Option<i64> {
     let mut digits: String = value.chars().take_while(|c| c.is_ascii_digit()).collect();
     if digits.len() > 4 {
@@ -43,6 +44,7 @@ fn parse_year(value: &str) -> Option<i64> {
     digits.parse::<i64>().ok().filter(|y| *y > 0)
 }
 
+/// reads tags, duration and cover out of an audio file.
 pub fn read(path: &Path) -> Result<FileTags> {
     let tagged = read_from_path(path)?;
     let duration_ms = tagged.properties().duration().as_millis() as i64;
@@ -77,7 +79,7 @@ pub fn read(path: &Path) -> Result<FileTags> {
             metadata.album = v.into_owned();
         }
         metadata.album_artist = tag.get_string(ItemKey::AlbumArtist).map(str::to_string);
-        // Mehrfach abgelegte Künstler zusammenführen (ID3v2.4, Vorbis).
+        // merge artists stored more than once (id3v2.4, vorbis)
         let all: Vec<&str> = tag.get_strings(ItemKey::TrackArtist).collect();
         if all.len() > 1 {
             metadata.artist = all.join("; ");
@@ -95,7 +97,7 @@ pub fn read(path: &Path) -> Result<FileTags> {
             .get_string(ItemKey::Lyrics)
             .or_else(|| tag.get_string(ItemKey::UnsyncLyrics))
         {
-            // LRC erkennt man an Zeitmarken der Form [mm:ss.xx].
+            // lrc is recognisable by timestamps of the form [mm:ss.xx]
             if lyrics.contains('[') && lyrics.contains(':') && lyrics.contains(']') {
                 metadata.lyrics_synced = Some(lyrics.to_string());
             } else {
@@ -133,7 +135,7 @@ fn mime_from_str(mime: &str) -> MimeType {
     }
 }
 
-/// Schreibt die bearbeiteten Metadaten zurück in die Datei.
+/// writes the edited metadata back into the file.
 pub fn write(path: &Path, meta: &TrackMetadata) -> Result<()> {
     let mut tagged = read_from_path(path)?;
 
@@ -150,8 +152,8 @@ pub fn write(path: &Path, meta: &TrackMetadata) -> Result<()> {
         .ok_or_else(|| anyhow!(fehler!("Konnte kein Tag für {0} anlegen", path.display())))?;
 
     tag.set_title(meta.title.clone());
-    // Gastkünstler wandern als „feat.“ ins Künstlerfeld, damit auch andere
-    // Player sie sehen. Beim Einlesen wird das wieder aufgetrennt.
+    // guest artists go into the artist field as "feat." so other players see
+    // them too. reading splits it apart again
     tag.set_artist(match meta.featured_artists.as_deref() {
         Some(featured) if !featured.trim().is_empty() => {
             format!("{} feat. {}", meta.artist.trim(), featured.trim())
@@ -193,7 +195,7 @@ pub fn write(path: &Path, meta: &TrackMetadata) -> Result<()> {
         _ => tag.remove_disk(),
     }
 
-    // Synchrone Lyrics haben Vorrang, damit die Zeitmarken erhalten bleiben.
+    // synced lyrics win so the timestamps survive
     let lyrics = meta
         .lyrics_synced
         .as_deref()
@@ -205,8 +207,8 @@ pub fn write(path: &Path, meta: &TrackMetadata) -> Result<()> {
         });
     match lyrics {
         Some(l) => {
-            // ID3v2 kennt kein `Lyrics`-Feld, dort ist USLT (`UnsyncLyrics`)
-            // der übliche Ablageort. Vorbis und MP4 nehmen `Lyrics`.
+            // id3v2 has no `Lyrics` field, uslt (`UnsyncLyrics`) is the
+            // usual place there. vorbis and mp4 take `Lyrics`
             if !tag.insert_text(ItemKey::Lyrics, l.to_string()) {
                 tag.insert_text(ItemKey::UnsyncLyrics, l.to_string());
             }

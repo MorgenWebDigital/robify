@@ -1,10 +1,13 @@
+//! schema, migrations and the small settings table.
+//!
+//! note: several connections point at the same file (ui thread and audio
+//! thread), which is why wal and a busy timeout are set on every one of them.
+
 use anyhow::Result;
 use rusqlite::{params, Connection};
 use std::path::Path;
 
-/// Öffnet eine Verbindung und stellt sicher, dass Schema und Pragmas stimmen.
-/// Es werden mehrere Verbindungen auf dieselbe Datei geöffnet (UI-Thread und
-/// Audio-Thread), deshalb WAL + busy_timeout.
+/// opens a connection and sets the pragmas the app relies on.
 pub fn open(path: &Path) -> Result<Connection> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -20,6 +23,7 @@ pub fn open(path: &Path) -> Result<Connection> {
     Ok(conn)
 }
 
+/// creates the schema, adds columns retrofitted later and merges duplicates.
 pub fn migrate(conn: &Connection) -> Result<()> {
     conn.execute_batch(
         r#"
@@ -68,8 +72,8 @@ CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist_id);
 CREATE INDEX IF NOT EXISTS idx_tracks_album  ON tracks(album_id);
 CREATE INDEX IF NOT EXISTS idx_tracks_title  ON tracks(title);
 
--- Ein Titel kann von mehreren Künstlern stammen. `tracks.artist_id` bleibt
--- der Hauptkünstler; hier stehen alle Beteiligten inklusive Gastbeiträgen.
+-- a track can come from several artists. `tracks.artist_id` stays the lead
+-- artist, this table holds everyone involved, guest contributions included.
 CREATE TABLE IF NOT EXISTS track_artists (
     track_id  INTEGER NOT NULL REFERENCES tracks(id)  ON DELETE CASCADE,
     artist_id INTEGER NOT NULL REFERENCES artists(id) ON DELETE CASCADE,
@@ -130,53 +134,51 @@ CREATE TABLE IF NOT EXISTS recommendations (
 "#,
     )?;
 
-    // Nachträglich ergänzte Spalten, ältere Datenbanken kennen sie nicht.
+    // columns added later on, older databases do not know them
     for (table, column, definition) in [
         ("artists", "image", "BLOB"),
         ("artists", "image_mime", "TEXT"),
         ("artists", "bio", "TEXT"),
         ("artists", "source_url", "TEXT"),
-        // Entfernte Titel bleiben als Eintrag stehen, damit die Hörhistorie
-        // nicht mitgelöscht wird (`plays` hängt per Fremdschlüssel daran).
-        // Aus der Bibliothek verschwinden sie über diesen Zeitstempel.
+        // removed tracks stay as a row so the listening history is not
+        // deleted with them (`plays` hangs off it by foreign key). they
+        // disappear from the library through this timestamp
         ("tracks", "deleted_at", "INTEGER"),
-        // Eigenes Playlist-Cover. Fehlt es, setzt das Frontend weiter das
-        // Mosaik aus den enthaltenen Alben zusammen.
+        // a playlist cover of its own. without it the frontend keeps
+        // assembling the mosaic from the albums inside
         ("playlists", "cover", "BLOB"),
         ("playlists", "cover_mime", "TEXT"),
-        // Entfernte Playlists bleiben stehen, bis der Griff nicht mehr
-        // zurückgenommen werden kann.
+        // removed playlists stay until the action can no longer be undone
         ("playlists", "deleted_at", "INTEGER"),
-        // Selbst gewählte Reihenfolge unter den Favoriten.
+        // an order of one's own among the favourites.
         //
-        // Ohne sie stand dort, was zuletzt dazukam, immer oben, und umsortieren
-        // ging gar nicht. Der Vorgabewert ist negativ und wird gleich darunter
-        // aus der bisherigen Ordnung gefüllt, damit sich beim Aktualisieren
-        // nichts umstellt.
+        // without it whatever came last always stood on top, and reordering
+        // was impossible. the default is filled from the previous order just
+        // below, so an update rearranges nothing
         ("tracks", "favorite_position", "INTEGER NOT NULL DEFAULT 0"),
-        // Wann der Titel zuletzt lief, unabhängig davon, ob er lang genug
-        // lief, um in der Statistik zu zählen.
+        // when the track last ran, regardless of whether it ran long enough
+        // to count in the statistics.
         //
-        // „Zuletzt gespielt“ auf der Startseite ist eine Erinnerung daran,
-        // was man gehört hat, keine Auswertung. Aus `plays` gelesen fehlte
-        // dort jeder Titel, den man nach zwanzig Sekunden weitergeschaltet
-        // hat — und das ist genau der Fall, in dem man ihn wiederfinden will.
+        // "recently played" on the home page is a memory of what was heard,
+        // not an evaluation. read from `plays` it missed every track skipped
+        // after twenty seconds, and that is exactly the case where one wants
+        // to find it again
         ("tracks", "last_played_at", "INTEGER"),
-        // Selbst gewählte Reihenfolge in der Sammlung.
+        // an order of one's own in the collection.
         //
-        // Der Vorgabewert ist mit Bedacht negativ und wird beim Nachrüsten
-        // aus `created_at` gefüllt: So bleibt die bisherige Ordnung, neueste
-        // zuerst, für bestehende Bestände genau erhalten. Mit einer schlichten
-        // Null stünden alle gleichauf, und die Sammlung sähe nach dem
-        // Aktualisieren willkürlich umsortiert aus.
+        // the default is filled from `created_at` when the column is added:
+        // that keeps the previous order, newest first, exactly intact for
+        // existing collections. left at zero all of them would rank equal,
+        // and the collection would look arbitrarily rearranged after an
+        // update
         ("playlists", "position", "INTEGER NOT NULL DEFAULT 0"),
     ] {
         add_column_if_missing(conn, table, column, definition)?;
     }
 
-    // Playlists ohne eigene Reihenfolge übernehmen die bisherige: neueste
-    // oben. Läuft nur, solange noch keine einzige eine Stelle trägt, ein
-    // späteres Umsortieren wird dadurch also nie überschrieben.
+    // playlists without an order of their own take the previous one: newest
+    // on top. runs only while not a single one carries a position, so a later
+    // reordering is never overwritten
     let ohne_ordnung: i64 = conn.query_row(
         "SELECT COUNT(*) FROM playlists WHERE position != 0",
         [],
@@ -193,9 +195,9 @@ CREATE TABLE IF NOT EXISTS recommendations (
         )?;
     }
 
-    // Die bisherige Ordnung der Favoriten festhalten: zuletzt hinzugefügt
-    // oben. Läuft nur, solange noch keiner eine Stelle trägt; ein späteres
-    // Umsortieren wird dadurch nie überschrieben.
+    // pin down the previous order of the favourites: last added on top.
+    // runs only while none of them carries a position, so a later reordering
+    // is never overwritten
     let ohne_ordnung: i64 = conn.query_row(
         "SELECT COUNT(*) FROM tracks WHERE favorite = 1 AND favorite_position != 0",
         [],
@@ -214,9 +216,9 @@ CREATE TABLE IF NOT EXISTS recommendations (
         )?;
     }
 
-    // Was bisher an Hörhistorie da ist, füllt die neue Spalte. Ohne diesen
-    // Schritt stünde „Zuletzt gespielt“ nach dem Aktualisieren leer da,
-    // obwohl die Einträge in `plays` unberührt daneben liegen.
+    // whatever listening history exists fills the new column. without this
+    // step "recently played" would stand empty after an update although the
+    // rows in `plays` lie untouched next to it
     conn.execute(
         "UPDATE tracks SET last_played_at = (
              SELECT MAX(played_at) FROM plays WHERE plays.track_id = tracks.id
@@ -225,8 +227,8 @@ CREATE TABLE IF NOT EXISTS recommendations (
         [],
     )?;
 
-    // Bestände aus älteren Fassungen nachtragen: bisher hatte jeder Titel
-    // genau einen Künstler.
+    // catch up collections from older versions: until now every track had
+    // exactly one artist
     conn.execute(
         "INSERT OR IGNORE INTO track_artists (track_id, artist_id, role, position)
          SELECT id, artist_id, 'main', 0 FROM tracks",
@@ -237,17 +239,16 @@ CREATE TABLE IF NOT EXISTS recommendations (
     Ok(())
 }
 
-/// Führt Einträge zusammen, die nach heutiger Lesart denselben Schlüssel
-/// haben.
-///
-/// Unsichtbare Zeichen in Titeln (siehe [`is_invisible`]) haben früher zwei
-/// Einträge erzeugt, die in der Oberfläche identisch aussahen, etwa „RETOX“
-/// und „RETOX\u{3164}“. Der Schlüssel ist inzwischen unempfindlich dagegen;
-/// die bereits doppelten Bestände räumt dieser Durchlauf auf.
-///
-/// Läuft bei jedem Start und tut nichts, wenn es nichts zu tun gibt.
+// merges rows that share the same key by today's reading.
+//
+// invisible characters in titles (see `is_invisible`) used to produce two
+// rows that looked identical in the ui, "RETOX" and "RETOX\u{3164}" for
+// instance. the key is insensitive to them by now, and this pass clears up
+// the duplicates already in place.
+//
+// runs at every start and does nothing when there is nothing to do
 fn merge_duplicates(conn: &Connection) -> Result<()> {
-    // Erst die Künstler: Alben und Titel hängen an ihnen.
+    // artists first: albums and tracks hang off them
     let artists: Vec<(i64, String, String)> = conn
         .prepare("SELECT id, name, name_key FROM artists ORDER BY id")?
         .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
@@ -260,7 +261,7 @@ fn merge_duplicates(conn: &Connection) -> Result<()> {
     for (id, name, alter_key) in &artists {
         let key = key_of(name);
         aenderung |= key != *alter_key;
-        // Der angezeigte Name soll ebenfalls sauber sein.
+        // the displayed name is to be clean as well
         let sichtbar = clean_text(name);
         if sichtbar != *name {
             conn.execute(
@@ -278,8 +279,8 @@ fn merge_duplicates(conn: &Connection) -> Result<()> {
 
     if aenderung || !zusammenlegen.is_empty() {
         for (id, ziel) in zusammenlegen {
-            // Zweifachnennung im selben Titel verletzt den Primärschlüssel,
-            // solche Zeilen fallen weg.
+            // being named twice on the same track violates the primary key,
+            // such rows fall away
             conn.execute(
                 "UPDATE OR IGNORE track_artists SET artist_id = ?2 WHERE artist_id = ?1",
                 params![id, ziel],
@@ -296,9 +297,9 @@ fn merge_duplicates(conn: &Connection) -> Result<()> {
             conn.execute("DELETE FROM artists WHERE id = ?1", [id])?;
         }
 
-        // Erst auf einen garantiert freien Zwischenwert, dann auf den echten
-        // Schlüssel: Sonst blockieren sich zwei Zeilen beim Tausch gegenseitig
-        // („RETOX“ hält bereits den Schlüssel, den „RETOX␣“ bekommen soll).
+        // to a guaranteed free intermediate value first, then to the real
+        // key: otherwise two rows block each other during the swap ("RETOX"
+        // already holds the key that "RETOX␣" is to receive)
         conn.execute("UPDATE artists SET name_key = '#' || id", [])?;
         for (key, id) in &behalten {
             conn.execute(
@@ -308,7 +309,7 @@ fn merge_duplicates(conn: &Connection) -> Result<()> {
         }
     }
 
-    // Dann die Alben. Schlüssel ist Künstler plus bereinigter Titel.
+    // then the albums. the key is artist plus cleaned title
     let albums: Vec<(i64, i64, String, String)> = conn
         .prepare("SELECT id, artist_id, title, title_key FROM albums ORDER BY id")?
         .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?
@@ -345,7 +346,7 @@ fn merge_duplicates(conn: &Connection) -> Result<()> {
             "UPDATE tracks SET album_id = ?2 WHERE album_id = ?1",
             params![id, ziel],
         )?;
-        // Was der Doppelgänger mitbrachte, nicht verlieren.
+        // do not lose what the duplicate brought along
         conn.execute(
             "UPDATE albums SET
                  cover      = COALESCE(cover, (SELECT cover FROM albums WHERE id = ?2)),
@@ -368,8 +369,8 @@ fn merge_duplicates(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// `ALTER TABLE … ADD COLUMN` scheitert, wenn es die Spalte schon gibt,
-/// deshalb vorher nachsehen.
+// `ALTER TABLE … ADD COLUMN` fails when the column is already there, so look
+// first
 fn add_column_if_missing(
     conn: &Connection,
     table: &str,
@@ -391,36 +392,36 @@ fn add_column_if_missing(
     Ok(())
 }
 
+/// the current time as a unix timestamp in seconds.
 pub fn now() -> i64 {
     chrono::Utc::now().timestamp()
 }
 
-/// Normalisierter Schlüssel für Duplikaterkennung von Künstlern/Alben.
-/// Unsichtbare Zeichen, die in Titeln aus dem Netz mitreisen.
-///
-/// Sie ändern die Schreibweise nicht, wohl aber den Vergleichsschlüssel,
-/// „RETOX“ und „RETOX\u{3164}“ sahen dadurch gleich aus, galten aber als
-/// zwei Alben. Die Hangul-Füllzeichen zählen für Rust sogar als Buchstaben
-/// und überleben deshalb jede Prüfung auf alphanumerisch.
+// invisible characters that travel along in titles taken from the net.
+//
+// they do not change the spelling, they change the comparison key: "RETOX"
+// and "RETOX\u{3164}" looked the same and still counted as two albums. the
+// hangul fillers even count as letters to rust and survive every check for
+// alphanumeric
 fn is_invisible(c: char) -> bool {
     matches!(c,
-        '\u{00ad}'                  // weiches Trennzeichen
-        | '\u{115f}' | '\u{1160}'   // Hangul-Füllzeichen (Anlaut/Vokal)
+        '\u{00ad}'                  // soft hyphen
+        | '\u{115f}' | '\u{1160}'   // hangul fillers (initial/vowel)
         | '\u{180e}'
-        | '\u{200b}'..='\u{200f}'   // Nullbreiten- und Richtungszeichen
+        | '\u{200b}'..='\u{200f}'   // zero-width and direction marks
         | '\u{202a}'..='\u{202e}'
         | '\u{2060}'..='\u{2064}'
-        | '\u{3164}'                // Hangul-Füllzeichen
-        | '\u{feff}'                // Byte-Reihenfolge-Markierung
+        | '\u{3164}'                // hangul filler
+        | '\u{feff}'                // byte order mark
         | '\u{ffa0}'
     )
 }
 
-/// Entfernt unsichtbare Zeichen aus einem angezeigten Namen.
+/// strips invisible characters out of a displayed name.
 ///
-/// Sie stammen aus Titeln fremder Quellen, sind nicht zu sehen und stiften
-/// nur Verwirrung: Suche und Sortierung stolpern darüber, und beim Abtippen
-/// findet man den Eintrag nicht wieder.
+/// they come from titles of foreign sources, cannot be seen and only cause
+/// confusion: search and sorting stumble over them, and typing the name out
+/// does not find the entry again.
 pub fn clean_text(value: &str) -> String {
     value
         .chars()
@@ -431,6 +432,7 @@ pub fn clean_text(value: &str) -> String {
         .join(" ")
 }
 
+/// normalised key for recognising duplicate artists and albums.
 pub fn key_of(value: &str) -> String {
     value
         .trim()
@@ -444,6 +446,7 @@ pub fn key_of(value: &str) -> String {
         .join(" ")
 }
 
+/// reads one setting, `None` where it was never set.
 pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<String>> {
     use rusqlite::OptionalExtension;
     let value = conn
@@ -454,6 +457,7 @@ pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<String>> {
     Ok(value)
 }
 
+/// writes one setting, overwriting whatever stood there.
 pub fn set_setting(conn: &Connection, key: &str, value: &str) -> Result<()> {
     conn.execute(
         "INSERT INTO settings (key, value) VALUES (?1, ?2)

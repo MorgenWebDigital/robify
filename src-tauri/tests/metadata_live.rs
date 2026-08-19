@@ -1,14 +1,15 @@
-//! Prüft die Metadatensuche gegen die echten Dienste:
+//! the metadata search against the real services:
 //!
 //!     cargo test --test metadata_live -- --ignored --nocapture
 
 use robify_lib::online;
 
-/// Genius drosselt gleichzeitige Anfragen. Die Tests laufen deshalb
-/// nacheinander, sonst schlagen sie zufällig fehl.
-/// Bewusst ein blockierender Mutex: jeder `#[tokio::test]` bringt eine eigene
-/// Laufzeit mit, ein `tokio::sync::Mutex` serialisiert über deren Grenzen
-/// hinweg nicht verlässlich.
+/// genius throttles simultaneous requests, so the tests run one after
+/// another, otherwise they fail at random.
+///
+/// deliberately a blocking mutex: every `#[tokio::test]` brings a runtime of
+/// its own, and a `tokio::sync::Mutex` does not serialise across their
+/// boundaries reliably.
 static REQUESTS: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 fn serialize() -> std::sync::MutexGuard<'static, ()> {
@@ -45,7 +46,7 @@ async fn genius_steht_vorn_und_trennt_gastkuenstler() {
     assert!(!monster.album.is_empty(), "Album fehlt");
     assert!(monster.cover_url.is_some(), "Cover fehlt");
 
-    // Die anderen Quellen bleiben als Rückfall erhalten.
+    // the other sources stay as a fallback
     let sources: std::collections::HashSet<&str> =
         results.iter().map(|c| c.source.as_str()).collect();
     assert!(sources.len() > 1, "nur eine Quelle geliefert: {sources:?}");
@@ -76,19 +77,19 @@ async fn treffer_wird_vollstaendig_angereichert() {
     println!("Lyrics:       {} Zeilen", plain.lines().count());
     println!("erste Zeile:  {:?}", plain.lines().next());
 
-    // Gastkünstler landen getrennt im eigenen Feld.
+    // guest artists land separately in a field of their own
     let featured = full.featured_artists.as_deref().unwrap_or("");
     assert!(featured.contains("Nicki Minaj"), "Gäste fehlen");
 
-    // Albumname und -künstler werden automatisch gesetzt.
+    // album name and album artist are set automatically
     assert_eq!(full.album, "My Beautiful Dark Twisted Fantasy");
     assert_eq!(full.album_artist.as_deref(), Some("Kanye West"));
 
-    // Release-Art und Titelnummer stammen aus der Albumtitelliste.
+    // release type and track number come from the album track list
     assert_eq!(full.release_type.as_deref(), Some("album"));
     assert!(full.track_no.unwrap_or(0) > 0, "Titelnummer fehlt");
 
-    // Lyrics kommen ohne Genius-Kopfzeilen an.
+    // lyrics arrive without genius headers
     assert!(plain.lines().count() > 20, "Lyrics zu kurz");
     assert!(!plain.contains("Read More"), "Kopfbereich nicht entfernt");
     assert!(!plain.contains("Contributors"), "Kopfbereich nicht entfernt");
@@ -101,8 +102,8 @@ async fn treffer_wird_vollstaendig_angereichert() {
 #[ignore = "benötigt eine Internetverbindung"]
 async fn korrigiert_grobe_angaben_aus_einem_download() {
     let _guard = serialize();
-    // So kommen die Angaben typischerweise aus einer Videobeschreibung:
-    // beide Künstler in einem Feld, kein Album, keine Lyrics.
+    // this is how the details typically come out of a video description:
+    // both artists in one field, no album, no lyrics
     let from_file = robify_lib::models::TrackMetadata {
         title: "Die Welt zu Gast bei Feinden".into(),
         artist: "PA69, Drunken Masters".into(),
@@ -135,10 +136,10 @@ async fn korrigiert_grobe_angaben_aus_einem_download() {
     println!("Lyrics:      {} Zeilen", plain.lines().count());
 
     assert_eq!(merged.title, "Die Welt zu Gast bei Feinden");
-    // Die Künstler stehen jetzt getrennt statt in einem Feld.
+    // the artists now stand separately instead of in one field
     assert!(merged.artist.contains("PA69"));
     assert!(merged.artist.contains(';'), "Künstler nicht getrennt: {}", merged.artist);
-    // Ohne Album ist es eine Single, kein Album.
+    // without an album it is a single, not an album
     assert_eq!(merged.release_type.as_deref(), Some("single"));
     assert!(!plain.is_empty(), "Lyrics fehlen");
 }
@@ -179,7 +180,7 @@ async fn findet_kuenstlerbild_und_beschreibung() {
     );
     assert!(best.url.is_some());
 
-    // Das Bild muss auch wirklich ladbar sein.
+    // the image has to be loadable as well
     let (data, mime) = online::fetch_image(best.image_url.as_deref().unwrap())
         .await
         .unwrap();
@@ -187,11 +188,11 @@ async fn findet_kuenstlerbild_und_beschreibung() {
     assert!(mime.starts_with("image/"), "unerwarteter Typ: {mime}");
 }
 
-/// Namensgleiche Künstler dürfen nicht verwechselt werden.
-///
-/// Zu „Julia“ führt Genius „Julia Michaels“, „Julian Casablancas“ und
-/// „Julia Engelmann“, aber keine „Julia“. Früher wurde einfach der erste
-/// Treffer übernommen; im Profil stand dann ein fremdes Gesicht.
+// artists sharing a name must not be mixed up.
+//
+// under "Julia" genius lists "Julia Michaels", "Julian Casablancas" and
+// "Julia Engelmann" but no "Julia". the first hit used to be taken over
+// plainly, and a stranger's face stood in the profile then
 #[tokio::test]
 #[ignore = "benötigt Internet"]
 async fn fremde_kuenstler_mit_aehnlichem_namen_werden_abgelehnt() {
@@ -203,7 +204,7 @@ async fn fremde_kuenstler_mit_aehnlichem_namen_werden_abgelehnt() {
         println!("   {}", kandidat.name);
     }
 
-    // Ohne eindeutigen Namen darf nichts übernommen werden.
+    // without an unambiguous name nothing may be taken over
     let gewaehlt = robify_lib::commands::best_artist_match("Julia", &[]).await;
     assert!(
         gewaehlt.is_none(),
@@ -211,7 +212,7 @@ async fn fremde_kuenstler_mit_aehnlichem_namen_werden_abgelehnt() {
         gewaehlt.map(|k| k.name)
     );
 
-    // Ein eindeutiger Name funktioniert weiterhin.
+    // an unambiguous name still works
     let radiohead = robify_lib::commands::best_artist_match("Radiohead", &[])
         .await
         .expect("Radiohead nicht gefunden");
@@ -222,14 +223,14 @@ async fn fremde_kuenstler_mit_aehnlichem_namen_werden_abgelehnt() {
     );
 }
 
-/// Der gemeldete Fall: Ein Namensvetter aus Kansas bekam das Profil einer
-/// deutschen Rapgruppe. Sobald eigene Titel vorliegen, muss das Werk stimmen.
+// the reported case: a namesake from kansas got the profile of a german rap
+// group. as soon as tracks of one's own are on hand, the work has to match
 #[tokio::test]
 #[ignore = "benötigt Internet"]
 async fn kuenstler_muessen_zum_eigenen_werk_passen() {
     let _guard = serialize();
 
-    // Passendes Werk, die Zuordnung gelingt.
+    // a fitting body of work, the match succeeds
     let treffer = robify_lib::commands::best_artist_match(
         "Radiohead",
         &["Creep".to_string(), "Karma Police".to_string()],
@@ -237,7 +238,7 @@ async fn kuenstler_muessen_zum_eigenen_werk_passen() {
     .await;
     assert!(treffer.is_some(), "richtiger Künstler wurde abgelehnt");
 
-    // Derselbe Name, aber ein Werk, das dort niemand führt: abgelehnt.
+    // the same name but a work nobody there carries: refused
     let fremd = robify_lib::commands::best_artist_match(
         "Radiohead",
         &["Ein Lied das es dort nicht gibt 12345".to_string()],

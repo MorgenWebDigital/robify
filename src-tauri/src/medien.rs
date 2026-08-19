@@ -1,16 +1,16 @@
-//! Meldet die Wiedergabe an das System.
+//! reports playback to the system.
 //!
-//! Auf dem Rechner ist das Fenster der einzige Ort, an dem Robify bedient
-//! wird. Auf einem Telefon nicht: Dort gehören Titel, Cover und die Knöpfe
-//! für Pause und Weiter auf den Sperrbildschirm und in die Benachrichtigungen.
-//! Der Player selbst bleibt, wo er ist; hier wird nur erzählt, was er tut, und
-//! entgegengenommen, was von außen gedrückt wird.
+//! on a desktop the window is the only place robify is operated from. on a
+//! phone it is not: there title, cover and the buttons for pause and next
+//! belong on the lock screen and into the notifications. the player itself
+//! stays where it is, this module only tells what it does and takes in what
+//! is pressed from outside.
 //!
-//! Auf allen anderen Systemen tut dieses Modul nichts. Windows, macOS und
-//! Linux bringen jeweils ihren eigenen Weg dafür mit; keiner davon ist hier
-//! nötig, solange dort ein Fenster offen steht.
+//! on every other system this module does nothing. windows, macos and linux
+//! each bring their own way of doing it, and none of them is needed as long
+//! as a window is standing open there.
 
-/// Was das System anzeigen soll.
+/// what the system is supposed to display.
 pub struct Angabe {
     pub titel: String,
     pub kuenstler: String,
@@ -27,10 +27,10 @@ pub fn melden(_angabe: &Angabe) {}
 #[cfg(not(target_os = "android"))]
 pub fn beenden() {}
 
-/// Ruft `de.robify.player.Wiedergabe.melden` über JNI auf.
+/// calls `de.robify.player.Wiedergabe.melden` over jni.
 ///
-/// Fehlschläge bleiben still. Ein Player, der sich nicht anzeigen lässt, ist
-/// ärgerlich; einer, der deswegen die Wiedergabe abbricht, wäre schlimmer.
+/// failures stay silent. a player that cannot show itself is annoying, one
+/// that aborts playback over it would be worse.
 #[cfg(target_os = "android")]
 pub fn melden(angabe: &Angabe) {
     let _ = versuchen(angabe);
@@ -45,6 +45,9 @@ fn versuchen(angabe: &Angabe) -> anyhow::Result<()> {
         .ok_or_else(|| anyhow::anyhow!("Die Brücke zur Wiedergabe wurde nicht eingerichtet."))?;
 
     let kontext = ndk_context::android_context();
+
+    // SAFETY: both pointers come from ndk_context and refer to the running vm
+    // and the live application object; they outlive this call
     let vm = unsafe { JavaVM::from_raw(kontext.vm().cast()) }?;
     let mut env = vm.attach_current_thread()?;
     let anwendung = unsafe { JObject::from_raw(kontext.context().cast()) };
@@ -53,11 +56,13 @@ fn versuchen(angabe: &Angabe) -> anyhow::Result<()> {
     let kuenstler = env.new_string(&angabe.kuenstler)?;
     let album = env.new_string(&angabe.album)?;
 
-    // Das Cover als Bytefeld, nicht als Pfad: Robify hält seine Cover in der
-    // Datenbank, es gibt keine Datei, auf die man zeigen könnte.
+    // the cover as a byte array, not as a path: robify keeps its covers in
+    // the database, there is no file to point at
     let cover = match &angabe.cover {
         Some(daten) => {
             let feld = env.new_byte_array(daten.len() as i32)?;
+            // SAFETY: i8 and u8 share their layout, and `daten` stays alive
+            // for the whole conversion
             let als_i8: &[i8] = unsafe {
                 std::slice::from_raw_parts(daten.as_ptr().cast::<i8>(), daten.len())
             };
@@ -85,7 +90,7 @@ fn versuchen(angabe: &Angabe) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Nichts läuft mehr: Anzeige weg, Dienst beenden.
+/// nothing is playing any more: drop the display, stop the service.
 #[cfg(target_os = "android")]
 pub fn beenden() {
     let _ = beenden_versuchen();
@@ -100,6 +105,9 @@ fn beenden_versuchen() -> anyhow::Result<()> {
         .ok_or_else(|| anyhow::anyhow!("Die Brücke zur Wiedergabe wurde nicht eingerichtet."))?;
 
     let kontext = ndk_context::android_context();
+
+    // SAFETY: both pointers come from ndk_context and refer to the running vm
+    // and the live application object; they outlive this call
     let vm = unsafe { JavaVM::from_raw(kontext.vm().cast()) }?;
     let mut env = vm.attach_current_thread()?;
     let anwendung = unsafe { JObject::from_raw(kontext.context().cast()) };
@@ -113,17 +121,12 @@ fn beenden_versuchen() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Nimmt entgegen, was im Systemplayer gedrückt wurde.
+/// takes in what was pressed in the system player.
 ///
-/// Der Name ist nicht frei gewählt: JNI findet native Methoden über
-/// `Java_<Paket>_<Klasse>_<Methode>`, mit Punkten als Unterstrichen. Deshalb
-/// heißt sie so und darf nicht umbenannt werden, ohne die Kotlin-Seite
-/// mitzuziehen.
-///
-/// # Safety
-///
-/// Wird ausschließlich von der Java-Laufzeit aufgerufen, mit gültigen
-/// Verweisen.
+/// the name is not freely chosen: jni finds native methods through
+/// `Java_<package>_<class>_<method>`, with dots as underscores. it is called
+/// this way and must not be renamed without moving the kotlin side along.
+/// called exclusively by the java runtime, always with valid references.
 #[cfg(target_os = "android")]
 #[no_mangle]
 pub extern "system" fn Java_de_robify_player_Wiedergabe_befehl(

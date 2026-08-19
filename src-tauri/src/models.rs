@@ -1,7 +1,8 @@
+//! the data types that travel between the database, the commands and the ui.
+
 use serde::{Deserialize, Serialize};
 
-/// Wie eine Veröffentlichung eingeordnet wird. Bestimmt die Gruppierung
-/// auf der Künstlerseite.
+/// how a release is classified. drives the grouping on the artist page.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ReleaseType {
@@ -27,7 +28,7 @@ impl ReleaseType {
         }
     }
 
-    /// Fallback-Einordnung, wenn keine Online-Daten vorliegen: Anzahl der Titel.
+    /// fallback classification when no online data is available: track count.
     pub fn from_track_count(count: i64) -> ReleaseType {
         match count {
             0..=2 => ReleaseType::Single,
@@ -46,10 +47,10 @@ pub struct Artist {
     pub mbid: Option<String>,
     pub track_count: i64,
     pub release_count: i64,
-    /// Profilbild hinterlegt? Ausgeliefert wird es über `robify://…/cover/artist/<id>`.
+    /// whether a profile image is stored. it is served over `robify://…/cover/artist/<id>`.
     pub has_image: bool,
     pub bio: Option<String>,
-    /// Herkunft der Angaben, z. B. die Genius-Seite.
+    /// where the details came from, the genius page for instance.
     pub source_url: Option<String>,
 }
 
@@ -68,13 +69,13 @@ pub struct Album {
     pub duration_ms: i64,
 }
 
-/// Beteiligung eines Künstlers an einem Titel.
+/// an artist's involvement in a track.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrackArtist {
     pub id: i64,
     pub name: String,
-    /// "main" für Hauptkünstler, "feature" für Gastbeiträge.
+    /// "main" for the lead artist, "feature" for guest contributions.
     pub role: String,
 }
 
@@ -84,10 +85,10 @@ pub struct Track {
     pub id: i64,
     pub path: String,
     pub title: String,
-    /// Hauptkünstler, bestimmt Sortierung und Gruppierung.
+    /// lead artist, drives sorting and grouping.
     pub artist_id: i64,
     pub artist_name: String,
-    /// Alle Beteiligten, Hauptkünstler zuerst.
+    /// everyone involved, lead artist first.
     pub artists: Vec<TrackArtist>,
     pub album_id: i64,
     pub album_title: String,
@@ -104,8 +105,8 @@ pub struct Track {
     pub play_count: i64,
     pub favorite: bool,
     pub source: Option<String>,
-    /// Aus der Bibliothek entfernt. Im Rückblick weiterhin sichtbar, aber
-    /// nicht mehr abspielbar.
+    /// removed from the library. still visible in the yearly review, but no
+    /// longer playable.
     pub deleted: bool,
 }
 
@@ -118,9 +119,9 @@ pub struct Playlist {
     pub created_at: i64,
     pub track_count: i64,
     pub duration_ms: i64,
-    /// Cover der ersten Titel, für die Mosaik-Vorschau im Frontend.
+    /// covers of the first tracks, for the mosaic preview in the frontend.
     pub cover_album_ids: Vec<i64>,
-    /// Eigenes Bild hinterlegt. Dann tritt es an die Stelle des Mosaiks.
+    /// an own image is stored. it takes the place of the mosaic then.
     pub has_cover: bool,
 }
 
@@ -128,22 +129,21 @@ pub struct Playlist {
 #[serde(rename_all = "camelCase")]
 pub struct Lyrics {
     pub track_id: i64,
-    /// Zeitsynchrone Zeilen im LRC-Format, falls verfügbar.
+    /// time-synced lines in lrc format, where available.
     pub synced: Option<String>,
     pub plain: Option<String>,
     pub source: Option<String>,
     pub updated_at: i64,
 }
 
-/// Editierbare Metadaten, wird sowohl vom Tag-Editor als auch vom
-/// Downloader benutzt.
+/// editable metadata, used by the tag editor and the downloader alike.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrackMetadata {
     pub title: String,
-    /// Hauptkünstler; mehrere werden mit Semikolon getrennt.
+    /// lead artists, several of them separated by semicolons.
     pub artist: String,
-    /// Gastkünstler, ebenfalls mit Semikolon getrennt.
+    /// guest artists, separated by semicolons as well.
     #[serde(default)]
     pub featured_artists: Option<String>,
     pub album: String,
@@ -153,7 +153,7 @@ pub struct TrackMetadata {
     pub track_no: Option<i64>,
     pub disc_no: Option<i64>,
     pub genre: Option<String>,
-    /// Base64-kodiertes Coverbild (ohne Data-URL-Präfix).
+    /// cover image in base64, without the data-url prefix.
     pub cover_base64: Option<String>,
     pub cover_mime: Option<String>,
     pub lyrics_synced: Option<String>,

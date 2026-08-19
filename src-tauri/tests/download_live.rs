@@ -1,29 +1,30 @@
-//! Lädt einen echten Titel herunter und prüft die fertigen Metadaten.
+//! downloads a real track and checks the finished metadata.
 //!
-//! Die Quellen sperren zu dichte Zugriffe (YouTube antwortet dann mit 403),
-//! deshalb laufen diese Tests einzeln:
+//! the sources block accesses that come too close together, youtube answers
+//! with a 403 then, so these tests run one at a time:
 //!
 //!     cargo test --test download_live -- --ignored --nocapture --test-threads=1
 
 use robify_lib::downloader::{self, DownloadOptions, DownloadRegistry, SearchSource};
 use std::sync::Arc;
 
-/// Zusätzliche Absicherung gegen parallele Zugriffe. Bewusst ein
-/// blockierender Mutex: jeder `#[tokio::test]` bringt eine eigene Laufzeit
-/// mit, ein `tokio::sync::Mutex` serialisiert über deren Grenzen hinweg nicht
-/// verlässlich.
+/// extra guard against parallel accesses.
+///
+/// deliberately a blocking mutex: every `#[tokio::test]` brings a runtime of
+/// its own, and a `tokio::sync::Mutex` does not serialise across their
+/// boundaries reliably.
 static SOURCES: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 fn serialize() -> std::sync::MutexGuard<'static, ()> {
     SOURCES.lock().unwrap_or_else(|poison| poison.into_inner())
 }
 
-/// Sperrt die Quelle den Zugriff (YouTube antwortet nach vielen Abrufen mit
-/// 403), lässt sich nichts prüfen. Das ist kein Fehler im Programm, deshalb
-/// wird der Test übersprungen statt fehlzuschlagen.
+/// whether the source blocked the access. youtube answers with a 403 after
+/// many retrievals, and then nothing can be checked. that is no bug in the
+/// program, so the test is skipped instead of failing.
 fn ist_gesperrt(error: &str) -> bool {
     let lower = error.to_lowercase();
-    // Der Downloader übersetzt 403/429 bereits in Klartext.
+    // the downloader translates 403 and 429 into plain words already
     lower.contains("(403)") || lower.contains("403") || lower.contains("429")
 }
 
@@ -35,7 +36,7 @@ async fn kanal_wird_hauptkuenstler_und_metadaten_stimmen() {
     let work_dir = std::env::temp_dir().join("robify-download-live");
     let _ = std::fs::remove_dir_all(&work_dir);
 
-    // Tauri-App für die Fortschrittsereignisse.
+    // a tauri app for the progress events
     let app = tauri::test::mock_app();
 
     let outcome = downloader::download(
@@ -46,13 +47,13 @@ async fn kanal_wird_hauptkuenstler_und_metadaten_stimmen() {
         "live-test".into(),
         DownloadOptions {
             url: "scsearch1:PA69 Die Welt zu Gast bei Feinden".into(),
-            // Genau wie in der App: SoundCloud zuerst, YouTube als Ausweich.
+            // exactly as in the app: soundcloud first, youtube as a fallback
             fallbacks: vec!["ytsearch1:PA69 Die Welt zu Gast bei Feinden audio".into()],
             format: "mp3".into(),
             quality: Some("7".into()),
-            // Eingeschaltet, damit der Weg über die Nachbearbeitung mitläuft:
-            // Ohne die Python-Bibliothek `mutagen` brach yt-dlp hier den
-            // ganzen Download ab, obwohl der Ton längst geladen war.
+            // switched on so the route through the post-processing runs
+            // along: without the python library `mutagen` yt-dlp aborted the
+            // whole download here although the audio was long since fetched
             embed_thumbnail: true,
             metadata: None,
             auto_match: true,
@@ -93,9 +94,9 @@ async fn kanal_wird_hauptkuenstler_und_metadaten_stimmen() {
         m.lyrics_plain.as_deref().unwrap_or("").lines().count()
     );
 
-    // Das SoundCloud-Konto „PA69“ ist der Hauptkünstler …
+    // the soundcloud account "PA69" is the lead artist …
     assert_eq!(m.artist, "PA69", "Kanal wurde nicht zum Hauptkünstler");
-    // … und der Rest steht als Gast dabei.
+    // … and the rest stand alongside as guests
     assert_eq!(
         m.featured_artists.as_deref(),
         Some("Drunken Masters"),
@@ -103,7 +104,7 @@ async fn kanal_wird_hauptkuenstler_und_metadaten_stimmen() {
     );
     assert_eq!(m.release_type.as_deref(), Some("single"));
     assert!(m.lyrics_plain.is_some(), "Lyrics fehlen");
-    // Der ganze Titel, kein 30-Sekunden-Ausschnitt.
+    // the whole track, no 30 second excerpt
     assert!(
         outcome.duration_ms > 90_000,
         "nur ein Ausschnitt: {} ms",
@@ -113,8 +114,8 @@ async fn kanal_wird_hauptkuenstler_und_metadaten_stimmen() {
     let _ = std::fs::remove_dir_all(&work_dir);
 }
 
-/// SoundCloud gibt für manche Titel nur einen 30-Sekunden-Ausschnitt heraus.
-/// Dann muss der Download auf die nächste Quelle ausweichen.
+// soundcloud hands out a 30 second excerpt only for some tracks. the
+// download then has to fall back to the next source
 #[tokio::test]
 #[ignore = "benötigt Internet, yt-dlp und ffmpeg"]
 async fn weicht_bei_vorschauen_auf_die_naechste_quelle_aus() {
@@ -131,7 +132,7 @@ async fn weicht_bei_vorschauen_auf_die_naechste_quelle_aus() {
         work_dir.clone(),
         "preview-test".into(),
         DownloadOptions {
-            // Diese SoundCloud-Seite bietet ausschließlich Vorschau-Formate.
+            // this soundcloud page offers preview formats only
             url: "https://soundcloud.com/pa69-music/die-welt-zu-gast-bei-feinden".into(),
             fallbacks: vec!["ytsearch1:PA69 Die Welt zu Gast bei Feinden audio".into()],
             format: "mp3".into(),
@@ -167,15 +168,15 @@ async fn weicht_bei_vorschauen_auf_die_naechste_quelle_aus() {
     let _ = std::fs::remove_dir_all(&work_dir);
 }
 
-/// Aus mehreren Treffern muss der mit der passenden Laufzeit gewählt werden,
-/// so wie es bei einem Spotify-Link passiert.
+// out of several hits the one with the fitting running time has to be
+// chosen, the way it happens with a spotify link
 #[tokio::test]
 #[ignore = "benötigt Internet und yt-dlp"]
 async fn waehlt_die_passende_aufnahme_aus_mehreren_treffern() {
     let _guard = serialize();
     let ytdlp = downloader::find_ytdlp(None, std::path::Path::new(".")).expect("yt-dlp gefunden");
 
-    // Die echte Laufzeit, wie Spotify sie kennt.
+    // the real running time, as spotify knows it
     let expected_ms = 167_000;
     let urls = downloader::select_matches(
         &ytdlp,
@@ -192,7 +193,7 @@ async fn waehlt_die_passende_aufnahme_aus_mehreren_treffern() {
     }
     assert!(!urls.is_empty(), "Auswahl lieferte nichts");
 
-    // Der erste Vorschlag muss längenmäßig passen.
+    // the first suggestion has to fit in length
     let best = downloader::search(&ytdlp, &urls[0], SearchSource::Url, 1)
         .await
         .unwrap();
@@ -204,8 +205,8 @@ async fn waehlt_die_passende_aufnahme_aus_mehreren_treffern() {
     );
 }
 
-/// Ohne JavaScript-Laufzeit weicht yt-dlp bei YouTube auf einen veralteten
-/// Weg aus, dessen Adressen mit 403 abgelehnt werden.
+// without a javascript runtime yt-dlp falls back to an outdated route at
+// youtube, whose addresses are refused with a 403
 #[tokio::test]
 #[ignore = "benötigt Internet und yt-dlp"]
 async fn youtube_download_ohne_403() {
@@ -229,8 +230,8 @@ async fn youtube_download_ohne_403() {
             match_query: None,
             format: "best".into(),
             quality: None,
-            // „Beste Qualität“ liefert bei YouTube Opus, und genau dort
-            // verlangt yt-dlp `mutagen` fürs Cover. Der gemeldete Fall.
+            // best quality delivers opus at youtube, and exactly there
+            // yt-dlp demands `mutagen` for the cover. the reported case
             embed_thumbnail: true,
             metadata: None,
             auto_match: false,
@@ -246,8 +247,8 @@ async fn youtube_download_ohne_403() {
         Ok(outcome) => {
             println!("Geladen: {} ({} ms)", outcome.path, outcome.duration_ms);
             assert!(outcome.duration_ms > 60_000, "zu kurz");
-            // „Beste Qualität“ darf kein Opus liefern, das kann der
-            // eingebaute Player nicht abspielen.
+            // best quality must not deliver opus, the built-in player cannot
+            // play it
             assert!(
                 downloader::is_playable(std::path::Path::new(&outcome.path)),
                 "nicht abspielbares Format: {}",
@@ -263,11 +264,11 @@ async fn youtube_download_ohne_403() {
     let _ = std::fs::remove_dir_all(&work_dir);
 }
 
-/// DRM-geschützte Quellen dürfen den Download nicht beenden.
-///
-/// SoundCloud gibt die Label-Uploads bekannter Künstler nur als Stream
-/// heraus. Das steht in keinem Suchergebnis, erst der Ladeversuch scheitert.
-/// Robify muss dann selbstständig zur nächsten Quelle wechseln.
+// drm-protected sources must not end the download.
+//
+// soundcloud hands the label uploads of well-known artists out as a stream
+// only. that stands in no search result, only the attempt to download fails.
+// robify then has to move to the next source by itself
 #[tokio::test]
 #[ignore = "benötigt Internet, yt-dlp und ffmpeg"]
 async fn drm_quelle_wird_uebersprungen() {
@@ -277,7 +278,7 @@ async fn drm_quelle_wird_uebersprungen() {
     let _ = std::fs::remove_dir_all(&work_dir);
     let app = tauri::test::mock_app();
 
-    // Bei diesen Titeln lag im Messlauf ein DRM-Upload ganz oben.
+    // with these tracks a drm upload stood right on top in the measured run
     let treffer = downloader::search_everywhere(&ytdlp, "Nina Chuba Wildberry Lillet", 4)
         .await
         .expect("Suche");

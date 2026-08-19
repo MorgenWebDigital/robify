@@ -1,4 +1,4 @@
-//! Import lokaler Dateien und Ordner in die Bibliothek.
+//! import of local files and folders into the library.
 
 use crate::library::{self, TrackInsert};
 use crate::models::ReleaseType;
@@ -28,6 +28,8 @@ struct ScanProgress {
     file: String,
 }
 
+/// collects every audio file under the given files and folders, sorted and
+/// without duplicates.
 pub fn collect_audio_files(roots: &[PathBuf]) -> Vec<PathBuf> {
     let mut files = Vec::new();
     for root in roots {
@@ -53,8 +55,8 @@ pub fn collect_audio_files(roots: &[PathBuf]) -> Vec<PathBuf> {
     files
 }
 
-/// Importiert eine einzelne Datei. Cover und Lyrics aus den Tags werden
-/// mit übernommen, sofern das Release noch keines hat.
+/// imports a single file. cover and lyrics from the tags come along as long
+/// as the release does not carry one yet.
 pub fn import_file(conn: &Connection, path: &Path, source: Option<&str>) -> Result<i64> {
     let file_tags = tags::read(path)?;
     let meta = &file_tags.metadata;
@@ -108,6 +110,8 @@ pub fn import_file(conn: &Connection, path: &Path, source: Option<&str>) -> Resu
     Ok(track_id)
 }
 
+/// imports every audio file under `roots` and reports progress through
+/// `library:scan-progress`.
 pub fn scan(
     app: &AppHandle,
     conn: &Mutex<Connection>,
@@ -133,9 +137,9 @@ pub fn scan(
         let guard = conn.lock();
         match import_file(&guard, path, Some("lokal")) {
             Ok(track_id) => {
-                // `upsert_track` gibt bei einem Doppelten die Kennung des
-                // vorhandenen Titels zurück. Erkennbar am Pfad: Er zeigt dann
-                // auf die andere Datei.
+                // on a duplicate `upsert_track` returns the id of the
+                // existing track, recognisable by the path: it points at the
+                // other file then
                 let gleicher_pfad = guard
                     .query_row("SELECT path FROM tracks WHERE id = ?1", [track_id], |r| {
                         r.get::<_, String>(0)

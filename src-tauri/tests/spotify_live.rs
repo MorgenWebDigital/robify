@@ -1,14 +1,16 @@
-//! Prüft die Spotify-Auflösung gegen den echten Dienst. Braucht Netz und ist
-//! deshalb standardmäßig deaktiviert:
+//! spotify resolving against the real service. needs network, so it is
+//! disabled by default:
 //!
 //!     cargo test --test spotify_live -- --ignored --nocapture
 
 use robify_lib::spotify::{self, SpotifyKind};
 
-/// Spotify drosselt gleichzeitige Anfragen, Tests nacheinander laufen lassen.
-/// Bewusst ein blockierender Mutex: jeder `#[tokio::test]` bringt eine eigene
-/// Laufzeit mit, ein `tokio::sync::Mutex` serialisiert über deren Grenzen
-/// hinweg nicht verlässlich.
+/// spotify throttles simultaneous requests, so the tests run one after
+/// another.
+///
+/// deliberately a blocking mutex: every `#[tokio::test]` brings a runtime of
+/// its own, and a `tokio::sync::Mutex` does not serialise across their
+/// boundaries reliably.
 static REQUESTS: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 fn serialize() -> std::sync::MutexGuard<'static, ()> {
@@ -29,8 +31,8 @@ async fn track_liefert_vollstaendige_metadaten() {
     assert!(!release.tracks[0].artists.is_empty());
     assert!(release.tracks[0].duration_ms.unwrap_or(0) > 0);
 
-    // Das Cover kommt aus einer zweiten Anfrage und ist im Datenmodell
-    // optional, Spotify drosselt sie gelegentlich.
+    // the cover comes out of a second request and is optional in the data
+    // model, spotify throttles it now and then
     if release.cover_url.is_none() {
         eprintln!("Hinweis: Spotify hat diesmal kein Cover geliefert");
     }
@@ -55,7 +57,7 @@ async fn album_liefert_durchnummerierte_titelliste() {
 #[ignore = "benötigt eine Internetverbindung"]
 async fn kuenstlerlisten_werden_getrennt() {
     let _guard = serialize();
-    // „Monster“ hat bei Spotify fünf Beteiligte in einem Feld.
+    // at spotify "Monster" has five participants in one field
     let reference =
         spotify::parse_link("https://open.spotify.com/album/20r762YmB5HeofjMCiPMLv").unwrap();
     let release = spotify::resolve(&reference).await.unwrap();
@@ -74,17 +76,17 @@ async fn kuenstlerlisten_werden_getrennt() {
     );
     assert_eq!(monster.artists[0], "Kanye West", "Hauptkünstler zuerst");
     assert!(monster.artists.iter().any(|a| a.contains("Nicki Minaj")));
-    // Kein Eintrag darf noch mehrere Namen enthalten.
+    // no entry may still hold several names
     assert!(
         !monster.artists.iter().any(|a| a.contains('\u{a0}')),
         "Trennzeichen blieb stehen"
     );
 }
 
-/// Öffentliche Playlists sollen sich genauso auflösen wie Alben. Spotify gibt
-/// über die Einbettung höchstens 100 Titel heraus; der Test hält fest, dass
-/// eine lange Playlist genau dort stehenbleibt, damit die Grenze auffällt,
-/// falls Spotify sie ändert.
+// public playlists are to resolve exactly like albums. spotify hands out at
+// most 100 tracks through the embed, and this test pins down that a long
+// playlist stops exactly there, so the bound shows up should spotify change
+// it
 #[tokio::test]
 #[ignore = "benötigt eine Internetverbindung"]
 async fn oeffentliche_playlist_liefert_ihre_titel() {
@@ -105,7 +107,7 @@ async fn oeffentliche_playlist_liefert_ihre_titel() {
     for track in &release.tracks {
         assert!(!track.title.is_empty(), "Titel ohne Namen");
         assert!(!track.artists.is_empty(), "Titel ohne Künstler");
-        // Playlists sind keine Alben, eine Titelnummer wäre irreführend.
+        // playlists are no albums, a track number would mislead
         assert!(track.track_no.is_none(), "Playlist-Titel trägt eine Nummer");
     }
 

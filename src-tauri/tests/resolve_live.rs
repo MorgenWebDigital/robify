@@ -1,5 +1,5 @@
-//! Prüft die Link- und Sucherkennung gegen die echten Dienste. Braucht Netz
-//! und yt-dlp, deshalb standardmäßig deaktiviert:
+//! link and search detection against the real services. needs network and
+//! yt-dlp, so it is disabled by default:
 //!
 //!     cargo test --test resolve_live -- --ignored --nocapture
 
@@ -21,8 +21,8 @@ async fn suche_mischt_mehrere_quellen() {
         "es sollte mehr als eine Quelle vertreten sein, war: {sources:?}"
     );
 
-    // Die Mischung sorgt für Vielfalt, die Reihenfolge aber für Treffsicherheit:
-    // oben steht, was zum Suchbegriff passt, egal von welcher Quelle.
+    // the mixing brings variety, the ordering brings accuracy: what fits the
+    // search term stands on top, whatever source it comes from
     for treffer in results.iter().take(3) {
         let text = format!("{} {}", treffer.title, treffer.uploader.clone().unwrap_or_default())
             .to_lowercase();
@@ -35,7 +35,7 @@ async fn suche_mischt_mehrere_quellen() {
     }
 }
 
-/// Der gemeldete Fehler: ein fremder Titel (oder dessen Remix) wurde geladen.
+// the reported bug: a foreign track, or a remix of one, was downloaded
 #[tokio::test]
 #[ignore = "benötigt Internet und yt-dlp"]
 async fn auswahl_trifft_den_gesuchten_titel() {
@@ -50,7 +50,7 @@ async fn auswahl_trifft_den_gesuchten_titel() {
             .unwrap();
         assert!(!urls.is_empty(), "keine Auswahl für {query}");
 
-        // Was oben landet, muss auch textlich passen.
+        // what lands on top has to fit in text as well
         let treffer = downloader::search_everywhere(&ytdlp, query, 5).await.unwrap();
         let bester = treffer
             .iter()
@@ -107,7 +107,7 @@ async fn playlist_wird_aufgeklappt() {
     assert!(results.len() > 1, "Playlist wurde nicht aufgeklappt");
 }
 
-/// Alle vier Quellen müssen etwas beisteuern.
+// all four sources have to contribute something
 #[tokio::test]
 #[ignore = "benötigt Internet und yt-dlp"]
 async fn alle_quellen_liefern_treffer() {
@@ -135,7 +135,7 @@ async fn alle_quellen_liefern_treffer() {
         );
     }
 
-    // Audius nennt Laufzeiten, damit die Auswahl sicher greifen kann.
+    // audius names running times so the picking can take hold reliably
     assert!(
         results
             .iter()

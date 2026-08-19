@@ -1,10 +1,10 @@
-//! Spotify-Links auflösen.
+//! resolving spotify links.
 //!
-//! Spotify liefert seine Audiodaten ausschließlich verschlüsselt (DRM) aus,
-//! herunterladen lässt sich davon nichts. Was öffentlich zugänglich ist, sind
-//! die **Metadaten**: Titel, Künstler, Album, Länge und Cover. Genau die holen
-//! wir hier über die Embed-Seite (kein API-Schlüssel nötig) und suchen die
-//! passende Aufnahme anschließend über die normalen Quellen.
+//! spotify serves its audio encrypted only, none of it can be downloaded.
+//! what is publicly reachable is the metadata: title, artist, album, length
+//! and cover. that is what is fetched here through the embed page, no api key
+//! involved, and the matching recording is then searched through the ordinary
+//! sources.
 
 use crate::online;
 use anyhow::{anyhow, bail, Result};
@@ -56,8 +56,8 @@ pub struct SpotifyRef {
     pub id: String,
 }
 
-/// Erkennt `https://open.spotify.com/track/…`, Länderpfade wie `/intl-de/`
-/// und `spotify:track:…`.
+/// recognises `https://open.spotify.com/track/…`, country paths such as
+/// `/intl-de/`, and `spotify:track:…`.
 pub fn parse_link(input: &str) -> Option<SpotifyRef> {
     let input = input.trim();
 
@@ -76,7 +76,7 @@ pub fn parse_link(input: &str) -> Option<SpotifyRef> {
         return None;
     }
 
-    // Query und Fragment abschneiden, dann den Pfad durchgehen.
+    // cut off query and fragment, then walk the path
     let path = input
         .split(['?', '#'])
         .next()?
@@ -98,14 +98,14 @@ pub fn parse_link(input: &str) -> Option<SpotifyRef> {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpotifyTrack {
-    /// Kennung des Titels bei Spotify, falls bekannt. Damit lässt sich sein
-    /// eigenes Cover nachschlagen, das die Titelliste nicht mitliefert.
+    /// id of the track at spotify where known. it allows looking up its own
+    /// cover, which the track list does not supply.
     pub id: Option<String>,
     pub title: String,
-    /// Alle Beteiligten, Hauptkünstler zuerst. Spotify unterscheidet keine
-    /// Gastbeiträge, wer dort steht, steht gleichberechtigt in der Liste.
+    /// everyone involved, lead artist first. spotify draws no line around
+    /// guest contributions, whoever is listed stands there as an equal.
     pub artists: Vec<String>,
-    /// Aus dem Titel gezogene Gastkünstler („… (feat. X)“).
+    /// guest artists pulled out of the title ("… (feat. X)").
     pub featured: Vec<String>,
     pub duration_ms: Option<i64>,
     pub track_no: Option<i64>,
@@ -115,7 +115,7 @@ pub struct SpotifyTrack {
 #[serde(rename_all = "camelCase")]
 pub struct SpotifyRelease {
     pub kind: SpotifyKind,
-    /// Name des Albums, der Playlist oder des Titels.
+    /// name of the album, the playlist or the track.
     pub name: String,
     pub artist: Option<String>,
     pub cover_url: Option<String>,
@@ -124,7 +124,7 @@ pub struct SpotifyRelease {
 }
 
 fn extract_next_data(html: &str) -> Result<serde_json::Value> {
-    // Die Embed-Seite legt ihren Zustand in einem JSON-Script-Tag ab.
+    // the embed page stores its state in a json script tag
     let start_marker = r#"<script id="__NEXT_DATA__" type="application/json">"#;
     let start = html
         .find(start_marker)
@@ -136,9 +136,9 @@ fn extract_next_data(html: &str) -> Result<serde_json::Value> {
     Ok(serde_json::from_str(&html[start..start + end])?)
 }
 
-/// Spotify verbindet Künstlernamen mit Komma und geschütztem Leerzeichen.
-/// Genau daran wird getrennt, ein gewöhnliches Komma gehört zum Namen
-/// („Earth, Wind & Fire“).
+/// splits artist names the way spotify joins them, at a comma followed by a
+/// non-breaking space. an ordinary comma belongs to the name ("Earth, Wind &
+/// Fire").
 pub fn split_spotify_artists(value: &str) -> Vec<String> {
     value
         .split(",\u{a0}")
@@ -149,7 +149,7 @@ pub fn split_spotify_artists(value: &str) -> Vec<String> {
         .collect()
 }
 
-/// Zieht „(feat. A, B & C)“ aus dem Titel und gibt Titel und Namen zurück.
+/// pulls "(feat. A, B & C)" out of the title and returns title and names.
 pub fn split_feature_suffix(title: &str) -> (String, Vec<String>) {
     const MARKERS: [&str; 4] = ["(feat. ", "(ft. ", "(featuring ", "(with "];
     let lower = title.to_lowercase();
@@ -185,7 +185,7 @@ fn text(value: &serde_json::Value) -> Option<String> {
         .map(str::to_string)
 }
 
-/// Künstlernamen zusammenfassen. Spotify liefert sie als Liste.
+// joins artist names, spotify delivers them as a list
 fn join_artists(entity: &serde_json::Value) -> Option<String> {
     let names: Vec<String> = entity["artists"]
         .as_array()?
@@ -206,11 +206,11 @@ async fn fetch_cover_url(reference: &SpotifyRef) -> Option<String> {
     text(&json["thumbnail_url"])
 }
 
-/// Holt die Cover-Adresse eines einzelnen Titels.
+/// fetches the cover address of a single track.
 ///
-/// Playlists geben in ihrer Titelliste kein Bild heraus, nur die Kennung.
-/// Ohne diesen zweiten Griff trüge jeder Titel einer Playlist deren Bild,
-/// obwohl die Stücke aus ganz verschiedenen Releases stammen.
+/// playlists hand out no image in their track list, only the id. without this
+/// second reach every track of a playlist would carry that playlist's image
+/// although the pieces come from entirely different releases.
 pub async fn track_cover_url(track_id: &str) -> Option<String> {
     let url = format!(
         "https://open.spotify.com/oembed?url=https://open.spotify.com/track/{track_id}"
@@ -220,6 +220,7 @@ pub async fn track_cover_url(track_id: &str) -> Option<String> {
     text(&json["thumbnail_url"])
 }
 
+/// reads title, artists, cover and track list off the embed page.
 pub async fn resolve(reference: &SpotifyRef) -> Result<SpotifyRelease> {
     let url = format!(
         "https://open.spotify.com/embed/{}/{}",
@@ -251,7 +252,7 @@ pub async fn resolve(reference: &SpotifyRef) -> Result<SpotifyRelease> {
         .and_then(|iso| iso.get(0..4).and_then(|y| y.parse().ok()));
     let cover_url = fetch_cover_url(reference).await;
 
-    // Einzelner Titel: die Daten stehen direkt in der Entität.
+    // a single track: the data sits in the entity directly
     if reference.kind == SpotifyKind::Track {
         let mut artists: Vec<String> = entity["artists"]
             .as_array()
@@ -284,7 +285,7 @@ pub async fn resolve(reference: &SpotifyRef) -> Result<SpotifyRelease> {
         });
     }
 
-    // Album, Playlist und Künstler bringen eine Titelliste mit.
+    // album, playlist and artist bring a track list along
     let release_artist = join_artists(&entity).or_else(|| text(&entity["subtitle"]));
     let numbered = reference.kind == SpotifyKind::Album;
 
@@ -307,14 +308,14 @@ pub async fn resolve(reference: &SpotifyRef) -> Result<SpotifyRelease> {
 
                     let (title, featured) = split_feature_suffix(&raw_title);
                     Some(SpotifyTrack {
-                        // „spotify:track:ID“, nur der letzte Teil zählt.
+                        // "spotify:track:ID", only the last part counts
                         id: text(&item["uri"])
                             .and_then(|uri| uri.rsplit(':').next().map(str::to_owned)),
                         title,
                         artists,
                         featured,
                         duration_ms: item["duration"].as_i64(),
-                        // Playlists haben keine sinnvolle Titelnummer.
+                        // playlists carry no meaningful track number
                         track_no: numbered.then_some(index as i64 + 1),
                     })
                 })
@@ -374,12 +375,12 @@ mod tests {
 
     #[test]
     fn trennt_nur_an_spotifys_eigenem_trennzeichen() {
-        // Spotify verbindet mit Komma + geschütztem Leerzeichen.
+        // spotify joins with comma plus non-breaking space
         assert_eq!(
             split_spotify_artists("Kanye West,\u{a0}JAŸ-Z,\u{a0}Bon Iver"),
             vec!["Kanye West", "JAŸ-Z", "Bon Iver"]
         );
-        // Ein gewöhnliches Komma gehört zum Namen.
+        // an ordinary comma belongs to the name
         assert_eq!(
             split_spotify_artists("Earth, Wind & Fire"),
             vec!["Earth, Wind & Fire"]
@@ -397,12 +398,12 @@ mod tests {
         assert_eq!(title, "Monster");
         assert_eq!(featured, vec!["Bon Iver", "JAY-Z", "Nicki Minaj"]);
 
-        // Ohne Zusatz bleibt der Titel unverändert.
+        // without a suffix the title stays unchanged
         let (title, featured) = split_feature_suffix("Dark Fantasy");
         assert_eq!(title, "Dark Fantasy");
         assert!(featured.is_empty());
 
-        // Klammern ohne Feature-Marker bleiben stehen.
+        // brackets without a feature marker stay
         let (title, featured) = split_feature_suffix("All Of The Lights (Interlude)");
         assert_eq!(title, "All Of The Lights (Interlude)");
         assert!(featured.is_empty());

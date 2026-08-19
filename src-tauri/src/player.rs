@@ -1,5 +1,5 @@
-//! Wiedergabe-Engine. Läuft in einem eigenen Thread, besitzt den Audio-Sink
-//! und eine eigene SQLite-Verbindung (für Pfade und Wiedergabe-Statistik).
+//! the playback engine. runs on a thread of its own, owns the audio sink and
+//! a sqlite connection of its own (for paths and playback statistics).
 
 use crate::db;
 use anyhow::{anyhow, Result};
@@ -17,35 +17,35 @@ use tauri::{AppHandle, Emitter};
 use crate::fehler;
 
 const TICK: Duration = Duration::from_millis(250);
-/// So oft wird die laufende Abspielposition gesichert.
+/// this often the running playback position is stored.
 const REMEMBER_EVERY: Duration = Duration::from_secs(5);
-/// Ab dieser Hördauer zählt ein Titel als "gehört" (analog zu gängigen Diensten).
+/// from this listening time on a track counts as heard, as with the common
+/// services.
 const MIN_PLAY_MS: u64 = 30_000;
-/// Verstärkung bei vollem Ausschlag des Reglers.
+/// gain at the full swing of the slider.
 const OBERGRENZE: f32 = 0.85;
 
-/// Ab dieser Hördauer merkt sich Robify einen Titel als zuletzt gespielt.
+/// from this listening time on robify remembers a track as recently played.
 ///
-/// Viel weniger als für die Statistik, und mit Absicht: „Zuletzt gespielt“
-/// beantwortet die Frage „was lief gerade?“, nicht „was höre ich viel?“. Wer
-/// einen Titel anspielt und nach zwanzig Sekunden weiterschaltet, will ihn
-/// dort wiederfinden. Fünf Sekunden halten nur das draußen, was beim
-/// Durchtippen einer Liste entsteht.
+/// far less than for the statistics, and deliberately so: "recently played"
+/// answers the question of what just ran, not what is heard a lot. whoever
+/// starts a track and moves on after twenty seconds wants to find it there.
+/// five seconds keep out only what comes from tapping through a list.
 const VERLAUF_MS: u64 = 5_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RepeatMode {
-    /// Nach dem letzten Titel ist Schluss.
+    /// after the last track it ends.
     Off,
-    /// Warteschlange endlos wiederholen.
+    /// repeat the queue endlessly.
     All,
-    /// Aktuellen Titel endlos wiederholen.
+    /// repeat the current track endlessly.
     One,
 }
 
 impl RepeatMode {
-    /// Kurzname für die Einstellungstabelle.
+    /// short name for the settings table.
     fn as_str(self) -> &'static str {
         match self {
             RepeatMode::Off => "off",
@@ -66,9 +66,9 @@ impl RepeatMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum SleepTimerMode {
-    /// Nach einer festen Dauer pausieren.
+    /// pause after a fixed duration.
     Duration,
-    /// Erst am Ende des laufenden Titels pausieren.
+    /// pause at the end of the running track.
     EndOfTrack,
 }
 
@@ -80,7 +80,7 @@ pub struct SleepTimerState {
     pub remaining_ms: u64,
 }
 
-/// Vollständiger Zustand, den das Frontend zum Rendern braucht.
+/// the complete state the frontend needs for rendering.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayerState {
@@ -94,14 +94,14 @@ pub struct PlayerState {
     pub shuffle: bool,
     pub queue: Vec<i64>,
     pub queue_index: Option<usize>,
-    /// Stellen der Warteschlange in der Reihenfolge, in der sie laufen.
+    /// positions of the queue in the order they run in.
     ///
-    /// Ohne Zufallswiedergabe ist das schlicht `0, 1, 2, …`; mit ist es die
-    /// gewürfelte Folge. Die Oberfläche braucht sie, um zu zeigen, was noch
-    /// kommt: Bei Zufallswiedergabe steht das Kommende nicht hinter dem
-    /// laufenden Titel, sondern über die ganze Liste verstreut.
+    /// without shuffle that is plainly `0, 1, 2, …`, with it the drawn
+    /// sequence. the ui needs it to show what is still to come: under shuffle
+    /// the coming tracks do not stand behind the running one but lie
+    /// scattered over the whole list.
     pub order: Vec<usize>,
-    /// Wo in `order` der laufende Titel steht.
+    /// where in `order` the running track stands.
     pub order_pos: Option<usize>,
     pub sleep_timer: Option<SleepTimerState>,
 }
@@ -165,18 +165,18 @@ impl PlayerHandle {
     }
 }
 
-/// Der laufende Player, für Befehle von außerhalb der App.
+/// the running player, for commands from outside the app.
 ///
-/// Der Systemplayer auf dem Sperrbildschirm kommt nicht über einen
-/// Tauri-Befehl herein — er ruft aus der Java-Laufzeit direkt in die
-/// Bibliothek, ohne Zustand der Oberfläche und ohne `AppHandle`. Damit er
-/// überhaupt jemanden erreicht, wird der Griff hier einmal hinterlegt.
+/// the system player on the lock screen does not come in through a tauri
+/// command, it calls from the java runtime into the library directly, without
+/// ui state and without an `AppHandle`. for it to reach anybody at all, the
+/// handle is deposited here once.
 static GRIFF: OnceLock<PlayerHandle> = OnceLock::new();
 
-/// Nimmt entgegen, was am Systemplayer gedrückt wurde.
+/// takes in what was pressed on the system player.
 ///
-/// Unbekannte Namen bleiben still: Der Aufruf kommt von der Java-Seite, und
-/// ein Absturz im Ton-Faden wäre dort nicht zu retten.
+/// unknown names stay silent: the call comes from the java side, and a crash
+/// on the audio thread could not be recovered from there.
 pub fn fernbefehl(name: &str, wert: u64) {
     let Some(griff) = GRIFF.get() else {
         return;
@@ -221,7 +221,7 @@ struct Engine {
     shared: Arc<Mutex<PlayerState>>,
 
     queue: Vec<i64>,
-    /// Abspielreihenfolge als Indizes in `queue` (bei Zufall gemischt).
+    /// playback order as indices into `queue`, shuffled where drawn.
     order: Vec<usize>,
     order_pos: Option<usize>,
 
@@ -230,22 +230,22 @@ struct Engine {
     volume: f32,
     muted: bool,
 
-    /// Läuft gerade eine Quelle im Sink?
+    /// whether a source is currently running in the sink.
     loaded: bool,
     duration_ms: u64,
-    /// Tatsächlich gehörte Millisekunden des laufenden Titels.
+    /// milliseconds of the running track actually heard.
     listened_ms: u64,
     last_tick: Instant,
-    /// Wann der Zustand zuletzt gesichert wurde.
+    /// when the state was last stored.
     last_remembered: Instant,
-    /// Was zuletzt als Takt hinausging. Ändert sich nichts, wird nichts
-    /// gesendet, sonst liefe im Leerlauf viermal je Sekunde eine Meldung
-    /// über die Brücke und löste im Frontend ein Neuzeichnen aus.
+    /// what last went out as a tick. where nothing changes nothing is sent,
+    /// otherwise a message would cross the bridge four times a second while
+    /// idle and trigger a repaint in the frontend.
     letzter_takt: Option<(bool, u64, u64, Option<u64>)>,
-    /// Welcher Titel dem System zuletzt gemeldet wurde.
+    /// which track was last reported to the system.
     ///
-    /// Nur beim Wechsel wird das Cover mitgeschickt; sonst ginge es bei jedem
-    /// Druck auf Pause erneut durch die Java-Brücke.
+    /// the cover travels along on a change only, otherwise it would cross the
+    /// java bridge again at every press on pause.
     gemeldeter_titel: Option<i64>,
 
     sleep_mode: Option<SleepTimerMode>,
@@ -318,7 +318,7 @@ fn run(
 }
 
 impl Engine {
-    // ------------------------------------------------------------ Kommandos
+    // --- commands ---
 
     fn handle(&mut self, cmd: Cmd) -> Result<()> {
         match cmd {
@@ -394,7 +394,7 @@ impl Engine {
             }
             Cmd::Next => self.advance(true)?,
             Cmd::Prev => {
-                // Innerhalb der ersten Sekunden zurück, sonst an den Anfang.
+                // back within the first seconds, otherwise to the start
                 if self.position_ms() > 3_000 {
                     let _ = self.player.try_seek(Duration::ZERO);
                 } else {
@@ -445,29 +445,29 @@ impl Engine {
         Ok(())
     }
 
-    /// Stellt die Lautstärke ein, gehörrichtig statt geradlinig.
+    /// sets the volume by ear rather than in a straight line.
     ///
-    /// Der Regler steht linear, das Gehör hört aber logarithmisch: Halbe
-    /// Verstärkung klingt nicht halb so laut, sondern nur wenig leiser. Auf
-    /// zwanzig Prozent gestellt war es darum immer noch deutlich zu hören,
-    /// und die untere Hälfte des Reglers tat fast nichts.
+    /// the slider is linear while hearing is logarithmic: half the gain does
+    /// not sound half as loud, only slightly quieter. set to twenty percent it
+    /// was therefore still clearly audible, and the lower half of the slider
+    /// did almost nothing.
     ///
-    /// Die zweite Potenz bildet das nach: Bei halbem Ausschlag bleibt ein
-    /// Viertel der Verstärkung übrig, gut zwölf Dezibel unter voll. Die dritte
-    /// war zu viel des Guten, die untere Reglerhälfte wurde davon fast
-    /// unbrauchbar leise.
+    /// the second power models that: at half swing a quarter of the gain is
+    /// left, a good twelve decibels below full. the third was too much of a
+    /// good thing, it made the lower half of the slider almost uselessly
+    /// quiet.
     ///
-    /// Dazu ein Deckel: Ganz oben stehen 85 statt 100 Prozent. Voll
-    /// aufgedreht war es einen Tick zu laut, und der Kopfraum kostet nichts,
-    /// wo das System seine eigene Lautstärke darüberlegt.
+    /// on top of it a cap: at the very top stand 85 percent instead of 100.
+    /// turned up fully it was a touch too loud, and the headroom costs
+    /// nothing where the system lays its own volume over it.
     ///
-    /// Null bleibt null; stumm ist stumm.
+    /// zero stays zero, muted is muted.
     fn apply_volume(&self) {
         let stand = if self.muted { 0.0 } else { self.volume };
         self.player.set_volume((OBERGRENZE * stand * stand) as _);
     }
 
-    // ------------------------------------------------------- Reihenfolge
+    // --- order ---
 
     fn current_queue_index(&self) -> Option<usize> {
         self.order_pos.and_then(|p| self.order.get(p).copied())
@@ -493,7 +493,7 @@ impl Engine {
         });
     }
 
-    /// Reihenfolge neu aufbauen, ohne den laufenden Titel zu unterbrechen.
+    /// rebuilds the order without interrupting the running track.
     fn rebuild_order_keeping(&mut self, current: Option<usize>) {
         match current {
             Some(c) if c < self.queue.len() => self.rebuild_order(Some(c)),
@@ -512,7 +512,7 @@ impl Engine {
         self.order.extend(new);
     }
 
-    // -------------------------------------------------------- Wiedergabe
+    // --- playback ---
 
     fn start_current(&mut self) -> Result<()> {
         let Some(index) = self.current_queue_index() else {
@@ -530,19 +530,13 @@ impl Engine {
         self.load_at(track_id, 0, true)
     }
 
-    /// Lädt einen Titel, wahlweise pausiert und ab einer Stelle.
+    /// jumps to a position inside the running track.
     ///
-    /// Beim Start der App wird der zuletzt gehörte Titel so zurückgeholt:
-    /// sichtbar in der Leiste, an der Stelle von damals, aber still. Wer
-    /// weiterhören will, drückt Abspielen; wer nicht, sieht wenigstens, wo
-    /// er stehengeblieben ist.
-    /// Springt an eine Stelle im laufenden Titel.
-    ///
-    /// Der Dekoder kann das Spulen ablehnen, bei MP3 ohne Sprungtabelle etwa
-    /// muss Symphonia schätzen und gibt bei manchen Dateien auf. Dann wird der
-    /// Titel neu geöffnet und gleich an der Zielstelle begonnen: Ein frischer
-    /// Dekoder liest die Datei von vorn und kommt meist durch, wo der
-    /// angefangene scheitert.
+    /// the decoder can refuse to seek: with an mp3 lacking a seek table
+    /// symphonia has to guess and gives up on some files. the track is then
+    /// opened anew and started at the target position right away, a fresh
+    /// decoder reads the file from the top and usually gets through where the
+    /// started one fails.
     fn seek_to(&mut self, ms: u64) -> Result<()> {
         let ziel = Duration::from_millis(ms);
         if self.player.try_seek(ziel).is_ok() {
@@ -557,15 +551,15 @@ impl Engine {
         };
 
         let lief = !self.player.is_paused();
-        // Die bereits gezählte Hördauer geht beim Neuladen sonst verloren.
+        // the listening time counted so far would be lost on a reload
         let gehoert = self.listened_ms;
         self.load_at(track_id, ms, lief)
             .map_err(|e| anyhow!(fehler!("Spulen nicht möglich: {0}", e)))?;
         self.listened_ms = gehoert;
 
-        // `load_at` verschluckt einen gescheiterten Sprung, damit ein Titel
-        // notfalls wenigstens von vorn läuft. Hier ist das die falsche
-        // Antwort: Wer spult, will nicht heimlich am Anfang landen.
+        // `load_at` swallows a failed jump so a track at least runs from the
+        // top if need be. here that is the wrong answer: whoever seeks does
+        // not want to end up at the start quietly
         let erreicht = self.player.get_pos().as_millis() as u64;
         if ms > 2_000 && erreicht + 2_000 < ms {
             return Err(anyhow!(
@@ -578,6 +572,12 @@ impl Engine {
         Ok(())
     }
 
+    /// loads a track, optionally paused and from a given position.
+    ///
+    /// this is how the last heard track comes back at the start of the app:
+    /// visible in the bar, at the position of back then, but silent. whoever
+    /// wants to keep listening presses play, whoever does not at least sees
+    /// where they left off.
     fn load_at(&mut self, track_id: i64, start_ms: u64, play: bool) -> Result<()> {
         let (path, duration_ms): (String, i64) = self.conn.query_row(
             "SELECT path, duration_ms FROM tracks WHERE id = ?1",
@@ -587,9 +587,9 @@ impl Engine {
 
         let file = File::open(&path).map_err(|e| anyhow!(fehler!("Datei nicht lesbar ({0}): {1}", path, e)))?;
         let source = rodio::Decoder::try_from(BufReader::new(file)).map_err(|e| {
-            // Opus ist der häufige Fall: Symphonia bringt dafür keinen
-            // Dekoder mit. Neue Downloads meiden das Format, ältere Dateien
-            // liegen aber noch in der Bibliothek.
+            // opus is the frequent case: symphonia brings no decoder for it.
+            // new downloads avoid the format, older files still lie in the
+            // library
             if !crate::downloader::is_playable(std::path::Path::new(&path)) {
                 anyhow!(
                     "Dieses Format kann Robify nicht abspielen ({path}). \
@@ -610,7 +610,7 @@ impl Engine {
         self.listened_ms = 0;
         self.last_tick = Instant::now();
 
-        // Erst spulen, dann entscheiden, ob es losgeht.
+        // seek first, then decide whether it starts
         if start_ms > 0 {
             let ziel = Duration::from_millis(start_ms.min(self.duration_ms));
             let _ = self.player.try_seek(ziel);
@@ -623,15 +623,15 @@ impl Engine {
         Ok(())
     }
 
-    /// Holt den zuletzt gehörten Titel zurück, pausiert und an der Stelle,
-    /// an der er verlassen wurde.
+    /// brings the last heard track back, paused and at the position it was
+    /// left at.
     ///
-    /// Scheitert irgendetwas daran (Datei weg, Format nicht lesbar), bleibt
-    /// der Player einfach leer. Ein fehlgeschlagenes Wiederherstellen darf
-    /// den Start nicht aufhalten.
+    /// where anything about it fails, a missing file or an unreadable format,
+    /// the player simply stays empty. a failed restore must not hold up the
+    /// start.
     fn restore(&mut self) {
-        // Die Wiederholart gilt unabhängig davon, ob noch eine Warteschlange
-        // gemerkt ist, deshalb vor dem Rücksprung weiter unten.
+        // the repeat mode holds regardless of whether a queue is remembered,
+        // hence before the early return further down
         if let Ok(Some(wert)) = db::get_setting(&self.conn, "player_repeat") {
             self.repeat = RepeatMode::parse(&wert);
         }
@@ -666,7 +666,7 @@ impl Engine {
             return;
         };
         if self.load_at(track_id, position, false).is_err() {
-            // Der Titel ist nicht mehr abspielbar, dann eben ohne.
+            // the track is no longer playable, so be it
             self.queue.clear();
             self.order.clear();
             self.order_pos = None;
@@ -674,8 +674,8 @@ impl Engine {
         }
     }
 
-    /// Merkt sich, was gerade läuft. Warteschlange, Stelle darin und
-    /// Abspielposition. Beim nächsten Start steht der Titel wieder da.
+    /// remembers what is running: queue, position within it and playback
+    /// position. at the next start the track stands there again.
     fn remember(&mut self) {
         let queue = self
             .queue
@@ -711,16 +711,16 @@ impl Engine {
         }
     }
 
-    /// Nächster Titel. `manual` unterscheidet Nutzerklick von Titelende.
+    /// next track. `manual` tells a user press from the end of a track.
     fn advance(&mut self, manual: bool) -> Result<()> {
         self.record_play();
 
-        // „Titel wiederholen“ gilt auch für den Klick.
+        // repeat-one holds for a press as well.
         //
-        // Vorher sprang ein Klick trotzdem weiter, mit der Überlegung, der
-        // Nutzer wolle ja gerade wechseln. In der Hand liest es sich anders:
-        // Wer einen Titel auf Dauerschleife stellt, will ihn beim Weitertippen
-        // wieder hören, nicht die Einstellung umgangen bekommen.
+        // before, a press jumped on anyway, on the reasoning that the user
+        // wants to change track right now. in the hand it reads differently:
+        // whoever puts a track on endless repeat wants to hear it again when
+        // tapping on, not have the setting bypassed
         if self.repeat == RepeatMode::One {
             return self.start_current();
         }
@@ -732,7 +732,7 @@ impl Engine {
         let am_ende = matches!(self.order_pos, Some(pos) if pos + 1 >= self.order.len());
         let next = naechste_stelle(self.order_pos, self.order.len(), manual, self.repeat);
 
-        // Neue Zufallsrunde beim Umlauf, sonst wiederholt sich die Reihenfolge.
+        // a new shuffle round on wrap-around, otherwise the order repeats
         if am_ende && next == Some(0) && self.shuffle {
             self.order.shuffle(&mut rand::rng());
         }
@@ -751,13 +751,13 @@ impl Engine {
         }
     }
 
-    /// Wirft ab, was zu lange her ist.
+    /// drops what lies too far back.
     ///
-    /// Gehörte Titel bleiben in der Warteschlange stehen, sonst führte der
-    /// Rückwärtsschritt ins Leere. Endlos wachsen soll sie deswegen aber
-    /// nicht: Bei jeder Änderung holt die Oberfläche zu *jedem* Eintrag die
-    /// Angaben aus der Datenbank, auch zu denen, die niemand mehr sieht. Nach
-    /// einem Abend Musik wären das Hunderte Abfragen je Titelwechsel.
+    /// heard tracks stay in the queue, otherwise the step backwards would
+    /// lead nowhere. it is not to grow endlessly over that though: on every
+    /// change the ui fetches the details of every entry from the database,
+    /// including the ones nobody sees any more. after an evening of music
+    /// that would be hundreds of queries per track change.
     fn vorgeschichte_kuerzen(&mut self) {
         let Some(pos) = self.order_pos else { return };
         let Some((queue, order, neue_stelle)) =
@@ -779,9 +779,9 @@ impl Engine {
         self.start_current()
     }
 
-    // ------------------------------------------------------------ Statistik
+    // --- statistics ---
 
-    /// Schreibt die Hördauer des laufenden Titels in die Datenbank.
+    /// writes the listening time of the running track into the database.
     fn record_play(&mut self) {
         let Some(index) = self.current_queue_index() else {
             self.listened_ms = 0;
@@ -794,8 +794,8 @@ impl Engine {
         let listened = self.listened_ms;
         self.listened_ms = 0;
 
-        // Der Verlauf zuerst: Er hat seine eigene, viel niedrigere Schwelle
-        // und darf nicht daran hängen, ob der Titel für die Statistik zählt.
+        // the history first: it has its own, far lower threshold and must
+        // not depend on whether the track counts for the statistics
         if listened >= VERLAUF_MS {
             let _ = self.conn.execute(
                 "UPDATE tracks SET last_played_at = ?2 WHERE id = ?1",
@@ -805,8 +805,9 @@ impl Engine {
 
         let completed = self.duration_ms > 0 && listened * 100 >= self.duration_ms * 90;
         if listened < MIN_PLAY_MS && !completed {
-            // Für die Auswertung zu kurz. Die Oberfläche erfährt es trotzdem,
-            // sonst bliebe die Startseite stehen, bis etwas lange genug lief.
+            // too short for the evaluation. the ui learns of it anyway,
+            // otherwise the home page would stand still until something ran
+            // long enough
             if listened >= VERLAUF_MS {
                 let _ = self.app.emit("library:plays-changed", track_id);
             }
@@ -824,7 +825,7 @@ impl Engine {
         let _ = self.app.emit("library:plays-changed", track_id);
     }
 
-    // ---------------------------------------------------------------- Tick
+    // --- tick ---
 
     fn tick(&mut self) {
         let elapsed = self.last_tick.elapsed();
@@ -834,13 +835,13 @@ impl Engine {
 
         if is_playing {
             self.listened_ms += elapsed_ms;
-            // Die Position wandert ständig; alle paar Sekunden genügt.
+            // the position moves constantly, every few seconds is enough
             if self.last_remembered.elapsed() >= REMEMBER_EVERY {
                 self.remember();
             }
         }
 
-        // Titel zu Ende: Sink ist leer, obwohl nicht pausiert wurde.
+        // track finished: the sink is empty although nothing was paused
         if self.loaded && self.player.empty() {
             self.loaded = false;
             if self.sleep_mode == Some(SleepTimerMode::EndOfTrack) {
@@ -896,9 +897,9 @@ impl Engine {
         }
     }
 
-    /// `full` löst ein State-Event aus; sonst nur der günstige Positions-Tick.
-    /// Vollständiger Zustand. Für Ereignisse, die mehr als die Position
-    /// ändern: Titelwechsel, Warteschlange, Lautstärke.
+    /// sends the state out. `full` emits the complete snapshot, for events
+    /// that change more than the position: track change, queue, volume.
+    /// otherwise only the cheap position tick goes out.
     fn publish(&mut self, full: bool) {
         if full {
             let snapshot = self.snapshot();
@@ -916,12 +917,12 @@ impl Engine {
         }
     }
 
-    /// Sagt dem System, was läuft, damit es seinen eigenen Player zeigt.
+    /// tells the system what is running so it can show its own player.
     ///
-    /// Nur beim vollen Stand, nicht im Takt: Die Meldung trägt neben der
-    /// Position auch die Geschwindigkeit, und damit rechnet Android die Zeit
-    /// selbst weiter. Vier Meldungen je Sekunde wären dieselbe Anzeige zum
-    /// vierfachen Preis, jede davon mit einem Sprung in die Java-Laufzeit.
+    /// on the full state only, not on every tick: besides the position the
+    /// report carries the speed, and android carries the time on from that
+    /// itself. four reports a second would be the same display at four times
+    /// the price, each of them a jump into the java runtime.
     fn dem_system_melden(&mut self, snapshot: &PlayerState) {
         let Some(track_id) = snapshot.track_id else {
             crate::medien::beenden();
@@ -942,14 +943,14 @@ impl Engine {
             return;
         };
 
-        // Das Cover nur beim Titelwechsel holen: Es liegt als Blob in der
-        // Datenbank, und ein paar hundert Kilobyte bei jedem Druck auf Pause
-        // durch die Java-Brücke zu schieben wäre Verschwendung.
+        // fetch the cover on a track change only: it lies in the database as
+        // a blob, and pushing a few hundred kilobytes through the java bridge
+        // at every press on pause would be waste.
         //
-        // `None` heißt drüben „unverändert“, nicht „keins“. Ein Titel ohne
-        // Cover schickt deshalb ein leeres Feld: Sonst bliebe das Bild des
-        // vorigen stehen. Umgekehrt verschwand es anfangs beim ersten
-        // Pausieren, weil dort beides gleich aussah.
+        // `None` means unchanged over there, not none. a track without a
+        // cover therefore sends an empty array, otherwise the image of the
+        // previous one would stay. the other way round it disappeared at the
+        // first pause early on, because both looked the same there
         let wechsel = self.gemeldeter_titel != Some(track_id);
         self.gemeldeter_titel = Some(track_id);
         let cover = wechsel.then(|| {
@@ -970,12 +971,12 @@ impl Engine {
         });
     }
 
-    /// Nur die vier Werte, die sich beim Abspielen ständig ändern.
+    /// only the four values that change constantly during playback.
     ///
-    /// Bleibt alles gleich, pausiert, gestoppt, nichts geladen, geht nichts
-    /// hinaus. Vorher lief der Takt auch im Leerlauf: viermal je Sekunde eine
-    /// Meldung samt Abschrift der ganzen Warteschlange, dazu ein Neuzeichnen
-    /// im Frontend, obwohl sich nichts bewegte.
+    /// where everything stays the same, paused, stopped, nothing loaded,
+    /// nothing goes out. before, the tick ran while idle too: four messages a
+    /// second including a copy of the whole queue, plus a repaint in the
+    /// frontend although nothing moved.
     fn publish_tick(&mut self) {
         let jetzt = (
             self.loaded && !self.player.is_paused(),
@@ -988,9 +989,9 @@ impl Engine {
         }
         self.letzter_takt = Some(jetzt);
 
-        // Der zwischengespeicherte Zustand hängt an der Position und muss
-        // deshalb mitwandern; die Warteschlange wird dabei einmal kopiert,
-        // aber eben nur, wenn sich wirklich etwas bewegt hat.
+        // the cached state hangs on the position and has to travel along.
+        // the queue is copied once in doing so, but only where something has
+        // actually moved
         *self.shared.lock() = self.snapshot();
 
         let _ = self.app.emit(
@@ -1005,21 +1006,20 @@ impl Engine {
     }
 }
 
-/// So viele gehörte Titel bleiben hinter dem laufenden erreichbar.
+/// this many heard tracks stay reachable behind the running one.
 ///
-/// Zwanzig statt einer Zeitspanne: Zurückgehen ist ein Schritt durch Titel,
-/// nicht durch Minuten. Wie weit man kommt, soll sich zählen lassen und nicht
-/// davon abhängen, wie lange die Stücke waren oder wie lange die App offen
-/// stand.
+/// twenty rather than a span of time: going back is a step through tracks,
+/// not through minutes. how far one gets should be countable and not depend
+/// on how long the pieces were or how long the app stood open.
 const MAX_VORGESCHICHTE: usize = 20;
 
-/// Kürzt die Vorgeschichte und liefert Warteschlange, Reihenfolge und Stelle.
+/// trims the history and returns queue, order and position.
 ///
-/// `None`, wenn nichts zu tun ist. Entfernt werden genau die ersten Einträge
-/// der Abspielreihenfolge; welche Stellen der Warteschlange das sind, steht
-/// erst darin. Bei Zufallswiedergabe liegen sie verstreut, deshalb die
-/// Umrechnung: Jede verbleibende Stelle rutscht um so viele Plätze vor, wie
-/// vor ihr weggefallen sind.
+/// `None` where there is nothing to do. what is removed is exactly the first
+/// entries of the playback order, and which queue positions those are stands
+/// only in there. under shuffle they lie scattered, hence the conversion:
+/// every remaining position moves up by as many places as fell away before
+/// it.
 fn vorgeschichte_kuerzen(
     queue: &[i64],
     order: &[usize],
@@ -1033,7 +1033,7 @@ fn vorgeschichte_kuerzen(
 
     let weg: std::collections::HashSet<usize> = order[..zu_viel].iter().copied().collect();
 
-    // Abbildung alte Stelle -> neue Stelle, in einem Durchgang mit dem Aussieben.
+    // mapping old position to new position, in one pass with the sieving
     let mut neue_stelle = vec![usize::MAX; queue.len()];
     let mut neue_queue = Vec::with_capacity(queue.len() - zu_viel);
     for (alt, id) in queue.iter().enumerate() {
@@ -1048,15 +1048,15 @@ fn vorgeschichte_kuerzen(
     Some((neue_queue, neue_order, order_pos - zu_viel))
 }
 
-/// Welche Stelle nach der laufenden kommt.
+/// which position comes after the running one.
 ///
-/// Am Ende der Liste wird umgelaufen, wenn der Nutzer selbst weitertippt: Wer
-/// in einer Playlist beim letzten Titel noch einmal drückt, will wieder von
-/// vorn, nicht ins Leere. Von selbst hört die Wiedergabe dort auf — außer bei
-/// „Alle wiederholen“, das dafür da ist.
+/// at the end of the list it wraps around where the user taps on themselves:
+/// whoever presses once more on the last track of a playlist wants to start
+/// over, not to land nowhere. by itself playback stops there, except under
+/// repeat-all, which exists for exactly that.
 ///
-/// Als eigene Funktion, damit sich die vier Fälle prüfen lassen, ohne einen
-/// Player samt Tongerät zu bauen.
+/// a function of its own so the four cases can be checked without building a
+/// player and an audio device.
 fn naechste_stelle(
     stelle: Option<usize>,
     laenge: usize,
@@ -1073,23 +1073,23 @@ fn naechste_stelle(
     }
 }
 
-/// Wohin der Rückwärtsschritt führt.
+/// where the step backwards leads.
 ///
-/// Am Anfang geht es ans Ende: Die Liste ist ein Ring, und man kann in beide
-/// Richtungen beliebig weit darin gehen.
+/// at the start it goes to the end: the list is a ring, and one can walk it
+/// as far as one likes in both directions.
 ///
-/// Hier stand vorher das Gegenteil, mit der Begründung, wer zurückgeht, suche
-/// das eben Gehörte, und das liege nie ganz hinten. Das stimmt für den
-/// einzelnen Schritt — nicht aber für eine Liste, die man als Ring versteht:
-/// Dort ist der letzte Titel der Nachbar des ersten, in beide Richtungen.
+/// the opposite stood here before, on the grounds that whoever goes back is
+/// looking for what was just heard, and that never lies right at the end.
+/// that holds for the single step but not for a list understood as a ring:
+/// there the last track is the neighbour of the first, in both directions.
 ///
-/// Als freie Funktion, damit sich die Regel ohne Tonausgabe und Datenbank
-/// prüfen lässt; im Player selbst ginge das nicht.
+/// a free function so the rule can be checked without audio output and
+/// database, which would not work inside the player itself.
 fn vorherige_stelle(order_pos: Option<usize>, laenge: usize) -> usize {
     match order_pos {
         Some(pos) if pos > 0 => pos - 1,
-        // Vom ersten ans Ende. Bei leerer Liste bleibt nur die Null; der
-        // Aufrufer prüft das ohnehin vorher.
+        // from the first to the end. with an empty list only zero is left,
+        // and the caller checks that beforehand anyway
         Some(_) => laenge.saturating_sub(1),
         None => 0,
     }
@@ -1099,18 +1099,18 @@ fn vorherige_stelle(order_pos: Option<usize>, laenge: usize) -> usize {
 mod tests {
     use super::{naechste_stelle, vorgeschichte_kuerzen, vorherige_stelle, RepeatMode};
 
-    /// Von Hand am Ende: wieder der erste.
+    /// by hand at the end: the first one again.
     ///
-    /// Vorher hörte die Wiedergabe dort auf, und in einer Playlist stand man
-    /// beim letzten Titel vor einem Knopf, der nichts mehr tat.
+    /// playback used to stop there, and on the last track of a playlist one
+    /// stood before a button that did nothing any more.
     #[test]
     fn von_hand_laeuft_am_ende_um() {
         assert_eq!(naechste_stelle(Some(2), 3, true, RepeatMode::Off), Some(0));
         assert_eq!(naechste_stelle(Some(2), 3, true, RepeatMode::All), Some(0));
     }
 
-    /// Von selbst nicht: Sonst liefe jede Liste endlos weiter, und „Alle
-    /// wiederholen“ hätte keinen Sinn mehr.
+    /// not by itself: every list would run on endlessly then, and repeat-all
+    /// would carry no meaning any more.
     #[test]
     fn von_selbst_endet_die_liste() {
         assert_eq!(naechste_stelle(Some(2), 3, false, RepeatMode::Off), None);
@@ -1121,7 +1121,7 @@ mod tests {
     fn mittendrin_geht_es_schlicht_weiter() {
         assert_eq!(naechste_stelle(Some(0), 3, true, RepeatMode::Off), Some(1));
         assert_eq!(naechste_stelle(Some(1), 3, false, RepeatMode::Off), Some(2));
-        // Ohne laufende Stelle beginnt die Liste von vorn.
+        // without a running position the list starts from the top
         assert_eq!(naechste_stelle(None, 3, false, RepeatMode::Off), Some(0));
     }
 
@@ -1137,16 +1137,16 @@ mod tests {
         assert_eq!(vorherige_stelle(Some(1), 5), 0);
     }
 
-    /// Der eigentliche Punkt: Die Liste ist ein Ring.
+    /// the actual point: the list is a ring.
     ///
-    /// Vom ersten Titel führt der Rückwärtsschritt ans Ende, so wie der
-    /// Vorwärtsschritt vom letzten an den Anfang. Hier stand vorher das
-    /// Gegenteil.
+    /// from the first track the step backwards leads to the end, just as the
+    /// step forward leads from the last to the start. the opposite stood here
+    /// before.
     #[test]
     fn vom_ersten_geht_es_ans_ende() {
         assert_eq!(vorherige_stelle(Some(0), 5), 4);
         assert_eq!(vorherige_stelle(Some(0), 1), 0);
-        // Ohne laufende Stelle gibt es nichts zu umlaufen.
+        // without a running position there is nothing to wrap around
         assert_eq!(vorherige_stelle(None, 5), 0);
         assert_eq!(vorherige_stelle(Some(0), 0), 0);
     }
@@ -1166,15 +1166,15 @@ mod tests {
         let (neue_queue, neue_order, stelle) =
             vorgeschichte_kuerzen(&queue, &order, 6, 2).expect("es gibt etwas zu kürzen");
 
-        // Vier von zehn fallen weg, der laufende Titel bleibt derselbe.
+        // four out of ten fall away, the running track stays the same
         assert_eq!(neue_queue, vec![14, 15, 16, 17, 18, 19]);
         assert_eq!(neue_order, vec![0, 1, 2, 3, 4, 5]);
         assert_eq!(stelle, 2);
         assert_eq!(neue_queue[neue_order[stelle]], queue[order[6]]);
     }
 
-    /// Bei Zufallswiedergabe liegen die gehörten Stellen verstreut; die
-    /// Umrechnung muss trotzdem auf denselben Titel zeigen.
+    /// under shuffle the heard positions lie scattered, and the conversion
+    /// still has to point at the same track.
     #[test]
     fn gemischte_reihenfolge_zeigt_weiter_auf_denselben_titel() {
         let queue: Vec<i64> = vec![100, 101, 102, 103, 104, 105];
@@ -1186,10 +1186,10 @@ mod tests {
 
         assert_eq!(neue_queue.len(), 3, "drei Gehörte fallen weg");
         assert_eq!(neue_order.len(), 3);
-        // Die Stellen sind umgerechnet, nicht bloß abgeschnitten.
+        // the positions are converted, not merely cut off
         assert_eq!(neue_order, vec![0, 2, 1]);
         assert_eq!(neue_queue[neue_order[stelle]], laufender);
-        // Die verbliebene Reihenfolge zeigt weiterhin auf gültige Stellen.
+        // the remaining order still points at valid positions
         assert!(neue_order.iter().all(|stelle| *stelle < neue_queue.len()));
     }
 }

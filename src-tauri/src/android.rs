@@ -1,21 +1,20 @@
-//! Reicht den Rust-Bibliotheken die Java-Umgebung von Android.
+//! hands the android java environment to the rust libraries.
 //!
-//! Zwei Abhängigkeiten brauchen einen Griff in die Laufzeit des Systems und
-//! bekommen ihn von Tauri nicht:
+//! two dependencies need a handle into the system runtime and do not get one
+//! from tauri:
 //!
-//! - `rustls-platform-verifier` prüft Zertifikate über den Vertrauensspeicher
-//!   von Android. Ohne Griff stirbt **jede** HTTPS-Anfrage mit einem Absturz
-//!   im Arbeitsfaden, und zwar lautlos: Der Faden ist fort, die Antwort kommt
-//!   nie, die Oberfläche wartet bis in alle Ewigkeit auf „Moment…“.
-//! - `cpal`, der Unterbau von `rodio`, öffnet das Tongerät über AAudio und
-//!   findet es nur über denselben Griff. Ohne ihn stirbt der Ton-Faden beim
-//!   Start, und die App bleibt stumm.
+//! - `rustls-platform-verifier` checks certificates against the android trust
+//!   store. without the handle every https request dies with a crash on the
+//!   worker thread, and silently at that: the thread is gone, the answer
+//!   never arrives, and the ui waits for "one moment" forever.
+//! - `cpal`, the layer below `rodio`, opens the audio device through aaudio
+//!   and finds it only through the same handle. without it the audio thread
+//!   dies at startup and the app stays mute.
 //!
-//! Tauri hat dafür einen eigenen Haken, `run_on_android_context`, doch der
-//! liegt hinter `pub(crate)` und ist von außen nicht erreichbar. Der Weg führt
-//! deshalb über `JNI_OnLoad`: Android ruft diese Funktion auf, sobald es
-//! unsere Bibliothek lädt, und reicht dabei die `JavaVM` herein. Den Context
-//! holen wir uns von dort selbst.
+//! tauri has its own hook for this, `run_on_android_context`, but it sits
+//! behind `pub(crate)` and cannot be reached from outside. the way in is
+//! `JNI_OnLoad` instead: android calls this function as soon as it loads the
+//! library and passes the `JavaVM` in. the context is fetched from there.
 
 use jni::objects::GlobalRef;
 use jni::sys::{jint, JNI_VERSION_1_6};
@@ -25,48 +24,47 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-/// Ist der Griff schon weitergereicht?
+/// whether the handle has been passed on already.
 ///
-/// `ndk_context::initialize_android_context` bricht bei einem zweiten Aufruf
-/// mit einer Zusicherung ab. Beim Wiedereintritt in die App kann `JNI_OnLoad`
-/// erneut laufen, wenn der Prozess überlebt hat, die Bibliothek aber neu
-/// geladen wird.
+/// `ndk_context::initialize_android_context` aborts on a second call with an
+/// assertion. on re-entering the app `JNI_OnLoad` can run again where the
+/// process survived but the library is loaded anew.
 static EINGERICHTET: AtomicBool = AtomicBool::new(false);
 
-/// Die Brückenklasse zu yt-dlp, hier vorgemerkt.
+/// the bridge class to yt-dlp, looked up ahead of time.
 ///
-/// `find_class` sucht aus einem nachträglich angehängten Faden über den
-/// Systemlader, und der kennt die Klassen der App nicht. `JNI_OnLoad` läuft
-/// dagegen auf einem Faden, der sie sieht. Also einmal hier nachschlagen und
-/// als globale Referenz behalten, statt später ins Leere zu greifen.
+/// from a thread attached later on, `find_class` searches through the system
+/// loader, and that one does not know the classes of the app. `JNI_OnLoad` on
+/// the other hand runs on a thread that sees them. so it is looked up once
+/// here and kept as a global reference instead of grasping into thin air.
 static YTDLP_KLASSE: OnceLock<GlobalRef> = OnceLock::new();
 
-/// Die vorgemerkte Brückenklasse, sofern die Einrichtung durchlief.
+/// the prepared bridge class, where the setup went through.
 pub fn ytdlp_klasse() -> Option<&'static GlobalRef> {
     YTDLP_KLASSE.get()
 }
 
-/// Die Brückenklasse zum Systemplayer, aus demselben Grund vorgemerkt.
+/// the bridge class to the system player, prepared for the same reason.
 static WIEDERGABE_KLASSE: OnceLock<GlobalRef> = OnceLock::new();
 
-/// Die vorgemerkte Klasse für den Player des Systems.
+/// the prepared class for the player of the system.
 pub fn wiedergabe_klasse() -> Option<&'static GlobalRef> {
     WIEDERGABE_KLASSE.get()
 }
 
-/// Die Brückenklasse für Dateien aus der Auswahl von Android.
+/// the bridge class for files coming out of the android file picker.
 static DATEIEN_KLASSE: OnceLock<GlobalRef> = OnceLock::new();
 
-/// Die vorgemerkte Klasse, die `content://`-Adressen zu Dateien macht.
+/// the prepared class that turns `content://` addresses into files.
 pub fn dateien_klasse() -> Option<&'static GlobalRef> {
     DATEIEN_KLASSE.get()
 }
 
-/// Kopiert eine `content://`-Adresse in den Zielordner.
+/// copies a `content://` address into the target folder.
 ///
-/// Die Dateiauswahl von Android gibt keinen Pfad zurück, sondern eine Adresse,
-/// hinter der genauso gut ein Eintrag in einer Cloud stehen kann. Erst die
-/// Kopie ist eine Datei, die sich einlesen lässt.
+/// the android file picker returns no path but an address, which may just as
+/// well stand for an entry in a cloud. only the copy is a file that can be
+/// read.
 pub fn datei_holen(adresse: &str, zielordner: &Path) -> Option<PathBuf> {
     holen_versuchen(adresse, zielordner).ok().filter(|p| p.is_file())
 }
@@ -77,6 +75,9 @@ fn holen_versuchen(adresse: &str, zielordner: &Path) -> Result<PathBuf, Box<dyn 
     let klasse = dateien_klasse().ok_or("Die Brücke zu den Dateien fehlt")?;
 
     let kontext = ndk_context::android_context();
+
+    // SAFETY: both pointers come from ndk_context and refer to the running vm
+    // and the live application object; they outlive this call
     let vm = unsafe { JavaVM::from_raw(kontext.vm().cast()) }?;
     let mut env = vm.attach_current_thread()?;
     let anwendung = unsafe { JObject::from_raw(kontext.context().cast()) };
@@ -104,16 +105,16 @@ fn holen_versuchen(adresse: &str, zielordner: &Path) -> Result<PathBuf, Box<dyn 
     Ok(PathBuf::from(pfad))
 }
 
-/// Der Stamm des Gerätespeichers, meist `/storage/emulated/0`.
+/// the root of the device storage, usually `/storage/emulated/0`.
 ///
-/// Fest verdrahtet wäre der Pfad falsch, sobald das Gerät mehrere Nutzer
-/// führt — dann heißt er `/storage/emulated/10` und so fort. Android nennt
-/// ihn selbst, `Environment` ist eine Klasse des Systems und darum auch aus
-/// einem nachträglich angehängten Faden zu finden.
+/// hard-wired the path would be wrong as soon as the device carries several
+/// users, it is called `/storage/emulated/10` and so on then. android names
+/// it itself, and `Environment` being a class of the system it can be found
+/// from a thread attached later on too.
 ///
-/// Ob dort tatsächlich geschrieben werden darf, sagt dieser Pfad nicht; das
-/// hängt an der Erlaubnis „Zugriff auf alle Dateien“ und wird an der Stelle
-/// geprüft, an der es darauf ankommt.
+/// whether writing there is actually allowed is not what this path says, that
+/// hangs on the "access to all files" permission and is checked where it
+/// matters.
 pub fn geraetespeicher() -> Option<std::path::PathBuf> {
     stamm_holen().ok()
 }
@@ -122,6 +123,9 @@ fn stamm_holen() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     use jni::objects::JString;
 
     let kontext = ndk_context::android_context();
+
+    // SAFETY: the vm pointer comes from ndk_context and refers to the running
+    // vm; it outlives this call
     let vm = unsafe { JavaVM::from_raw(kontext.vm().cast()) }?;
     let mut env = vm.attach_current_thread()?;
 
@@ -145,18 +149,14 @@ fn stamm_holen() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     Ok(std::path::PathBuf::from(text))
 }
 
-/// Wird von Android beim Laden von `librobify_lib.so` gerufen.
+/// called by android when it loads `librobify_lib.so`.
 ///
-/// Der Rückgabewert nennt die JNI-Fassung, die wir sprechen. Fehlschläge
-/// werden gemeldet, aber nicht durchgereicht: Eine App, die wegen einer
-/// fehlenden Zertifikatsprüfung gar nicht erst startet, wäre schlechter als
-/// eine, die ohne Netz läuft und es sagt.
-///
-/// # Safety
-///
-/// Wird ausschließlich von der Java-Laufzeit aufgerufen, mit einer gültigen
-/// `JavaVM`. `JavaVM` ist `#[repr(transparent)]` über den rohen Zeiger, die
-/// Signatur passt also zu dem, was JNI erwartet.
+/// the return value names the jni version spoken here. failures are reported
+/// but not passed on: an app that refuses to start over a missing certificate
+/// check would be worse than one that runs without network and says so.
+/// called exclusively by the java runtime with a valid `JavaVM`, which is
+/// `#[repr(transparent)]` over the raw pointer, so the signature matches what
+/// jni expects.
 #[no_mangle]
 pub extern "system" fn JNI_OnLoad(vm: JavaVM, _reserviert: *mut c_void) -> jint {
     if let Err(fehler) = umgebung_weiterreichen(&vm) {
@@ -170,12 +170,12 @@ fn umgebung_weiterreichen(vm: &JavaVM) -> Result<(), Box<dyn std::error::Error>>
         return Ok(());
     }
 
-    // Der aufrufende Faden hängt bereits an der Laufzeit; `get_env` genügt.
+    // the calling thread is already attached to the runtime, `get_env` does
     let mut env = vm.get_env()?;
 
-    // Den Context über die Laufzeit selbst besorgen: `ActivityThread` führt
-    // die laufende Anwendung, und die ist ein `Context`. Der Umweg ist nötig,
-    // weil `JNI_OnLoad` nur die `JavaVM` bekommt und sonst nichts.
+    // fetch the context through the runtime itself: `ActivityThread` carries
+    // the running application, and that is a `Context`. the detour is needed
+    // because `JNI_OnLoad` gets the `JavaVM` and nothing else
     let klasse = env.find_class("android/app/ActivityThread")?;
     let anwendung = env
         .call_static_method(
@@ -190,15 +190,17 @@ fn umgebung_weiterreichen(vm: &JavaVM) -> Result<(), Box<dyn std::error::Error>>
         return Err("ActivityThread.currentApplication() lieferte nichts".into());
     }
 
-    // Eine globale Referenz, die den Aufruf überdauert: `ndk-context` behält
-    // den rohen Zeiger für die gesamte Laufzeit der App. Eine gewöhnliche
-    // Referenz wäre nach dieser Funktion ungültig, und der Ton griffe ins
-    // Leere.
+    // a global reference that outlives the call: `ndk-context` keeps the raw
+    // pointer for the entire runtime of the app. an ordinary reference would
+    // be invalid after this function, and the audio side would grasp into
+    // thin air
     let dauerhaft = env.new_global_ref(&anwendung)?;
     let context_zeiger = dauerhaft.as_obj().as_raw() as *mut c_void;
-    // Bewusst nicht freigegeben: Die Referenz soll bis zum Ende der App leben.
+    // deliberately not released: the reference is to live until the app ends
     std::mem::forget(dauerhaft);
 
+    // SAFETY: both pointers stay valid for the lifetime of the process, the
+    // context reference is leaked above for exactly that reason
     unsafe {
         ndk_context::initialize_android_context(
             vm.get_java_vm_pointer() as *mut c_void,
@@ -208,7 +210,7 @@ fn umgebung_weiterreichen(vm: &JavaVM) -> Result<(), Box<dyn std::error::Error>>
 
     rustls_platform_verifier::android::init_with_env(&mut env, anwendung)?;
 
-    // Siehe `YTDLP_KLASSE`: Von hier aus ist sie zu finden, später nicht mehr.
+    // see `YTDLP_KLASSE`: from here it can be found, later it cannot
     let bruecke = env.find_class("de/robify/player/Ytdlp")?;
     let _ = YTDLP_KLASSE.set(env.new_global_ref(&bruecke)?);
 
@@ -218,8 +220,8 @@ fn umgebung_weiterreichen(vm: &JavaVM) -> Result<(), Box<dyn std::error::Error>>
     let dateien = env.find_class("de/robify/player/Dateien")?;
     let _ = DATEIEN_KLASSE.set(env.new_global_ref(&dateien)?);
 
-    // Landet im Systemprotokoll und ist beim Suchen nach Tonproblemen die
-    // erste Zeile, nach der man schaut.
+    // lands in the system log and is the first line to look for when chasing
+    // audio problems
     eprintln!("Android-Umgebung eingerichtet: Tongerät und Zertifikatsprüfung");
     Ok(())
 }

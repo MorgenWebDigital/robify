@@ -1,17 +1,17 @@
-//! Messlauf für die Trefferauswahl: Für eine Liste bekannter Titel wird
-//! geprüft, ob der Downloader tatsächlich die richtige Aufnahme wählt.
+//! measured run for picking hits: for a list of known tracks it is checked
+//! whether the downloader actually chooses the right recording.
 //!
-//! Kein Erfolgstest, sondern ein Bericht, deshalb standardmäßig aus:
+//! not a pass/fail test but a report, so it is off by default:
 //!
 //!     cargo test --test match_report -- --ignored --nocapture
 //!
-//! Als Vergleichsmaßstab dienen die Online-Metadaten (Genius, iTunes,
-//! MusicBrainz). Deren Laufzeit sagt, ob die gewählte Aufnahme plausibel ist.
+//! the online metadata (genius, itunes, musicbrainz) serves as the yardstick.
+//! its running time says whether the chosen recording is plausible.
 
 use robify_lib::{downloader, online};
 
-/// Bunt gemischt: Rap, Pop, Rock, Elektronisches, deutsch- und
-/// englischsprachig, bekannt und weniger bekannt.
+/// a colourful mix: rap, pop, rock, electronic, german and english, well
+/// known and less so.
 const SONGS: [(&str, &str); 15] = [
     ("Yeat", "Naked"),
     ("PA69", "Tropical Island"),
@@ -30,17 +30,20 @@ const SONGS: [(&str, &str); 15] = [
     ("The Weeknd", "Blinding Lights"),
 ];
 
-/// Wortmarken, die eine fremde Bearbeitung verraten. Bewusst hier nochmal
-/// aufgeführt: Der Bericht soll unabhängig davon prüfen, was der Downloader
-/// selbst für einen Zusatz hält.
+/// words giving a foreign rework away.
+///
+/// deliberately listed here again: the report is to check independently of
+/// what the downloader itself considers a suffix.
 const FREMDE_FASSUNG: [&str; 12] = [
     "remix", "cover", "edit", "bootleg", "flip", "rework", "live", "instrumental", "karaoke",
     "slowed", "sped", "mashup",
 ];
 
-/// Mittlere Laufzeit der Treffer, als Notmaßstab, wenn die Metadatenquellen
-/// nichts hergeben. Bewusst simpel und anders gerechnet als im Downloader,
-/// damit der Bericht nicht dieselbe Annahme bestätigt, die er prüfen soll.
+/// median running time of the hits, as an emergency yardstick where the
+/// metadata sources hand out nothing.
+///
+/// deliberately simple and calculated differently from the downloader, so the
+/// report does not confirm the very assumption it is meant to check.
 fn median_dauer(treffer: &[downloader::SearchResult]) -> Option<i64> {
     let mut dauern: Vec<i64> = treffer
         .iter()
@@ -63,7 +66,7 @@ fn ist_fremde_fassung(titel: &str, gesucht: &str) -> bool {
     })
 }
 
-/// Laufzeit und geschriebene Form des Titels aus den Metadatenquellen.
+/// running time and written form of the track from the metadata sources.
 async fn referenz(artist: &str, titel: &str) -> Option<(String, i64)> {
     let treffer = online::search_metadata(&format!("{artist} {titel}")).await.ok()?;
     let mit_laufzeit: Vec<_> = treffer
@@ -71,13 +74,13 @@ async fn referenz(artist: &str, titel: &str) -> Option<(String, i64)> {
         .filter(|c| c.duration_ms.unwrap_or(0) > 0 && !ist_fremde_fassung(&c.title, titel))
         .collect();
 
-    // Erst der Treffer, bei dem Titel und Künstler passen …
+    // the hit where title and artist both fit first …
     mit_laufzeit
         .iter()
         .find(|c| {
             online::looks_like_same(&c.title, titel) && online::looks_like_same(&c.artist, artist)
         })
-        // … sonst genügt der Titel.
+        // … otherwise the title suffices
         .or_else(|| {
             mit_laufzeit
                 .iter()
@@ -86,8 +89,8 @@ async fn referenz(artist: &str, titel: &str) -> Option<(String, i64)> {
         .map(|c| (c.title.clone(), c.duration_ms.unwrap_or(0)))
 }
 
-/// Einzelfall-Werkzeug: zeigt alle Treffer einer Suche in der Reihenfolge,
-/// in der Robify sie anbietet.
+/// single-case tool: shows every hit of a search in the order robify offers
+/// them in.
 ///
 ///     ROBIFY_QUERY="Yeat Naked" cargo test --test match_report -- --ignored alle_treffer --nocapture
 #[tokio::test]
@@ -138,8 +141,8 @@ async fn bericht_ueber_fehlgriffe() {
 
         geprueft += 1;
 
-        // Drei Prüfsteine: Steht der Titel drin? Ist es die Originalfassung?
-        // Passt die Länge?
+        // three touchstones: is the title in there, is it the original
+        // version, does the length fit?
         let text = format!(
             "{} {}",
             bester.title,
@@ -153,10 +156,10 @@ async fn bericht_ueber_fehlgriffe() {
             || online::looks_like_same(&bester.title, titel)
             || online::normalize_for_match(&text)
                 .contains(&online::normalize_for_match(titel));
-        // Eine fremde Bearbeitung ist ein Fehlgriff, auch wenn der Titel
-        // darin vorkommt, das hat der erste Bericht noch durchgehen lassen.
+        // a foreign rework is a misgrasp even where the title appears in it,
+        // which the first report still let pass
         let echte_fassung = !ist_fremde_fassung(&bester.title, titel);
-        // Ohne Referenz muss der Mittelwert der Treffer als Maßstab reichen.
+        // without a reference the median of the hits has to serve as the yardstick
         let massstab = referenzdaten
             .as_ref()
             .map(|(_, dauer)| ("Referenz", *dauer))
@@ -199,7 +202,7 @@ async fn bericht_ueber_fehlgriffe() {
                 "{query} → [{}] {} {vergleich}",
                 bester.source, bester.title
             ));
-            // Zum Nachvollziehen: was stand sonst noch zur Wahl?
+            // for tracing: what else stood to choose from?
             for kandidat in treffer.iter().take(5) {
                 println!(
                     "      [{:>10}] {}  ({} s)",

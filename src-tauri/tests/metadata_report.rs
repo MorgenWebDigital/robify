@@ -1,16 +1,16 @@
-//! Großer Prüflauf: Lädt viele Titel wie die App und untersucht jedes
-//! Metadatenfeld einzeln.
+//! large measured run: downloads many tracks the way the app does and
+//! examines every metadata field separately.
 //!
 //!     cargo test --test metadata_report -- --ignored --nocapture
 //!
-//! Zwei Maßstäbe werden angelegt:
+//! two yardsticks are applied:
 //!
-//! * **Quelle**, yt-dlp liefert für Musik strukturierte Felder (`track`,
-//!   `artist`, `album`, `release_year`). Abgefragt wird die Adresse, von der
-//!   tatsächlich geladen wurde, nicht die ursprünglich vorgeschlagene.
-//! * **Plausibilität**, auch ohne Vergleichswert muss ein Feld in sich
-//!   stimmen: keine Videohinweise im Titel, ein Jahr mit vier Stellen, keine
-//!   unsichtbaren Zeichen, eine Laufzeit über einer Minute.
+//! * the source. yt-dlp delivers structured fields for music (`track`,
+//!   `artist`, `album`, `release_year`). the address actually downloaded from
+//!   is queried, not the one originally suggested.
+//! * plausibility. even without a value to compare against, a field has to
+//!   hold together: no video hints in the title, a year of four digits, no
+//!   invisible characters, a running time above one minute.
 
 use robify_lib::downloader::{self, DownloadOptions, DownloadRegistry};
 use robify_lib::{db, library, online};
@@ -18,9 +18,9 @@ use std::collections::BTreeMap;
 use std::process::Command;
 use std::sync::Arc;
 
-/// Breit gestreut: Sprachen, Jahrzehnte, Genres, bekannt und weniger bekannt.
+/// widely spread: languages, decades, genres, well known and less so.
 const SONGS: [(&str, &str); 40] = [
-    // Rap international
+    // rap, international
     ("Yeat", "Naked"),
     ("Playboi Carti", "Sky"),
     ("Kendrick Lamar", "Money Trees"),
@@ -29,14 +29,14 @@ const SONGS: [(&str, &str); 40] = [
     ("A$AP Rocky", "Praise The Lord"),
     ("Tyler, The Creator", "EARFQUAKE"),
     ("J. Cole", "No Role Modelz"),
-    // Rap deutsch
+    // rap, german
     ("PA69", "Tropical Island"),
     ("Sido", "Astronaut"),
     ("Haftbefehl", "Chabos wissen wer der Babo ist"),
     ("Nina Chuba", "Wildberry Lillet"),
     ("Cro", "Easy"),
     ("Apache 207", "Roller"),
-    // Pop
+    // pop
     ("Billie Eilish", "Birds of a Feather"),
     ("The Weeknd", "Blinding Lights"),
     ("Dua Lipa", "Levitating"),
@@ -45,7 +45,7 @@ const SONGS: [(&str, &str); 40] = [
     ("Taylor Swift", "Anti-Hero"),
     ("Michael Jackson", "Billie Jean"),
     ("ABBA", "Dancing Queen"),
-    // Rock und Indie
+    // rock and indie
     ("Radiohead", "Creep"),
     ("Tame Impala", "The Less I Know The Better"),
     ("Arctic Monkeys", "505"),
@@ -54,21 +54,21 @@ const SONGS: [(&str, &str); 40] = [
     ("Queen", "Bohemian Rhapsody"),
     ("The Killers", "Mr. Brightside"),
     ("Rammstein", "Sonne"),
-    // Elektronisch
+    // electronic
     ("Fred again..", "Delilah"),
     ("Daft Punk", "Instant Crush"),
     ("Aphex Twin", "Xtal"),
     ("Boards of Canada", "Roygbiv"),
     ("Bicep", "Glue"),
     ("Burial", "Archangel"),
-    // Deutschsprachig, Jazz, Klassik
+    // german language, jazz, classical
     ("AnnenMayKantereit", "Oft gefragt"),
     ("Kraftwerk", "Das Model"),
     ("Nina Simone", "Feeling Good"),
     ("Ludovico Einaudi", "Nuvole Bianche"),
 ];
 
-/// Hinweise auf die Machart, die in keinem Songtitel stehen sollten.
+/// hints about the production that belong in no song title.
 const TITELMUELL: [&str; 11] = [
     "official video",
     "official audio",
@@ -117,7 +117,7 @@ fn quellenangaben(ytdlp: &std::path::Path, url: &str) -> Quelle {
     }
 }
 
-/// Steckt `nadel` als Wortfolge in `heu`?
+/// whether `nadel` sits in `heu` as a word sequence.
 fn enthaelt(heu: &str, nadel: &str) -> bool {
     online::contains_word_sequence(
         &online::normalize_words(heu),
@@ -133,17 +133,17 @@ async fn grosser_metadatenlauf() {
     let _ = std::fs::remove_dir_all(&work);
     let app = tauri::test::mock_app();
 
-    // Jede Prüfung zählt Treffer und Fehlschläge getrennt.
+    // every check counts hits and failures separately
     let mut bestanden: BTreeMap<&str, usize> = BTreeMap::new();
     let mut gepruefte: BTreeMap<&str, usize> = BTreeMap::new();
     let mut maengel: Vec<String> = Vec::new();
     let mut ausgefallen: Vec<String> = Vec::new();
     let mut geladen = 0;
     let mut sauber = 0;
-    // Fehlgriffe, die Robify von sich aus meldet.
+    // misgrasps robify reports of its own accord
     let mut gemeldet = 0;
 
-    // Nachprüfung einzelner Fälle: ROBIFY_ONLY="Aphex,Bicep" grenzt ein.
+    // re-checking single cases: ROBIFY_ONLY="Aphex,Bicep" narrows it down
     let nur = std::env::var("ROBIFY_ONLY").unwrap_or_default();
     let filter: Vec<&str> = nur.split(',').map(str::trim).filter(|f| !f.is_empty()).collect();
 
@@ -181,8 +181,8 @@ async fn grosser_metadatenlauf() {
                 auto_cover: true,
                 auto_lyrics: true,
                 expected_duration_ms: None,
-                // Die Sucheingabe, so prüft der Downloader sein Ergebnis
-                // selbst gegen, wie in der App.
+                // the search input, this way the downloader checks its own
+                // result against it, as it does in the app
                 intent: Some(query.clone()),
             },
         )
@@ -206,7 +206,7 @@ async fn grosser_metadatenlauf() {
         if let Some(warnung) = &outcome.warning {
             println!("   !! {warnung}");
         }
-        // Maßstab ist die Adresse, von der wirklich geladen wurde.
+        // the yardstick is the address actually downloaded from
         let quelle = quellenangaben(&ytdlp, &outcome.source_url);
 
         let mut fehler: Vec<String> = Vec::new();
@@ -220,7 +220,7 @@ async fn grosser_metadatenlauf() {
                 }
             };
 
-            // ── Gegen die Quelle ──────────────────────────────────────────
+            // --- against the source ---
             if let Some(track) = &quelle.track {
                 pruefe(
                     "Titel = Quelle",
@@ -234,7 +234,7 @@ async fn grosser_metadatenlauf() {
                     m.artist,
                     m.featured_artists.clone().unwrap_or_default()
                 );
-                // Die Quelle listet mehrere durch Komma; alle müssen auftauchen.
+                // the source lists several separated by commas, all of them have to appear
                 let ok = kuenstler
                     .split(',')
                     .map(str::trim)
@@ -257,7 +257,7 @@ async fn grosser_metadatenlauf() {
                 );
             }
 
-            // ── Plausibilität ─────────────────────────────────────────────
+            // --- plausibility ---
             let titel_klein = m.title.to_lowercase();
             pruefe(
                 "Titel ohne Videohinweise",
@@ -314,8 +314,8 @@ async fn grosser_metadatenlauf() {
             );
         }
 
-        // Instrumentalstücke haben keine Lyrics, das ist kein Mangel,
-        // sondern eine Eigenschaft des Titels. Nur als Abdeckung zählen.
+        // instrumentals have no lyrics, which is no shortcoming but a
+        // property of the track. count it as coverage only
         *gepruefte.entry("Lyrics gefunden (Abdeckung)").or_default() += 1;
         if m.lyrics_plain.is_some() || m.lyrics_synced.is_some() {
             *bestanden.entry("Lyrics gefunden (Abdeckung)").or_default() += 1;
@@ -341,7 +341,7 @@ async fn grosser_metadatenlauf() {
         }
     }
 
-    // ── Auswertung ────────────────────────────────────────────────────────
+    // --- evaluation ---
     println!("\n════════ Ergebnis ════════");
     println!("Titel angefordert:   {}", SONGS.len());
     println!("geladen:             {geladen}");

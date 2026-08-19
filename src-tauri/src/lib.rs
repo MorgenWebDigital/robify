@@ -1,3 +1,6 @@
+//! wiring of the whole app: storage locations, the custom `robify://` scheme
+//! and the tauri setup.
+
 #[cfg(target_os = "android")]
 mod android;
 pub mod commands;
@@ -22,24 +25,20 @@ use std::sync::Arc;
 use tauri::http::{Response, StatusCode};
 use tauri::{Emitter, Manager};
 
-/// Ordner im Musikordner, in den man eigene Dateien legt.
+/// folder inside the music folder for files brought in by hand.
 ///
-/// Der Name steht fest und wandert nicht mit der Sprache der Oberfläche mit:
-/// Ein Ordner, der beim Umschalten auf Englisch plötzlich anders heißt, ließe
-/// die darin abgelegten Dateien verwaist zurück.
+/// the name is fixed and does not travel with the ui language: a folder that
+/// suddenly carries a different name after switching to english would leave
+/// the files inside it orphaned.
 pub(crate) const EIGENE_SONGS: &str = "Eigene Songs";
 
-/// Kennung vor Version 0.1.0.
-///
-/// Der Datenordner heißt nach der Kennung der App. Wird sie geändert, sucht
-/// Tauri an einem neuen Ort, und die gesamte Sammlung wäre für den Nutzer
-/// verschwunden, obwohl sie unberührt daneben liegt.
+/// the bundle id before version 0.1.0.
 const ALTE_KENNUNG: &str = "de.robify.app";
 
-/// Was Robify selbst im Datenordner ablegt.
+/// what robify itself stores in the data folder.
 ///
-/// Alles Übrige dort stammt von WebKit, Zwischenspeicher, lokaler Speicher,
-/// Medienschlüssel. Das ist jederzeit neu erzeugbar und wandert nicht mit.
+/// everything else there comes from webkit: caches, local storage, media
+/// keys. all of it can be recreated at any time and does not travel along.
 const EIGENE_DATEN: [&str; 6] = [
     "robify.db",
     "robify.db-wal",
@@ -49,19 +48,18 @@ const EIGENE_DATEN: [&str; 6] = [
     "backups",
 ];
 
-/// Holt die Daten einer früheren Kennung an den heutigen Ort.
-///
-/// Der Datenordner heißt nach der Kennung der App. Wird sie geändert, sucht
-/// Tauri an einem neuen Ort, und die gesamte Sammlung wäre für den Nutzer
-/// verschwunden, obwohl sie unberührt daneben liegt.
-///
-/// Umgezogen wird Stück für Stück, nicht der Ordner als Ganzes: WebKit legt
-/// den neuen Ordner bereits an, bevor dieser Startvorgang überhaupt läuft, und
-/// füllt ihn mit seinem Zwischenspeicher. Ein Umbenennen scheiterte daran, und
-/// eine Prüfung auf „Ordner ist leer" ginge ebenfalls fehl.
-///
-/// Jedes Stück wandert nur, wenn am Ziel noch keines liegt. Ein vorhandener
-/// Bestand wird also unter keinen Umständen überschrieben.
+// fetches the data of an earlier bundle id to today's place.
+//
+// the data folder is named after the bundle id of the app. change it and
+// tauri looks in a new place, leaving the entire collection gone as far as
+// the user can tell although it lies untouched next to it.
+//
+// it moves piece by piece, not the folder as a whole: webkit creates the new
+// folder before this startup even runs and fills it with its cache. a rename
+// failed on that, and a check for "folder is empty" would fail as well.
+//
+// each piece only travels where nothing lies at the target yet, so an
+// existing collection is never overwritten
 fn alten_datenordner_uebernehmen(neu: &Path) {
     let Some(alt) = neu.parent().map(|eltern| eltern.join(ALTE_KENNUNG)) else {
         return;
@@ -69,10 +67,10 @@ fn alten_datenordner_uebernehmen(neu: &Path) {
     daten_uebernehmen(&alt, neu);
 }
 
-/// Holt Robifys eigene Daten von einem alten Ort an den heutigen.
-///
-/// Jedes Stück wandert nur, wenn am Ziel noch keines liegt. Ein vorhandener
-/// Bestand wird also unter keinen Umständen überschrieben.
+// fetches robify's own data from an old place to today's.
+//
+// each piece only travels where nothing lies at the target yet, so an
+// existing collection is never overwritten
 fn daten_uebernehmen(alt: &Path, neu: &Path) {
     if !alt.is_dir() || alt == neu {
         return;
@@ -99,13 +97,12 @@ fn daten_uebernehmen(alt: &Path, neu: &Path) {
     }
 }
 
-/// Verschiebt eine Datei oder einen Ordner, auch über Dateisystemgrenzen.
-///
-/// Innerhalb eines Dateisystems ist das Umbenennen ein unteilbarer Schritt und
-/// darum der bessere Weg. Zwischen zweien scheitert es mit `EXDEV`: Auf
-/// Android liegt der eigene Ordner der App im inneren Speicher, der
-/// Gerätespeicher auf einer anderen Einhängung. Dann bleibt nur kopieren und
-/// hinterher wegräumen.
+// moves a file or a folder, across filesystem boundaries too.
+//
+// within one filesystem a rename is an indivisible step and therefore the
+// better way. between two it fails with `EXDEV`: on android the app's own
+// folder sits in internal storage, the device storage on a different mount.
+// then only copying and clearing up afterwards is left
 fn verschieben(quelle: &Path, ziel: &Path) -> std::io::Result<()> {
     if std::fs::rename(quelle, ziel).is_ok() {
         return Ok(());
@@ -117,8 +114,8 @@ fn verschieben(quelle: &Path, ziel: &Path) -> std::io::Result<()> {
             let eintrag = eintrag?;
             verschieben(&eintrag.path(), &ziel.join(eintrag.file_name()))?;
         }
-        // Erst wenn alles drüben ist. Bricht es mittendrin ab, bleibt der
-        // alte Bestand vollständig liegen.
+        // only once everything is across. breaking off midway leaves the
+        // old collection complete
         std::fs::remove_dir_all(quelle)
     } else {
         std::fs::copy(quelle, ziel)?;
@@ -126,26 +123,24 @@ fn verschieben(quelle: &Path, ziel: &Path) -> std::io::Result<()> {
     }
 }
 
-/// Wo Robify seine Daten und wo es die Musik ablegt.
-///
-/// Auf dem Rechner liegen beide dort, wo das Betriebssystem sie erwartet, und
-/// der Zielordner für die Musik lässt sich in den Einstellungen ändern.
-///
-/// Auf dem Telefon nicht. Dort stehen zwei feste Ordner im Gerätespeicher:
-/// `Robify` für die Titel, `.robify` für Datenbank, Downloads und
-/// Sicherungen. Der Punkt vor dem zweiten hält ihn aus der Galerie und aus
-/// den Dateilisten heraus; es ist die übliche Schreibweise für „gehört der
-/// App, nicht dir“. Beide sind sichtbar und bleiben liegen, wenn Robify
-/// entfernt wird — anders als alles unter `Android/data`, das Android beim
-/// Deinstallieren mitlöscht und in das seit Android 11 ohnehin kein
-/// Dateimanager mehr hineinsieht.
-///
-/// Der Griff dorthin hängt an der Erlaubnis „Zugriff auf alle Dateien“, und
-/// die kann fehlen: beim allerersten Start, oder weil der Nutzer sie
-/// verweigert hat. Dann bleibt Robify im eigenen Ordner und arbeitet weiter,
-/// statt gar nicht zu starten. Der Wechsel geschieht beim nächsten Start von
-/// selbst, die Kotlin-Seite fragt danach und startet die App neu, sobald die
-/// Erlaubnis erteilt ist.
+// where robify puts its data and where it puts the music.
+//
+// on a desktop both sit where the operating system expects them, and the
+// target folder for the music can be changed in the settings.
+//
+// on a phone it cannot. two fixed folders stand in the device storage there:
+// `Robify` for the tracks, `.robify` for database, downloads and backups. the
+// dot in front of the second keeps it out of the gallery and out of file
+// listings, it is the usual spelling for "belongs to the app, not to you".
+// both are visible and stay behind when robify is removed, unlike everything
+// under `Android/data`, which android deletes on uninstall and which no file
+// manager has looked into since android 11 anyway.
+//
+// reaching them hangs on the "access to all files" permission, and that can
+// be missing: at the very first start, or because the user refused it. robify
+// then stays in its own folder and keeps working instead of not starting at
+// all. the switch happens by itself at the next start, the kotlin side asks
+// for the permission and restarts the app once it is granted
 fn speicherorte(handle: &tauri::AppHandle) -> tauri::Result<(PathBuf, PathBuf, bool)> {
     #[cfg(target_os = "android")]
     if let Some(stamm) = android::geraetespeicher() {
@@ -169,11 +164,11 @@ fn speicherorte(handle: &tauri::AppHandle) -> tauri::Result<(PathBuf, PathBuf, b
     Ok((daten, musik, false))
 }
 
-/// Lässt sich in diesem Ordner wirklich schreiben?
-///
-/// Dass er sich anlegen lässt, genügt nicht: Ein bereits vorhandener Ordner
-/// aus einem früheren Lauf bleibt lesbar, auch wenn die Erlaubnis inzwischen
-/// entzogen wurde. Nur der Versuch selbst gibt Auskunft.
+// whether this folder can actually be written to.
+//
+// being able to create it is not enough: a folder already there from an
+// earlier run stays readable even after the permission has been withdrawn.
+// only the attempt itself tells
 #[cfg(target_os = "android")]
 fn beschreibbar(ordner: &Path) -> bool {
     if std::fs::create_dir_all(ordner).is_err() {
@@ -185,20 +180,20 @@ fn beschreibbar(ordner: &Path) -> bool {
     gelungen
 }
 
-/// Liest ein, was seit dem letzten Mal im Ordner „Eigene Songs“ gelandet ist.
-///
-/// Der Ordner ist der Weg für Musik, die nicht über den Downloader kommt:
-/// Dateien vom Rechner, aus einer anderen App, von einer Speicherkarte. Wer
-/// etwas hineinlegt, soll es beim nächsten Öffnen in der Bibliothek finden,
-/// ohne irgendwo einen Knopf zu suchen.
-///
-/// Nur das Neue: Für jede Datei wären sonst bei jedem Start die Tags zu lesen,
-/// und das ist bei ein paar hundert Titeln eine spürbare Wartezeit. Was schon
-/// in der Bibliothek steht, bleibt unangetastet.
-///
-/// Die Dateien bleiben liegen, wo sie sind. Sie in Künstler- und Albumordner
-/// einzusortieren wäre ordentlicher, nähme aber jemandem, der seine Sammlung
-/// selbst ordnet, genau diese Ordnung weg.
+// reads in whatever landed in the "Eigene Songs" folder since last time.
+//
+// that folder is the way in for music which does not come through the
+// downloader: files from a computer, from another app, from a memory card.
+// whoever drops something in is to find it in the library at the next opening
+// without hunting for a button.
+//
+// only the new ones: otherwise the tags of every file would have to be read
+// at every start, and with a few hundred tracks that is a noticeable wait.
+// what is in the library already stays untouched.
+//
+// the files stay where they are. sorting them into artist and album folders
+// would be tidier, but it would take exactly that order away from somebody
+// who arranges their collection themselves
 fn eigene_songs_einlesen(app: &tauri::AppHandle, ordner: &Path) -> usize {
     let state = app.state::<AppState>();
     let bekannt = {
@@ -213,8 +208,8 @@ fn eigene_songs_einlesen(app: &tauri::AppHandle, ordner: &Path) -> usize {
 
     let mut gelesen = 0;
     for pfad in neue {
-        // Die Sperre je Datei nehmen und wieder abgeben: Der Player und die
-        // Oberfläche greifen währenddessen weiter auf dieselbe Datenbank zu.
+        // take the lock per file and give it back: player and ui keep
+        // reaching for the same database meanwhile
         let conn = state.db();
         match scanner::import_file(&conn, &pfad, Some("lokal")) {
             Ok(_) => gelesen += 1,
@@ -224,9 +219,9 @@ fn eigene_songs_einlesen(app: &tauri::AppHandle, ordner: &Path) -> usize {
     gelesen
 }
 
-/// Bedient `robify://localhost/cover/album/<id>` bzw. `/cover/track/<id>`.
-/// Cover werden so direkt aus der Datenbank ausgeliefert, ohne sie als
-/// Base64 durch die IPC-Brücke zu schicken.
+// serves `robify://localhost/cover/album/<id>` and `/cover/track/<id>`.
+// covers go out of the database directly this way, without being pushed
+// through the ipc bridge as base64
 fn serve_cover(app: &tauri::AppHandle, path: &str) -> Response<Vec<u8>> {
     let not_found = || {
         Response::builder()
@@ -270,13 +265,12 @@ fn serve_cover(app: &tauri::AppHandle, path: &str) -> Response<Vec<u8>> {
     }
 }
 
-/// WebKitGTK zeichnet auf manchen Linux-Systemen, vor allem mit NVIDIA-Treiber
-///, ein schwarzes Fenster, weil es keinen Grafikpuffer bekommt
-/// („Failed to create GBM buffer“). Ohne diese beiden Schalter bleibt die
-/// Oberfläche leer.
-///
-/// Muss vor dem Start von GTK gesetzt werden. Eigene Vorgaben aus der Umgebung
-/// bleiben unangetastet, damit sich das Verhalten notfalls erzwingen lässt.
+// on some linux systems, above all with the nvidia driver, webkitgtk draws a
+// black window because it gets no graphics buffer ("Failed to create GBM
+// buffer"). without these two switches the ui stays blank.
+//
+// has to be set before gtk starts. values already present in the environment
+// are left alone so the behaviour can be forced if need be
 #[cfg(target_os = "linux")]
 fn apply_webkit_workarounds() {
     for key in [
@@ -284,7 +278,7 @@ fn apply_webkit_workarounds() {
         "WEBKIT_DISABLE_COMPOSITING_MODE",
     ] {
         if std::env::var_os(key).is_none() {
-            // SAFETY: läuft vor dem Start aller weiteren Threads.
+            // SAFETY: runs before any further thread is started
             unsafe { std::env::set_var(key, "1") };
         }
     }
@@ -309,11 +303,11 @@ pub fn run() {
             let (data_dir, default_library_dir, feste_orte) = speicherorte(&handle)?;
             std::fs::create_dir_all(&data_dir)?;
 
-            // Vor allem anderen: Wer von einer älteren Fassung kommt, soll
-            // seine Bibliothek wiederfinden.
+            // before anything else: whoever comes from an older version is
+            // to find their library again
             alten_datenordner_uebernehmen(&data_dir);
-            // Und wer von der Fassung kommt, die auf dem Telefon noch im
-            // eigenen Ordner der App lag, ebenso.
+            // and whoever comes from the version that still lived in the
+            // app's own folder on the phone, likewise
             if let Ok(eigener) = handle.path().app_data_dir() {
                 daten_uebernehmen(&eigener, &data_dir);
             }
@@ -321,8 +315,8 @@ pub fn run() {
             let work_dir = data_dir.join("downloads");
             std::fs::create_dir_all(&work_dir)?;
 
-            // Reste vom letzten Mal: abgebrochene oder nie übernommene
-            // Downloads. Nach einem Tag ist die Entscheidung gefallen.
+            // leftovers from last time: cancelled downloads or ones never
+            // taken over. after a day the decision has been made
             let entfernt = downloader::cleanup_work_dir(
                 &work_dir,
                 std::time::Duration::from_secs(24 * 60 * 60),
@@ -331,9 +325,9 @@ pub fn run() {
                 eprintln!("{entfernt} liegengebliebene Download-Ordner entfernt");
             }
 
-            // Gelöschte Dateien nach 30 Tagen endgültig wegräumen. Bis dahin
-            // lässt sich das Löschen zurücknehmen, danach wächst der Ordner
-            // sonst unbegrenzt.
+            // clear deleted files out for good after 30 days. until then the
+            // deletion can be undone, after that the folder would grow
+            // without bound
             let papierkorb = data_dir.join("papierkorb");
             let alte = library::cleanup_trash(
                 &papierkorb,
@@ -346,14 +340,12 @@ pub fn run() {
             let conn = db::open(&db_path)?;
             db::migrate(&conn)?;
 
-            // Das Änderungsprotokoll (WAL) wächst zwischen den Prüfpunkten und
-            // wurde bisher nie zurückgeschnitten, bei 2,8 MB Datenbank lagen
-            // 4,2 MB Protokoll daneben.
+            // the write-ahead log grows between checkpoints and was never
+            // truncated: next to a 2.8 mb database lay 4.2 mb of log
             let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
 
-            // Titel, die noch am alten Ort liegen, wandern mit — Zeile für
-            // Zeile, damit die Bibliothek zu keinem Zeitpunkt auf eine Datei
-            // zeigt, die dort nicht mehr ist.
+            // tracks still lying in the old place travel along, row by row,
+            // so the library never points at a file that is no longer there
             #[cfg(target_os = "android")]
             if let Ok(alte) = handle.path().audio_dir() {
                 let alte = alte.join("Robify");
@@ -368,9 +360,9 @@ pub fn run() {
 
             let player = player::spawn(handle.clone(), db_path.clone())?;
 
-            // Der Ablageordner für eigene Dateien. Angelegt wird er auch dann,
-            // wenn niemand ihn benutzt: Ein leerer Ordner mit klarem Namen
-            // sagt, wohin die eigene Musik gehört; ein fehlender sagt nichts.
+            // the drop folder for files brought in by hand. it is created
+            // even where nobody uses it: an empty folder with a clear name
+            // says where one's own music belongs, a missing one says nothing
             let eigene = feste_orte.then(|| default_library_dir.join(EIGENE_SONGS));
             if let Some(ordner) = &eigene {
                 let _ = std::fs::create_dir_all(ordner);
@@ -386,8 +378,9 @@ pub fn run() {
                 downloads: Arc::new(downloader::DownloadRegistry::default()),
             });
 
-            // Im Hintergrund: Tags zu lesen dauert, und der Start soll darauf
-            // nicht warten. Der Zustand steht schon, der Faden findet ihn.
+            // in the background: reading tags takes time and the start is
+            // not to wait for it. the state stands already, the thread finds
+            // it
             if let Some(ordner) = eigene {
                 let nebenher = handle.clone();
                 std::thread::spawn(move || {
@@ -401,7 +394,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            // Bibliothek
+            // --- library ---
             commands::library_stats,
             commands::scan_folders,
             commands::check_library,
@@ -428,7 +421,7 @@ pub fn run() {
             commands::set_favorite,
             commands::delete_track,
             commands::restore_track,
-            // Metadaten & Lyrics
+            // --- metadata and lyrics ---
             commands::get_track_metadata,
             commands::update_track_metadata,
             commands::search_metadata_online,
@@ -438,7 +431,7 @@ pub fn run() {
             commands::save_lyrics,
             commands::fetch_lyrics_online,
             commands::search_lyrics_online,
-            // Playlists
+            // --- playlists ---
             commands::list_playlists,
             commands::get_playlist,
             commands::create_playlist,
@@ -453,7 +446,7 @@ pub fn run() {
             commands::reorder_playlist,
             commands::reorder_favorites,
             commands::reorder_playlists,
-            // Player
+            // --- player ---
             commands::player_state,
             commands::play_tracks,
             commands::player_toggle,
@@ -472,20 +465,20 @@ pub fn run() {
             commands::queue_remove,
             commands::queue_clear,
             commands::set_sleep_timer,
-            // Statistiken
+            // --- statistics ---
             commands::weekly_mix,
             commands::weekly_mixes,
             commands::save_weekly_mix,
             commands::recently_played,
             commands::wrapped,
-            // Downloader
+            // --- downloader ---
             commands::downloader_status,
             commands::update_ytdlp,
             commands::resolve_input,
             commands::start_download,
             commands::cancel_download,
             commands::import_download,
-            // Einstellungen
+            // --- settings ---
             commands::get_settings,
             commands::set_setting,
             commands::open_path,
@@ -494,7 +487,7 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("Robify konnte nicht gestartet werden")
         .run(|app, event| {
-            // Beim Beenden noch die angefangene Hördauer wegschreiben.
+            // on exit, write away the listening time started but not stored
             if matches!(event, tauri::RunEvent::Exit) {
                 if let Some(state) = app.try_state::<AppState>() {
                     let _ = state.player.send(player::Cmd::Shutdown);

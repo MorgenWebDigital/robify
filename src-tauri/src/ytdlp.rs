@@ -1,27 +1,25 @@
-//! Ruft yt-dlp auf, gleich auf welchem System.
+//! calls yt-dlp, whatever the system.
 //!
-//! Auf dem Rechner ist yt-dlp ein eigenes Programm, das gestartet und dessen
-//! Ausgabe gelesen wird. Auf Android gibt es das Programm nicht: Es ist in
-//! Python geschrieben, und selbst die Linux-Binärdatei läuft dort nicht, weil
-//! Android eine andere C-Bibliothek verwendet. Stattdessen liegt yt-dlp als
-//! Java-Bibliothek bei, samt eigener Python-Laufzeit.
+//! on a desktop yt-dlp is a program of its own, started and read from. on
+//! android that program does not exist: it is written in python, and even the
+//! linux binary does not run there because android uses a different c
+//! library. yt-dlp ships as a java library instead, python runtime included.
 //!
-//! Beide nehmen dieselben Schalter entgegen; nur der Weg dorthin ist ein
-//! anderer, und den kapselt dieses Modul. Der übrige Downloader übergibt seine
-//! Argumentliste und bekommt Ausgabe und Rückgabewert, ohne zu wissen, wer sie
-//! erzeugt hat.
+//! both take the same switches, only the way there differs, and this module
+//! wraps it. the rest of the downloader hands over its argument list and gets
+//! output and exit code back without knowing who produced them.
 
 use anyhow::Result;
 use std::path::Path;
 
-/// Was ein Lauf hinterlassen hat.
+/// what a run left behind.
 pub struct Ausgabe {
     pub erfolg: bool,
     pub stdout: String,
     pub stderr: String,
 }
 
-/// Führt yt-dlp einmal aus und wartet auf das Ende.
+/// runs yt-dlp once and waits for it to finish.
 #[cfg(not(target_os = "android"))]
 pub async fn einmal(werkzeug: &Path, args: &[String]) -> Result<Ausgabe> {
     use std::process::Stdio;
@@ -37,10 +35,10 @@ pub async fn einmal(werkzeug: &Path, args: &[String]) -> Result<Ausgabe> {
     })
 }
 
-/// Führt yt-dlp einmal aus, über die Java-Brücke.
+/// runs yt-dlp once, over the java bridge.
 ///
-/// Der Aufruf blockiert, bis yt-dlp fertig ist; er läuft deshalb auf einem
-/// Faden für blockierende Arbeit und nicht im Ablaufplaner von Tokio.
+/// the call blocks until yt-dlp is done, so it runs on a thread meant for
+/// blocking work rather than inside the tokio scheduler.
 #[cfg(target_os = "android")]
 pub async fn einmal(_werkzeug: &Path, args: &[String]) -> Result<Ausgabe> {
     let args = args.to_vec();
@@ -48,7 +46,7 @@ pub async fn einmal(_werkzeug: &Path, args: &[String]) -> Result<Ausgabe> {
     tokio::task::spawn_blocking(move || bruecke_rufen(&id, &args)).await?
 }
 
-/// Ruft `de.robify.player.Ytdlp.ausfuehren` über JNI auf.
+/// calls `de.robify.player.Ytdlp.ausfuehren` over jni.
 #[cfg(target_os = "android")]
 pub fn bruecke_rufen(id: &str, args: &[String]) -> Result<Ausgabe> {
     use anyhow::{anyhow, Context};
@@ -59,10 +57,12 @@ pub fn bruecke_rufen(id: &str, args: &[String]) -> Result<Ausgabe> {
         .ok_or_else(|| anyhow!("Die Brücke zu yt-dlp wurde nicht eingerichtet."))?;
 
     let kontext = ndk_context::android_context();
+    // SAFETY: the vm pointer comes from ndk_context and refers to the running
+    // vm; it outlives this call
     let vm = unsafe { JavaVM::from_raw(kontext.vm().cast()) }?;
     let mut env = vm.attach_current_thread()?;
 
-    // Die Schalter als Java-Feld aus Zeichenketten.
+    // the switches as a java array of strings
     let leer = env.new_string("")?;
     let feld = env.new_object_array(args.len() as i32, "java/lang/String", &leer)?;
     for (stelle, wert) in args.iter().enumerate() {
@@ -94,7 +94,7 @@ pub fn bruecke_rufen(id: &str, args: &[String]) -> Result<Ausgabe> {
     })
 }
 
-/// Fortschritt eines laufenden Auftrags in Prozent, oder `None`.
+/// progress of a running job in percent, or `None`.
 #[cfg(target_os = "android")]
 pub fn fortschritt(id: &str) -> Option<f32> {
     use jni::objects::JValue;
@@ -102,6 +102,8 @@ pub fn fortschritt(id: &str) -> Option<f32> {
 
     let klasse = crate::android::ytdlp_klasse()?;
     let kontext = ndk_context::android_context();
+    // SAFETY: the vm pointer comes from ndk_context and refers to the running
+    // vm; it outlives this call
     let vm = unsafe { JavaVM::from_raw(kontext.vm().cast()) }.ok()?;
     let mut env = vm.attach_current_thread().ok()?;
 
@@ -119,7 +121,7 @@ pub fn fortschritt(id: &str) -> Option<f32> {
     (wert >= 0.0).then_some(wert)
 }
 
-/// Bricht einen laufenden Auftrag ab.
+/// cancels a running job.
 #[cfg(target_os = "android")]
 pub fn abbrechen(id: &str) {
     use jni::objects::JValue;
@@ -129,6 +131,8 @@ pub fn abbrechen(id: &str) {
         return;
     };
     let kontext = ndk_context::android_context();
+    // SAFETY: the vm pointer comes from ndk_context and refers to the running
+    // vm; it outlives this call
     let Ok(vm) = (unsafe { JavaVM::from_raw(kontext.vm().cast()) }) else {
         return;
     };
@@ -146,22 +150,22 @@ pub fn abbrechen(id: &str) {
     );
 }
 
-/// Wandelt eine Datei mit dem mitgelieferten ffmpeg um.
+/// converts a file with the bundled ffmpeg.
 ///
-/// Auf dem Rechner gibt es dafür nichts zu kapseln: `ffmpeg` steht im
-/// Suchpfad, und der Downloader startet es selbst. Auf Android liegt es als
-/// Bibliothek bei und lässt sich nur über die Java-Seite starten, die weiß,
-/// wo das Programm steht und welche Umgebung es braucht.
+/// on a desktop there is nothing to wrap: `ffmpeg` sits in the search path
+/// and the downloader starts it itself. on android it ships as a library and
+/// can only be started through the java side, which knows where the program
+/// lives and what environment it needs.
 #[cfg(target_os = "android")]
 pub async fn ffmpeg(args: Vec<String>) -> Result<Ausgabe> {
     tokio::task::spawn_blocking(move || ffmpeg_rufen(&args)).await?
 }
 
-/// Ruft `de.robify.player.Ytdlp.umwandeln` über JNI auf.
-///
-/// Den Anwendungskontext gibt der Rust-Teil selbst mit: Er hat ihn seit dem
-/// Start in Verwahrung (siehe `android::JNI_OnLoad`). So braucht die
-/// Java-Seite keinen eigenen Merkposten, den jemand zu füllen vergessen kann.
+// calls `de.robify.player.Ytdlp.umwandeln` over jni.
+//
+// the rust side passes the application context along itself, it has kept it
+// since startup (see `android::JNI_OnLoad`). that way the java side needs no
+// slot of its own that somebody could forget to fill
 #[cfg(target_os = "android")]
 fn ffmpeg_rufen(args: &[String]) -> Result<Ausgabe> {
     use anyhow::{anyhow, Context};
@@ -172,11 +176,15 @@ fn ffmpeg_rufen(args: &[String]) -> Result<Ausgabe> {
         .ok_or_else(|| anyhow!("Die Brücke zu ffmpeg wurde nicht eingerichtet."))?;
 
     let kontext = ndk_context::android_context();
+    // SAFETY: the vm pointer comes from ndk_context and refers to the running
+    // vm; it outlives this call
     let vm = unsafe { JavaVM::from_raw(kontext.vm().cast()) }?;
     let mut env = vm.attach_current_thread()?;
 
-    // Nur geliehen: Der Verweis gehört der Verwahrung aus `JNI_OnLoad`.
-    // `JObject` gibt von sich aus nichts frei, das Ausleihen ist also gefahrlos.
+    // only borrowed: the reference belongs to the one kept from `JNI_OnLoad`.
+    // `JObject` releases nothing by itself, so borrowing is harmless
+    // SAFETY: the context pointer comes from ndk_context and refers to the
+    // live application object
     let anwendung = unsafe { JObject::from_raw(kontext.context().cast()) };
 
     let leer = env.new_string("")?;
@@ -209,12 +217,12 @@ fn ffmpeg_rufen(args: &[String]) -> Result<Ausgabe> {
     })
 }
 
-/// Bringt yt-dlp auf den neuesten Stand und nennt die Fassung danach.
+/// brings yt-dlp up to date and names the version afterwards.
 ///
-/// Auf dem Rechner erledigt yt-dlp das selbst: `-U` lädt die neue Datei und
-/// legt sie über die eigene. Wer es über den Paketverwalter installiert hat,
-/// bekommt von yt-dlp eine Absage — die reichen wir wörtlich weiter, statt sie
-/// als eigenen Fehler auszugeben.
+/// on a desktop yt-dlp does this itself: `-U` fetches the new file and writes
+/// it over its own. whoever installed it through a package manager gets a
+/// refusal from yt-dlp, and that is passed on verbatim instead of being
+/// turned into an error of our own.
 #[cfg(not(target_os = "android"))]
 pub async fn aktualisieren(werkzeug: &Path) -> Result<String> {
     let lauf = einmal(werkzeug, &["-U".to_string()]).await?;
@@ -225,11 +233,11 @@ pub async fn aktualisieren(werkzeug: &Path) -> Result<String> {
     Ok(fassung.stdout.trim().to_string())
 }
 
-/// Dasselbe über die Java-Brücke.
+/// the same over the java bridge.
 ///
-/// yt-dlp liegt dort nicht als Datei, sondern in der Bibliothek — und zwar in
-/// dem Stand, den sie beim Erscheinen hatte. `-U` gibt es deshalb nicht; die
-/// Bibliothek holt die neue Fassung selbst von GitHub.
+/// there yt-dlp is not a file but part of the library, in the state it had
+/// when that library was released. `-U` therefore does not exist, the library
+/// fetches the new version from github itself.
 #[cfg(target_os = "android")]
 pub async fn aktualisieren(_werkzeug: &Path) -> Result<String> {
     let ausgabe = tokio::task::spawn_blocking(aktualisieren_rufen).await??;
@@ -239,7 +247,7 @@ pub async fn aktualisieren(_werkzeug: &Path) -> Result<String> {
     Ok(ausgabe.stdout.trim().to_string())
 }
 
-/// Ruft `de.robify.player.Ytdlp.aktualisieren` über JNI auf.
+// calls `de.robify.player.Ytdlp.aktualisieren` over jni
 #[cfg(target_os = "android")]
 fn aktualisieren_rufen() -> Result<Ausgabe> {
     use anyhow::{anyhow, Context};
@@ -250,8 +258,13 @@ fn aktualisieren_rufen() -> Result<Ausgabe> {
         .ok_or_else(|| anyhow!("Die Brücke zu yt-dlp wurde nicht eingerichtet."))?;
 
     let kontext = ndk_context::android_context();
+    // SAFETY: the vm pointer comes from ndk_context and refers to the running
+    // vm; it outlives this call
     let vm = unsafe { JavaVM::from_raw(kontext.vm().cast()) }?;
     let mut env = vm.attach_current_thread()?;
+
+    // SAFETY: the context pointer comes from ndk_context and refers to the
+    // live application object
     let anwendung = unsafe { JObject::from_raw(kontext.context().cast()) };
 
     let antwort = env

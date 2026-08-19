@@ -1,5 +1,4 @@
-//! Auswertungen: wöchentliche Empfehlungen und das monatliche bzw.
-//! jährliche Wrapped.
+//! evaluations: the weekly mixes and the monthly and yearly wrapped.
 
 use crate::db::now;
 use crate::library;
@@ -10,7 +9,7 @@ use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use crate::fehler;
 
-// ---------------------------------------------------------------- Wrapped
+// --- wrapped ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -28,8 +27,8 @@ pub struct WrappedArtist {
     pub play_count: i64,
     pub ms_played: i64,
     pub track_count: i64,
-    /// Ob ein Künstlerbild hinterlegt ist. Ohne diese Angabe müsste die
-    /// Oberfläche das Bild blind anfordern und den Fehlschlag abfangen.
+    /// whether an artist image is stored. without it the ui would have to
+    /// request the image blindly and catch the failure.
     pub has_image: bool,
 }
 
@@ -60,7 +59,7 @@ pub struct Wrapped {
     pub total_plays: i64,
     pub distinct_tracks: i64,
     pub distinct_artists: i64,
-    /// Gesamtzeit der fünf meistgehörten Titel zusammengenommen.
+    /// total time of the five most played tracks taken together.
     pub top_tracks_total_ms: i64,
     pub top_tracks: Vec<WrappedTrack>,
     pub top_artists: Vec<WrappedArtist>,
@@ -77,11 +76,11 @@ fn day_start(date: NaiveDate) -> i64 {
         .unwrap_or(0)
 }
 
-/// Zeitraum bestimmen. `offset` = 0 ist der laufende Zeitraum, -1 der davor.
-///
-/// Gibt nur die Grenzen zurück, keinen Anzeigenamen: Monatsnamen gehören zur
-/// Sprache der Oberfläche, und die kennt der Rust-Teil nicht. Aus `period` und
-/// `start` baut das Frontend die Überschrift selbst.
+// determines the period. `offset` = 0 is the running one, -1 the one before.
+//
+// returns the bounds only, no display name: month names belong to the
+// language of the ui, and the rust side does not know it. the frontend builds
+// the heading from `period` and `start` itself
 fn period_range(period: &str, offset: i64) -> Result<(i64, i64)> {
     let today = Local::now().date_naive();
     match period {
@@ -111,6 +110,7 @@ fn period_range(period: &str, offset: i64) -> Result<(i64, i64)> {
     }
 }
 
+/// the review of one month, one year or of everything played so far.
 pub fn wrapped(conn: &Connection, period: &str, offset: i64) -> Result<Wrapped> {
     let (start, end) = period_range(period, offset)?;
 
@@ -127,8 +127,8 @@ pub fn wrapped(conn: &Connection, period: &str, offset: i64) -> Result<Wrapped> 
         |r| r.get(0),
     )?;
 
-    // Gezählt wird über `track_artists`, nicht über `tracks.artist_id`: Dort
-    // steht nur der Hauptkünstler, Gastbeiträge fielen sonst unter den Tisch.
+    // counted through `track_artists`, not through `tracks.artist_id`: only
+    // the lead artist stands there, guest contributions would fall away
     let distinct_artists: i64 = conn.query_row(
         "SELECT COUNT(DISTINCT ta.artist_id) FROM plays p
          JOIN track_artists ta ON ta.track_id = p.track_id
@@ -137,7 +137,7 @@ pub fn wrapped(conn: &Connection, period: &str, offset: i64) -> Result<Wrapped> 
         |r| r.get(0),
     )?;
 
-    // --- Top-Titel
+    // --- top tracks ---
     let mut stmt = conn.prepare(
         "SELECT p.track_id, COUNT(*), SUM(p.ms_played) FROM plays p
          WHERE p.played_at >= ?1 AND p.played_at < ?2
@@ -160,12 +160,12 @@ pub fn wrapped(conn: &Connection, period: &str, offset: i64) -> Result<Wrapped> 
     }
     let top_tracks_total_ms = top_tracks.iter().map(|t| t.ms_played).sum();
 
-    // --- Top-Künstler
+    // --- top artists ---
     //
-    // Über `track_artists`, damit Gastbeiträge mitzählen: Wer „Money Trees“
-    // hört, hört Kendrick Lamar *und* Jay Rock. Jeder Beteiligte bekommt die
-    // volle Hörzeit gutgeschrieben, die Summe aller Künstler übersteigt
-    // dadurch die Gesamthörzeit, und das ist richtig so.
+    // through `track_artists` so guest contributions count: whoever listens
+    // to "Money Trees" listens to kendrick lamar and jay rock. every
+    // participant is credited the full listening time, so the sum over all
+    // artists exceeds the total listening time, and that is correct
     let mut stmt = conn.prepare(
         "SELECT ar.id, ar.name, COUNT(*), SUM(p.ms_played), COUNT(DISTINCT p.track_id),
                 (ar.image IS NOT NULL)
@@ -189,7 +189,7 @@ pub fn wrapped(conn: &Connection, period: &str, offset: i64) -> Result<Wrapped> 
         .collect::<rusqlite::Result<_>>()?;
     drop(stmt);
 
-    // --- Top-Releases
+    // --- top releases ---
     let mut stmt = conn.prepare(
         "SELECT al.id, al.title, ar.name, SUM(p.ms_played), (al.cover IS NOT NULL)
          FROM plays p
@@ -212,12 +212,12 @@ pub fn wrapped(conn: &Connection, period: &str, offset: i64) -> Result<Wrapped> 
         .collect::<rusqlite::Result<_>>()?;
     drop(stmt);
 
-    // --- Verlauf: Monat in Tagen, Jahr und Gesamt in Monaten.
+    // --- history ---
     //
-    // „Gesamt“ reicht bis zum ersten gehörten Titel zurück. Nach Tagen
-    // gezählt wären das nach einem Jahr täglichen Hörens 365 Balken; in einer
-    // Reihe auf einem Telefon bleibt dann für jeden davon kein Bildpunkt mehr
-    // übrig, und die Karte steht leer da.
+    // month in days, year and all-time in months. all-time reaches back to
+    // the first track ever heard. counted in days that would be 365 bars
+    // after a year of daily listening, and in one row on a phone no pixel is
+    // left for any of them, leaving the card blank
     let bucket_format = if period == "month" { "%Y-%m-%d" } else { "%Y-%m" };
     let mut stmt = conn.prepare(
         "SELECT strftime(?3, datetime(played_at, 'unixepoch', 'localtime')) AS bucket,
@@ -269,42 +269,42 @@ pub fn wrapped(conn: &Connection, period: &str, offset: i64) -> Result<Wrapped> 
     })
 }
 
-// ---------------------------------------------------------- Empfehlungen
+// --- weekly mixes ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Recommendation {
     pub track: Track,
-    /// Wie oft der Titel in dieser Woche lief.
+    /// how often the track ran that week.
     ///
-    /// Zahlen statt fertigem Satz: Ein „5 Mal · 19 min“ aus dem Rust-Teil käme
-    /// in jeder Sprache auf Deutsch an. Was daraus wird, entscheidet die
-    /// Oberfläche.
+    /// numbers instead of a finished sentence: a "5 Mal · 19 min" from the
+    /// rust side would arrive in german whatever the language. what becomes
+    /// of it is up to the ui.
     pub play_count: i64,
-    /// Wie lange er dabei insgesamt lief.
+    /// how long it ran in total while doing so.
     pub ms_played: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WeeklyMix {
-    /// Kalenderwoche, z. B. „2026-KW33“.
+    /// calendar week, "2026-KW33" for instance.
     pub week_key: String,
-    /// Fortlaufende Nummer ab der ersten Woche mit Hördaten.
+    /// running number counted from the first week with listening data.
     ///
-    /// Der Anzeigename entsteht daraus im Frontend: „Wochenmix 7“ ist Text der
-    /// Oberfläche und muss ihrer Sprache folgen.
+    /// the display name grows out of it in the frontend: "Wochenmix 7" is ui
+    /// text and has to follow the ui language.
     pub number: i64,
     pub start: i64,
     pub end: i64,
-    /// Wie viele Wochen zurück. 0 ist die laufende.
+    /// how many weeks back. 0 is the running one.
     pub offset: i64,
-    /// Gibt es davor noch eine Woche mit Hördaten?
+    /// whether another week with listening data lies before it.
     pub has_older: bool,
     pub items: Vec<Recommendation>,
 }
 
-/// Kurzfassung eines Wochenmix für die Übersicht, ohne die Titel selbst.
+/// short form of a weekly mix for the overview, without the tracks.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WeeklyMixSummary {
@@ -314,14 +314,14 @@ pub struct WeeklyMixSummary {
     pub end: i64,
     pub offset: i64,
     pub track_count: i64,
-    /// Alben der meistgehörten Titel, daraus entsteht das Mosaik-Cover.
+    /// albums of the most played tracks, the mosaic cover grows out of them.
     pub cover_album_ids: Vec<i64>,
 }
 
-/// Die letzten Wochen mit Hördaten, die laufende zuerst.
+/// the last weeks with listening data, the running one first.
 ///
-/// Wochen ohne einen einzigen Abspielvorgang werden übersprungen; die
-/// laufende bleibt immer stehen, auch wenn sie noch leer ist.
+/// weeks without a single play are skipped, the running one always stays even
+/// while it is still empty.
 pub fn weekly_mixes(conn: &Connection, limit: usize) -> Result<Vec<WeeklyMixSummary>> {
     let mut out = Vec::with_capacity(limit);
 
@@ -331,7 +331,7 @@ pub fn weekly_mixes(conn: &Connection, limit: usize) -> Result<Vec<WeeklyMixSumm
         }
         let (start, end, key) = week_range(offset);
 
-        // Vor der ersten Wiedergabe gibt es nichts mehr zu holen.
+        // before the first play there is nothing left to fetch
         if offset > 0 && !has_plays_before(conn, end)? {
             break;
         }
@@ -354,7 +354,7 @@ pub fn weekly_mixes(conn: &Connection, limit: usize) -> Result<Vec<WeeklyMixSumm
             continue;
         }
 
-        // Für das Mosaik zählen verschiedene Alben, nicht verschiedene Titel.
+        // the mosaic counts distinct albums, not distinct tracks
         let mut cover_album_ids: Vec<i64> = Vec::new();
         for album in &alben {
             if !cover_album_ids.contains(album) {
@@ -379,10 +379,10 @@ pub fn weekly_mixes(conn: &Connection, limit: usize) -> Result<Vec<WeeklyMixSumm
     Ok(out)
 }
 
-/// Beginn der ISO-Woche, die `offset` Wochen zurückliegt.
+// start of the iso week `offset` weeks back
 fn week_range(offset: i64) -> (i64, i64, String) {
     let heute = Local::now().date_naive();
-    // Montag der laufenden Woche, dann um die Wochen zurückgehen.
+    // monday of the running week, then step back by the weeks
     let montag = heute - chrono::Duration::days(heute.weekday().num_days_from_monday() as i64);
     let start_tag = montag - chrono::Duration::weeks(offset);
     let end_tag = start_tag + chrono::Duration::weeks(1);
@@ -395,17 +395,17 @@ fn week_range(offset: i64) -> (i64, i64, String) {
     )
 }
 
-/// So viele Titel umfasst ein Wochenmix.
+/// this many tracks make up a weekly mix.
 const WEEKLY_SIZE: usize = 30;
 
-/// Der Wochenmix einer Kalenderwoche: die dreißig meistgehörten Titel.
+/// the weekly mix of one calendar week: the thirty most played tracks.
 ///
-/// Kein Vorschlagswesen, sondern ein Rückblick, die Woche, wie sie war.
-/// Deshalb wird nichts gespeichert: Aus den Abspielvorgängen lässt sich jede
-/// vergangene Woche jederzeit neu ableiten, auch Jahre später.
+/// no recommendation engine but a look back, the week as it was. nothing is
+/// stored for it: every past week can be derived from the plays again at any
+/// time, years later too.
 ///
-/// `offset` zählt Wochen zurück; 0 ist die laufende, deren Reihenfolge sich
-/// mit jedem Hören noch verschiebt.
+/// `offset` counts weeks back, 0 is the running one whose order still shifts
+/// with every play.
 pub fn weekly_mix(conn: &Connection, offset: i64) -> Result<WeeklyMix> {
     let offset = offset.max(0);
     let (start, end, key) = week_range(offset);
@@ -427,7 +427,7 @@ pub fn weekly_mix(conn: &Connection, offset: i64) -> Result<WeeklyMix> {
 
     let mut items = Vec::with_capacity(rows.len());
     for (track_id, gehoert, male) in rows {
-        // Gelöschte Titel fallen still heraus.
+        // deleted tracks fall out silently
         if let Ok(track) = library::get_track(conn, track_id) {
             items.push(Recommendation {
                 track,
@@ -448,10 +448,10 @@ pub fn weekly_mix(conn: &Connection, offset: i64) -> Result<WeeklyMix> {
     })
 }
 
-/// Die wievielte Woche mit Hördaten ist das?
-///
-/// Gezählt wird ab der ersten Woche überhaupt, damit „Wochenmix 1“ auch in
-/// einem Jahr noch dieselbe Woche meint.
+// which week with listening data this is.
+//
+// counted from the very first week, so that "Wochenmix 1" still means the
+// same week a year from now
 fn week_number(conn: &Connection, start: i64) -> Result<i64> {
     let erster: Option<i64> =
         conn.query_row("SELECT MIN(played_at) FROM plays", [], |r| r.get(0))?;
@@ -460,13 +460,13 @@ fn week_number(conn: &Connection, start: i64) -> Result<i64> {
         return Ok(1);
     };
 
-    // Beide auf ihren Wochenbeginn bringen und die Wochen dazwischen zählen.
+    // bring both to the start of their week and count the weeks in between
     let woche = 7 * 86_400;
     let erster_start = wochenbeginn(erster);
     Ok(((start - erster_start).max(0) / woche) + 1)
 }
 
-/// Zeitstempel auf den Beginn seiner ISO-Woche (Montag, lokal) zurückführen.
+// reduces a timestamp to the start of its iso week (monday, local time)
 fn wochenbeginn(zeitpunkt: i64) -> i64 {
     let datum = chrono::DateTime::from_timestamp(zeitpunkt, 0)
         .map(|utc| utc.with_timezone(&Local).date_naive())

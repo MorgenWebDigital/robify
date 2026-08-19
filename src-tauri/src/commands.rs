@@ -1,4 +1,4 @@
-//! Alle vom Frontend aufrufbaren Befehle.
+//! every command the frontend can invoke.
 
 use crate::downloader::{
     self, DownloadOptions, DownloadOutcome, LinkPlan, SearchSource,
@@ -22,7 +22,7 @@ fn b64(data: &[u8]) -> String {
     base64::engine::general_purpose::STANDARD.encode(data)
 }
 
-// ------------------------------------------------------------- Bibliothek
+// --- library ---
 
 #[tauri::command]
 pub fn library_stats(state: State<'_, AppState>) -> CmdResult<LibraryStats> {
@@ -30,17 +30,17 @@ pub fn library_stats(state: State<'_, AppState>) -> CmdResult<LibraryStats> {
     Ok(library::library_stats(&conn)?)
 }
 
-/// Was die Dateiauswahl von Android zurückgibt, statt eines Pfades.
+/// what the android file picker returns instead of a path.
 const INHALTSADRESSE: &str = "content://";
 
-/// Macht aus dem, was die Dateiauswahl liefert, einlesbare Pfade.
-///
-/// Auf dem Rechner ist ein gewählter Eintrag ein Pfad und bleibt es. Auf einem
-/// Telefon nicht: Dort kommt eine Adresse wie
-/// `content://com.android.externalstorage.documents/document/primary%3A…`
-/// zurück, hinter der genauso gut ein Eintrag in einer Cloud stehen kann. Wer
-/// sie als Pfad behandelt, findet nichts — die Auswahl endete bisher wortlos
-/// mit „0 Titel importiert“.
+// turns what the file picker delivers into readable paths.
+//
+// on a desktop a chosen entry is a path and stays one. on a phone it is not:
+// an address such as
+// `content://com.android.externalstorage.documents/document/primary%3A…`
+// comes back, and an entry in a cloud may just as well stand behind it.
+// treating it as a path finds nothing, and the picker used to end wordlessly
+// with "0 tracks imported"
 fn adressen_aufloesen(_state: &AppState, paths: Vec<String>) -> Vec<PathBuf> {
     paths
         .into_iter()
@@ -51,13 +51,13 @@ fn adressen_aufloesen(_state: &AppState, paths: Vec<String>) -> Vec<PathBuf> {
 
             #[cfg(target_os = "android")]
             {
-                // Derselbe Ordner, in den man eigene Musik auch von Hand legt.
+                // the same folder one drops music into by hand
                 let ziel = _state.library_dir().join(crate::EIGENE_SONGS);
                 crate::android::datei_holen(&eintrag, &ziel)
             }
 
-            // Anderswo gibt es solche Adressen nicht; kämen sie doch, wäre
-            // ein übersprungener Eintrag besser als ein Pfad ins Leere.
+            // such addresses do not exist elsewhere. were they to arrive
+            // anyway, a skipped entry beats a path leading nowhere
             #[cfg(not(target_os = "android"))]
             None
         })
@@ -73,9 +73,9 @@ pub fn scan_folders(
     let roots: Vec<PathBuf> = adressen_aufloesen(&state, paths);
     let result = scanner::scan(&app, &state.db, roots)?;
 
-    // Ein Scan bringt oft viele Künstler auf einmal mit. Die Obergrenze
-    // verhindert, dass eine große Bibliothek Hunderte Abfragen auslöst,
-    // der Rest lässt sich weiterhin einzeln nachholen.
+    // a scan often brings many artists at once. the upper bound keeps a large
+    // library from triggering hundreds of queries, the rest can still be
+    // caught up one by one
     let offen = {
         let conn = state.db();
         if auto_fetch_artists(&conn) {
@@ -86,8 +86,9 @@ pub fn scan_folders(
     };
     fetch_artists_in_background(&app, offen);
 
-    // Fehlendes nachschlagen: unsichere Angaben, Cover, Lyrics. Obergrenze
-    // wie oben, damit eine große Sammlung nicht Hunderte Abfragen auslöst.
+    // look up what is missing: uncertain details, cover, lyrics. the same
+    // upper bound as above, so a large collection triggers no hundreds of
+    // queries
     let offene_titel = {
         let conn = state.db();
         if auto_fetch_import(&conn) {
@@ -101,24 +102,24 @@ pub fn scan_folders(
     Ok(result)
 }
 
-/// Ergebnis des Abgleichs zwischen Ordner und Datenbank.
+/// result of comparing the folder against the database.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryCheck {
-    /// Audiodateien im Bibliotheksordner, die keinem Titel zugeordnet sind.
+    /// audio files in the library folder that belong to no track.
     pub orphan_count: usize,
     pub orphan_samples: Vec<String>,
-    /// Titel, deren Datei nicht mehr existiert.
+    /// tracks whose file no longer exists.
     pub missing_count: usize,
     pub missing_samples: Vec<String>,
 }
 
-/// Vergleicht den Bibliotheksordner mit der Datenbank.
+/// compares the library folder against the database.
 ///
-/// Beides läuft im Alltag auseinander: Dateien werden außerhalb der App
-/// verschoben, Importe brechen ab. Beim Nutzer lagen 19 Dateien im Ordner,
-/// von denen die Datenbank 5 kannte. Dieser Befehl berichtet nur, gelöscht
-/// oder eingelesen wird erst auf Bestätigung.
+/// the two drift apart in daily use: files are moved outside the app, imports
+/// break off. on one machine 19 files lay in the folder of which the database
+/// knew 5. this command only reports, deleting or importing happens on
+/// confirmation.
 #[tauri::command]
 pub fn check_library(state: State<'_, AppState>) -> CmdResult<LibraryCheck> {
     let conn = state.db();
@@ -154,11 +155,10 @@ pub fn check_library(state: State<'_, AppState>) -> CmdResult<LibraryCheck> {
     })
 }
 
-/// Entfernt Titel, deren Datei verschwunden ist.
+/// removes tracks whose file has disappeared.
 ///
-/// Zurück kommen die Kennungen, nicht bloß ihre Anzahl: Gelöscht wird weich,
-/// also lässt sich der Griff zurücknehmen, aber nur, wenn die Oberfläche
-/// weiß, welche Einträge sie wiederholen soll.
+/// the ids come back, not merely their count: the deletion is soft and can be
+/// undone, but only where the ui knows which rows to offer back.
 #[tauri::command]
 pub fn remove_missing_tracks(app: AppHandle, state: State<'_, AppState>) -> CmdResult<Vec<i64>> {
     let conn = state.db();
@@ -212,13 +212,13 @@ pub fn get_artist(state: State<'_, AppState>, id: i64) -> CmdResult<Artist> {
     Ok(library::get_artist(&conn, id)?)
 }
 
-/// Sucht online nach Angaben zu einem Künstler.
+/// searches online for details about an artist.
 #[tauri::command]
 pub async fn search_artists_online(name: String) -> CmdResult<Vec<online::ArtistCandidate>> {
     Ok(online::search_artists(&name).await?)
 }
 
-/// Übernimmt einen Vorschlag: Bild wird geladen, Beschreibung gespeichert.
+/// takes a suggestion over: the image is fetched, the description stored.
 #[tauri::command]
 pub async fn apply_artist_metadata(
     app: AppHandle,
@@ -234,8 +234,8 @@ pub async fn apply_artist_metadata(
     let artist = {
         let conn = state.db();
         let current = library::get_artist(&conn, artist_id)?;
-        // Der Name bleibt, wie er in der Bibliothek steht, nur die
-        // Zusatzangaben kommen dazu.
+        // the name stays as it stands in the library, only the extra details
+        // come along
         library::update_artist(
             &conn,
             artist_id,
@@ -253,18 +253,18 @@ pub async fn apply_artist_metadata(
     Ok(artist)
 }
 
-/// Sucht den Treffer, der am ehesten der gesuchte Künstler ist.
-///
-/// Zwei Fallstricke sind hier eingebaut, beide aus der Praxis:
-///
-/// * **Kein Notnagel.** Zu „Julia“ führt Genius „Julia Michaels“ und
-///   „Julian Casablancas“, aber keine „Julia“. Früher wurde einfach der
-///   erste Treffer übernommen, und im Profil stand ein fremdes Gesicht.
-///   Passt der Name nicht, gibt es lieber gar nichts.
-/// * **Namensgleichheit.** Bleiben mehrere Treffer übrig, entscheidet das
-///   Werk: Wer einen Titel aus der eigenen Bibliothek führt, ist gemeint.
-///   `known_titles` bleibt leer, wenn nichts zum Vergleichen da ist, dann
-///   zählt nur ein eindeutiger Name.
+// finds the hit most likely to be the artist looked for.
+//
+// two traps are guarded against here, both from practice:
+//
+// * no fallback pick. under "Julia" genius lists "Julia Michaels" and "Julian
+//   Casablancas" but no "Julia". the first hit used to be taken over plainly,
+//   and a stranger's face stood in the profile. where the name does not fit,
+//   better nothing at all.
+// * colliding names. where several hits remain, the work decides: whoever
+//   carries a track from one's own library is the one meant. `known_titles`
+//   stays empty where there is nothing to compare, and then only an
+//   unambiguous name counts
 pub async fn best_artist_match(
     name: &str,
     known_titles: &[String],
@@ -279,16 +279,16 @@ pub async fn best_artist_match(
         return None;
     }
 
-    // Ohne eigene Titel bleibt nur der Name, dann muss er wenigstens
-    // eindeutig sein.
+    // without tracks of one's own only the name is left, and then it has to
+    // be unambiguous at least
     if known_titles.is_empty() {
         return (passend.len() == 1).then(|| passend[0].clone());
     }
 
-    // Sonst entscheidet das Werk, und zwar immer: Auch ein einzelner Treffer
-    // kann der Falsche sein. Ein Künstler aus Kansas heißt mitunter genauso
-    // wie eine deutsche Rapgruppe, und wenn nur er bei Genius steht, bliebe
-    // er ungeprüft übrig.
+    // otherwise the work decides, and it always does: even a single hit can
+    // be the wrong one. an artist from kansas is sometimes called the same as
+    // a german rap group, and where only they stand at genius, they would be
+    // left unchecked
     for candidate in &passend {
         let Some(id) = candidate.genius_id else {
             continue;
@@ -304,11 +304,11 @@ pub async fn best_artist_match(
         }
     }
 
-    // Kein Werk belegt die Zuordnung, lieber kein Bild als ein fremdes.
+    // no work backs the match, better no image than a stranger's
     None
 }
 
-/// Ein Klick: bester Treffer wird gesucht und gleich übernommen.
+/// one press: the best hit is searched for and taken over right away.
 #[tauri::command]
 pub async fn fetch_artist_metadata(
     app: AppHandle,
@@ -338,26 +338,18 @@ pub async fn fetch_artist_metadata(
     apply_artist_metadata(app, state, artist_id, best).await
 }
 
-/// Lädt fehlende Künstlerangaben im Hintergrund nach.
-///
-/// Beim ersten Titel eines Künstlers steht sonst nur der Name in der
-/// Bibliothek. Der Import wartet nicht darauf: er meldet sich fertig, und die
-/// Oberfläche bekommt später ein `library:changed`, sobald etwas ankam.
-///
-/// Der Reihe nach, nicht gleichzeitig, bei einem Album mit vielen
-/// Gastkünstlern wären das sonst zwanzig Abfragen auf einen Schlag.
-/// Ergänzt fehlende Angaben zu importierten Titeln.
-///
-/// Zwei Fälle in einem Durchlauf:
-/// * **Falsches richtigstellen**, sieht der Titel nach einem Dateinamen aus
-///   oder fehlt der Künstler, wird der Suchbegriff aus dem Dateinamen gebaut
-///   und alles überschrieben, was die Quelle sauber getrennt hergibt.
-/// * **Lücken füllen**, bei sauber getaggten Dateien bleiben Titel und
-///   Künstler stehen, geholt werden nur Cover, Lyrics, Jahr und Genre.
-///
-/// Übernommen wird nur, was eindeutig passt: `online::auto_match` verlangt
-/// Übereinstimmung in Titel **und** Künstler. Bei Zweifeln bleibt die Datei,
-/// wie sie ist, ein falscher Künstler wäre schlimmer als ein fehlender.
+// fills in missing details on imported tracks.
+//
+// two cases in one pass:
+// * correcting what is wrong. where the title looks like a filename or the
+//   artist is missing, the search term is built from the filename and
+//   everything the source hands out cleanly separated is overwritten.
+// * filling gaps. with cleanly tagged files title and artist stay, and only
+//   cover, lyrics, year and genre are fetched.
+//
+// only what fits unambiguously is taken over: `online::auto_match` demands a
+// match in title and artist alike. in doubt the file stays as it is, a wrong
+// artist would be worse than a missing one
 fn enrich_tracks_in_background(app: &AppHandle, tracks: Vec<crate::models::Track>) {
     if tracks.is_empty() {
         return;
@@ -379,9 +371,10 @@ fn enrich_tracks_in_background(app: &AppHandle, tracks: Vec<crate::models::Track
                 continue;
             }
 
-            // Aus dem, was da ist, den bestmöglichen Anhaltspunkt bauen. Bei
-            // unsicheren Angaben zerlegt `split_video_title` den Dateinamen in
-            // Künstler und Titel und wirft Zusätze wie „(Official Video)“ weg.
+            // build the best possible clue out of what is there. with
+            // uncertain details `split_video_title` splits the filename into
+            // artist and title and throws suffixes such as "(Official Video)"
+            // away
             let ohne_kuenstler = track.artist_name == "Unbekannter Künstler";
             let (kuenstler, titel) = if unsicher {
                 match library::split_video_title(
@@ -389,7 +382,7 @@ fn enrich_tracks_in_background(app: &AppHandle, tracks: Vec<crate::models::Track
                     (!ohne_kuenstler).then_some(track.artist_name.as_str()),
                 ) {
                     Some((k, t)) => (k, t),
-                    // Ohne Künstler und ohne Trennzeichen gibt es nichts zu suchen.
+                    // without an artist and without a separator there is nothing to search for
                     None if ohne_kuenstler => continue,
                     None => (track.artist_name.clone(), track.title.clone()),
                 }
@@ -421,8 +414,8 @@ fn enrich_tracks_in_background(app: &AppHandle, tracks: Vec<crate::models::Track
                 continue;
             };
 
-            // Erst nach der Abfrage an die Datenbank, damit die Sperre nicht
-            // über das Netz gehalten wird.
+            // to the database only after the query, so the lock is not held
+            // across the network
             let zusammengefuehrt = online::merge_match(vorlage, gefunden);
             {
                 let state = app.state::<AppState>();
@@ -431,8 +424,8 @@ fn enrich_tracks_in_background(app: &AppHandle, tracks: Vec<crate::models::Track
                     geaendert += 1;
                 }
             }
-            // Die Datei bekommt die Angaben ebenfalls, sonst wären sie nach
-            // einem erneuten Einlesen wieder weg.
+            // the file gets the details as well, otherwise they would be
+            // gone again after a re-import
             let _ = tags::write(Path::new(&track.path), &zusammengefuehrt);
         }
 
@@ -442,6 +435,14 @@ fn enrich_tracks_in_background(app: &AppHandle, tracks: Vec<crate::models::Track
     });
 }
 
+// fetches missing artist details in the background.
+//
+// at the first track of an artist only the name stands in the library
+// otherwise. the import does not wait for it: it reports itself done, and the
+// ui gets a `library:changed` later, as soon as something arrived.
+//
+// one after another rather than at once, with an album full of guest artists
+// that would be twenty queries in one go
 fn fetch_artists_in_background(app: &AppHandle, artists: Vec<(i64, String, Vec<String>)>) {
     if artists.is_empty() {
         return;
@@ -452,8 +453,8 @@ fn fetch_artists_in_background(app: &AppHandle, artists: Vec<(i64, String, Vec<S
         let mut changed = false;
 
         for (artist_id, name, titel) in artists {
-            // Nicht irgendwen übernehmen: automatisch zählt nur, was
-            // eindeutig passt. Für alles andere bleibt der Knopf.
+            // do not take just anybody over: automatically only what fits
+            // unambiguously counts. for everything else the button remains
             let Some(candidate) = best_artist_match(&name, &titel).await else {
                 continue;
             };
@@ -463,8 +464,8 @@ fn fetch_artists_in_background(app: &AppHandle, artists: Vec<(i64, String, Vec<S
                 None => None,
             };
 
-            // Erst nach allen Abfragen an die Datenbank, damit die Sperre
-            // nicht über das Netz gehalten wird.
+            // to the database only after every query, so the lock is not
+            // held across the network
             let state = app.state::<AppState>();
             let conn = state.db();
             let written = library::update_artist(
@@ -489,7 +490,7 @@ fn fetch_artists_in_background(app: &AppHandle, artists: Vec<(i64, String, Vec<S
     });
 }
 
-/// Stammdaten von Hand ändern. Name, Beschreibung und Bild.
+/// changes the master data by hand: name, description and image.
 #[tauri::command]
 pub fn update_artist(
     app: AppHandle,
@@ -528,7 +529,7 @@ pub fn update_artist(
     Ok(artist)
 }
 
-/// Titel, Jahr, Einordnung und Cover eines Releases ändern.
+/// changes title, year, classification and cover of a release.
 #[tauri::command]
 pub fn update_album(
     app: AppHandle,
@@ -579,7 +580,7 @@ pub fn artist_tracks(state: State<'_, AppState>, artist_id: i64) -> CmdResult<Ve
     Ok(library::artist_tracks(&conn, artist_id)?)
 }
 
-/// Titel, bei denen der Künstler nur als Gast auftritt.
+/// tracks the artist only appears on as a guest.
 #[tauri::command]
 pub fn artist_features(state: State<'_, AppState>, artist_id: i64) -> CmdResult<Vec<Track>> {
     let conn = state.db();
@@ -632,7 +633,7 @@ pub fn delete_track(
     Ok(())
 }
 
-/// Nimmt das Entfernen eines Titels zurück.
+/// undoes the removal of a track.
 #[tauri::command]
 pub fn restore_track(
     app: AppHandle,
@@ -648,7 +649,7 @@ pub fn restore_track(
     Ok(())
 }
 
-/// Nimmt das Entfernen einer Playlist zurück.
+/// undoes the removal of a playlist.
 #[tauri::command]
 pub fn restore_playlist(state: State<'_, AppState>, id: i64) -> CmdResult<Playlist> {
     let conn = state.db();
@@ -656,7 +657,7 @@ pub fn restore_playlist(state: State<'_, AppState>, id: i64) -> CmdResult<Playli
     Ok(library::get_playlist(&conn, id)?)
 }
 
-// -------------------------------------------------------------- Metadaten
+// --- metadata ---
 
 #[tauri::command]
 pub fn get_track_metadata(state: State<'_, AppState>, track_id: i64) -> CmdResult<TrackMetadata> {
@@ -701,7 +702,7 @@ pub fn get_track_metadata(state: State<'_, AppState>, track_id: i64) -> CmdResul
     })
 }
 
-/// Übernimmt bearbeitete Metadaten in Datei **und** Bibliothek.
+/// takes edited metadata over into the file and the library alike.
 #[tauri::command]
 pub fn update_track_metadata(
     app: AppHandle,
@@ -727,10 +728,10 @@ pub fn update_track_metadata(
     Ok(track)
 }
 
-/// Schreibt Metadaten in die Datenbank: Künstler, Album, Cover, Lyrics.
-///
-/// Als eigene Funktion, weil zwei Wege hier hineinlaufen, der Bearbeiten-
-/// Dialog und das automatische Nachschlagen beim Import.
+// writes metadata into the database: artist, album, cover, lyrics.
+//
+// a function of its own because two ways run into it, the edit dialog and the
+// automatic lookup at import
 fn apply_track_metadata(
     conn: &rusqlite::Connection,
     track_id: i64,
@@ -810,8 +811,8 @@ pub async fn search_metadata_online(query: String) -> CmdResult<Vec<MetadataCand
     Ok(online::search_metadata(&query).await?)
 }
 
-/// Lädt zu einem Treffer alles nach, was die Quelle hergibt: Cover, Lyrics,
-/// Release-Art, Titelnummer und Albumkünstler.
+/// fetches everything the source hands out for a hit: cover, lyrics, release
+/// type, track number and album artist.
 #[tauri::command]
 pub async fn enrich_candidate(
     candidate: MetadataCandidate,
@@ -836,7 +837,7 @@ pub async fn fetch_cover(url: String) -> CmdResult<RemoteImage> {
     })
 }
 
-// ----------------------------------------------------------------- Lyrics
+// --- lyrics ---
 
 #[tauri::command]
 pub fn get_lyrics(state: State<'_, AppState>, track_id: i64) -> CmdResult<Option<Lyrics>> {
@@ -873,7 +874,7 @@ pub fn save_lyrics(
     Ok(())
 }
 
-/// Holt Lyrics automatisch passend zum Titel und speichert sie.
+/// fetches lyrics matching the track automatically and stores them.
 #[tauri::command]
 pub async fn fetch_lyrics_online(
     state: State<'_, AppState>,
@@ -909,7 +910,7 @@ pub async fn search_lyrics_online(query: String) -> CmdResult<Vec<LyricsCandidat
     Ok(online::search_lyrics(&query).await?)
 }
 
-// -------------------------------------------------------------- Playlists
+// --- playlists ---
 
 #[tauri::command]
 pub fn list_playlists(state: State<'_, AppState>) -> CmdResult<Vec<Playlist>> {
@@ -964,7 +965,7 @@ pub fn update_playlist(
     Ok(library::get_playlist(&conn, id)?)
 }
 
-/// Ein Titel, wie ihn der Downloader kennt: Künstler und Name.
+/// a track as the downloader knows it: artist and name.
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaylistEntry {
@@ -972,27 +973,26 @@ pub struct PlaylistEntry {
     pub title: String,
 }
 
-/// Was beim Übernehmen einer Playlist herauskam.
+/// what came out of taking a playlist over.
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaylistFill {
     pub playlist: Playlist,
-    /// Neu angelegt oder eine vorhandene ergänzt?
+    /// whether it was newly created or an existing one extended.
     pub created: bool,
-    /// Wie viele Titel diesmal dazugekommen sind.
+    /// how many tracks came along this time.
     pub added: i64,
 }
 
-/// Legt eine Playlist an oder ergänzt eine gleichnamige vorhandene.
+/// creates a playlist or extends an existing one of the same name.
 ///
-/// Gedacht für den Downloader: Nach dem Laden einer Playlist soll sie sich mit
-/// einem Griff übernehmen lassen. Gesucht wird über Künstler und Titel, nicht
-/// über Kennungen, so landen auch die Titel darin, die schon vorher in der
-/// Bibliothek lagen und deshalb übersprungen wurden.
+/// meant for the downloader: after loading a playlist it is to be taken over
+/// in one go. the lookup runs over artist and title, not over ids, so the
+/// tracks that already lay in the library and were skipped for it end up in
+/// there too.
 ///
-/// Ein zweiter Aufruf legt keine Kopie an, sondern trägt nur nach, was
-/// inzwischen dazugekommen ist. Ist nichts dazugekommen, ändert sich nichts.
-/// Die Reihenfolge der Vorlage bleibt erhalten.
+/// a second call creates no copy, it only adds what came along since. where
+/// nothing came along, nothing changes. the order of the original is kept.
 #[tauri::command]
 pub fn create_playlist_from_entries(
     state: State<'_, AppState>,
@@ -1002,7 +1002,7 @@ pub fn create_playlist_from_entries(
     let conn = state.db();
     let name = name.trim().to_string();
 
-    // Einmal die ganze Bibliothek als Schlüsselpaare, statt je Eintrag zu suchen.
+    // the whole library as key pairs once, instead of a lookup per entry
     let vorhanden: std::collections::HashMap<(String, String), i64> =
         library::list_tracks(&conn, None, 100_000)
             .unwrap_or_default()
@@ -1026,7 +1026,7 @@ pub fn create_playlist_from_entries(
         ));
     }
 
-    // Gibt es sie schon, wird ergänzt statt ein zweites Mal angelegt.
+    // where it exists already it is extended instead of created a second time
     let bestehend: Option<i64> = library::list_playlists(&conn)?
         .into_iter()
         .find(|p| db::key_of(&p.name) == db::key_of(&name))
@@ -1061,7 +1061,7 @@ pub fn playlist_tracks(state: State<'_, AppState>, playlist_id: i64) -> CmdResul
     Ok(library::playlist_tracks(&conn, playlist_id)?)
 }
 
-/// Wo liegen diese Titel bereits? Playlist-Kennung und Anzahl.
+/// where these tracks already lie: playlist id and count.
 #[tauri::command]
 pub fn playlists_containing(
     state: State<'_, AppState>,
@@ -1101,14 +1101,14 @@ pub fn reorder_playlist(
     Ok(library::reorder_playlist(&conn, playlist_id, &track_ids)?)
 }
 
-/// Reihenfolge der Favoriten, wie sie der Nutzer gezogen hat.
+/// order of the favourites as the user dragged them.
 #[tauri::command]
 pub fn reorder_favorites(state: State<'_, AppState>, track_ids: Vec<i64>) -> CmdResult<()> {
     let conn = state.db();
     Ok(library::reorder_favorites(&conn, &track_ids)?)
 }
 
-/// Reihenfolge der Sammlung selbst, nicht der Titel darin.
+/// order of the collection itself, not of the tracks inside it.
 #[tauri::command]
 pub fn reorder_playlists(
     app: AppHandle,
@@ -1118,12 +1118,12 @@ pub fn reorder_playlists(
     let conn = state.db();
     library::reorder_playlists(&conn, &playlist_ids)?;
     drop(conn);
-    // Die Seitenleiste zeigt dieselbe Ordnung und muss mitziehen.
+    // the sidebar shows the same order and has to follow
     let _ = app.emit("library:changed", ());
     Ok(())
 }
 
-// ----------------------------------------------------------------- Player
+// --- player ---
 
 #[tauri::command]
 pub fn player_state(state: State<'_, AppState>) -> CmdResult<PlayerState> {
@@ -1218,7 +1218,7 @@ pub fn queue_clear(state: State<'_, AppState>) -> CmdResult<()> {
     Ok(state.player.send(Cmd::ClearQueue)?)
 }
 
-/// `minutes` wird bei `endOfTrack` ignoriert.
+/// `minutes` is ignored with `endOfTrack`.
 #[tauri::command]
 pub fn set_sleep_timer(
     state: State<'_, AppState>,
@@ -1236,7 +1236,7 @@ pub fn set_sleep_timer(
     Ok(state.player.send(Cmd::SetSleepTimer(payload))?)
 }
 
-// ------------------------------------------------------------ Statistiken
+// --- statistics ---
 
 #[tauri::command]
 pub fn weekly_mix(state: State<'_, AppState>, offset: Option<i64>) -> CmdResult<WeeklyMix> {
@@ -1244,7 +1244,7 @@ pub fn weekly_mix(state: State<'_, AppState>, offset: Option<i64>) -> CmdResult<
     Ok(stats::weekly_mix(&conn, offset.unwrap_or(0))?)
 }
 
-/// Die letzten Wochenmixe für die Übersicht auf der Startseite.
+/// the last weekly mixes for the overview on the home page.
 #[tauri::command]
 pub fn weekly_mixes(
     state: State<'_, AppState>,
@@ -1254,15 +1254,15 @@ pub fn weekly_mixes(
     Ok(stats::weekly_mixes(&conn, limit.unwrap_or(12))?)
 }
 
-/// Übernimmt einen Wochenmix als richtige Playlist.
+/// takes a weekly mix over as a real playlist.
 ///
-/// Der Mix selbst bleibt ein Rückblick und ändert sich mit den Hördaten.
-/// Wer ihn behalten will, bekommt eine Kopie, die ihm gehört, benennbar,
-/// sortierbar, löschbar wie jede andere Playlist.
+/// the mix itself stays a look back and changes with the listening data.
+/// whoever wants to keep it gets a copy of their own: nameable, sortable,
+/// deletable like any other playlist.
+///
+/// name and description come from the ui, not from here: they land in the
+/// database as text and are to stand in the language the user has set.
 #[tauri::command]
-/// Name und Beschreibung kommen aus der Oberfläche, nicht von hier: Sie landen
-/// als Text in der Datenbank und sollen in der Sprache stehen, die der Nutzer
-/// eingestellt hat.
 pub fn save_weekly_mix(
     app: AppHandle,
     state: State<'_, AppState>,
@@ -1276,7 +1276,7 @@ pub fn save_weekly_mix(
         return Err(Error(fehler!("Dieser Wochenmix ist noch leer.")));
     }
 
-    // Gibt es den Namen schon, bekommt die Kopie eine Nummer angehängt.
+    // where the name is taken already, the copy gets a number appended
     let mut vergeben = name.clone();
     let mut zaehler = 2;
     while library::playlist_name_taken(&conn, &vergeben)? {
@@ -1294,7 +1294,7 @@ pub fn save_weekly_mix(
     Ok(playlist)
 }
 
-/// Zuletzt gespielte Titel, jeder nur einmal.
+/// recently played tracks, each of them once.
 #[tauri::command]
 pub fn recently_played(state: State<'_, AppState>, limit: Option<i64>) -> CmdResult<Vec<Track>> {
     let conn = state.db();
@@ -1307,7 +1307,7 @@ pub fn wrapped(state: State<'_, AppState>, period: String, offset: i64) -> CmdRe
     Ok(stats::wrapped(&conn, &period, offset)?)
 }
 
-// ------------------------------------------------------------- Downloader
+// --- downloader ---
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1315,13 +1315,13 @@ pub struct DownloaderStatus {
     pub ytdlp_path: Option<String>,
     pub ytdlp_version: Option<String>,
     pub ffmpeg_available: bool,
-    /// Für YouTube nötig; ohne sie kommt es zu 403-Fehlern.
+    /// needed for youtube, without it 403 errors come up.
     pub js_runtime: Option<String>,
-    /// Lässt sich an dieser fehlenden Laufzeit überhaupt etwas ändern?
+    /// whether anything can be done about this missing runtime at all.
     ///
-    /// Auf Android nicht: Dort gibt es weder Node noch Deno, und installieren
-    /// kann man sie auch nicht. Eine Warnung, der niemand abhelfen kann, ist
-    /// keine Warnung, sondern Lärm.
+    /// on android it cannot: neither node nor deno exists there, and they
+    /// cannot be installed either. a warning nobody can act on is not a
+    /// warning but noise.
     pub js_runtime_relevant: bool,
     pub active_jobs: Vec<String>,
 }
@@ -1333,9 +1333,9 @@ pub async fn downloader_status(state: State<'_, AppState>) -> CmdResult<Download
         db::get_setting(&conn, "ytdlp_path").ok().flatten()
     };
 
-    // Auf Android gibt es keine Datei zu finden: yt-dlp liegt als Bibliothek
-    // bei. Die Fassung erfragen wir über dieselbe Brücke, die auch die Suche
-    // benutzt, damit die Anzeige nicht behauptet, es fehle etwas.
+    // on android there is no file to find, yt-dlp ships as a library. the
+    // version is asked for over the same bridge the search uses, so the
+    // display does not claim something is missing
     let (path, version) = if cfg!(target_os = "android") {
         let fassung = crate::ytdlp::einmal(Path::new(""), &["--version".to_string()])
             .await
@@ -1368,12 +1368,12 @@ pub async fn downloader_status(state: State<'_, AppState>) -> CmdResult<Download
     })
 }
 
-/// Holt die neueste Fassung von yt-dlp und nennt sie.
+/// fetches the newest version of yt-dlp and names it.
 ///
-/// YouTube ändert seinen Abspieler laufend und weist alte Fassungen mit „403“
-/// ab. Auf dem Rechner behilft sich yt-dlp mit `-U`; auf Android liegt es in
-/// der Bibliothek, und zwar in dem Stand, den sie beim Erscheinen hatte —
-/// dort gibt es keinen anderen Weg als diesen.
+/// youtube keeps changing its player and turns old versions away with a 403.
+/// on a desktop yt-dlp helps itself with `-U`, on android it sits in the
+/// library in the state that library had when it was released, and there is
+/// no other way there than this one.
 #[tauri::command]
 pub async fn update_ytdlp(state: State<'_, AppState>) -> CmdResult<String> {
     let configured = {
@@ -1384,16 +1384,16 @@ pub async fn update_ytdlp(state: State<'_, AppState>) -> CmdResult<String> {
     Ok(crate::ytdlp::aktualisieren(&ytdlp).await?)
 }
 
-/// Schreibt das Schema einer eingegebenen Adresse klein.
-///
-/// Tastaturen auf dem Telefon schreiben den Satzanfang groß; aus einem
-/// eingetippten Link wird „HTTPS://…“. Die Erkennung sah darin keine Adresse,
-/// Robify suchte den ganzen Link als Stichwort — fand den Titel zwar trotzdem,
-/// warnte danach aber, das Geladene passe nicht zur Eingabe, und verglich es
-/// dafür mit der Adresse.
-///
-/// Nur das Schema, nicht die ganze Adresse: Alles dahinter ist von Bedeutung,
-/// YouTube-Kennungen unterscheiden Groß- und Kleinschreibung.
+// lowercases the scheme of an entered address.
+//
+// keyboards on a phone capitalise the start of a sentence, so a typed link
+// becomes "HTTPS://…". the detection saw no address in that and robify
+// searched the whole link as a keyword. it did find the track anyway, but
+// warned afterwards that what was loaded did not match the input, comparing
+// it against the address.
+//
+// the scheme only, not the whole address: everything behind it carries
+// meaning, youtube ids are case sensitive
 fn schema_kleinschreiben(eingabe: &str) -> String {
     for schema in ["https://", "http://"] {
         if eingabe.len() >= schema.len() && eingabe[..schema.len()].eq_ignore_ascii_case(schema) {
@@ -1403,15 +1403,14 @@ fn schema_kleinschreiben(eingabe: &str) -> String {
     eingabe.to_string()
 }
 
-/// Nimmt entgegen, was im Downloader eingegeben wurde, und entscheidet selbst,
-/// was zu tun ist:
+/// takes in what was entered in the downloader and decides what to do:
 ///
-/// * Spotify-Link → Metadaten auflösen, Audio über die übrigen Quellen suchen
-///   (Spotify gibt seine Aufnahmen nur DRM-verschlüsselt heraus)
-/// * jede andere Adresse → direkt an yt-dlp, Sammlungen werden aufgeklappt
-/// * alles Übrige → Suchbegriff, alle Suchquellen gleichzeitig
+/// * a spotify link resolves the metadata and searches the audio through the
+///   remaining sources, spotify hands its recordings out drm-encrypted only
+/// * any other address goes straight to yt-dlp, collections are unfolded
+/// * everything else counts as a keyword, every search source at once
 ///
-/// Damit muss niemand vorher eine Quelle auswählen.
+/// nobody has to pick a source beforehand this way.
 #[tauri::command]
 pub async fn resolve_input(
     state: State<'_, AppState>,
@@ -1436,8 +1435,8 @@ pub async fn resolve_input(
     let is_link = input.starts_with("http://") || input.starts_with("https://");
 
     if is_link {
-        // yt-dlp kennt den Titel hinter der Adresse, schöner als die nackte URL.
-        // Playlists, Alben und Sets kommen als mehrere Einträge zurück.
+        // yt-dlp knows the title behind the address, nicer than the bare url.
+        // playlists, albums and sets come back as several entries
         let found = downloader::search(&ytdlp, &input, SearchSource::Url, 1)
             .await
             .unwrap_or_default();
@@ -1447,7 +1446,7 @@ pub async fn resolve_input(
                 url: input.clone(),
                 fallbacks: Vec::new(),
                 match_query: None,
-                // Ein eingefügter Link ist die Absicht selbst, nichts zu prüfen.
+                // a pasted link is the intent itself, nothing to check
                 intent: None,
                 title: input.clone(),
                 subtitle: None,
@@ -1481,11 +1480,11 @@ pub async fn resolve_input(
     }
 
     Ok(LinkPlan {
-        // Nur die Eingabe, nicht „Treffer für …“: Den Satz baut die Oberfläche
-        // in ihrer Sprache, sie erkennt den Fall an `kind`.
+        // the input only, not "hits for …": the ui builds that sentence in
+        // its own language, it recognises the case by `kind`
         label: input.clone(),
         kind: "search".into(),
-        // Eine dünne Trefferliste kann auch an einer gesperrten Quelle liegen.
+        // a thin result list can come from a blocked source as well
         notes: if ausgefallen.is_empty() {
             Vec::new()
         } else {
@@ -1495,9 +1494,9 @@ pub async fn resolve_input(
             }]
         },
         batch: false,
-        // Scheitert die gewählte Quelle, wandert der Download automatisch
-        // zur nächsten, statt mit „nicht möglich“ stehen zu bleiben.
-        // Die Eingabe reist mit, damit sich das Ergebnis gegenprüfen lässt.
+        // where the chosen source fails, the download moves on to the next
+        // one by itself instead of stopping at "not possible". the input
+        // travels along so the result can be checked against it
         items: downloader::plans_with_fallbacks(found)
             .into_iter()
             .map(|plan| downloader::DownloadPlan {
@@ -1508,10 +1507,10 @@ pub async fn resolve_input(
     })
 }
 
-/// Führt mehrere Abfragen nebenläufig aus und sammelt ihre Ergebnisse ein.
-///
-/// Bewusst über `tokio::spawn` statt über eine zusätzliche Abhängigkeit: Für
-/// dieses eine Bündel Cover-Abfragen lohnt sich `futures` nicht.
+// runs several queries concurrently and collects their results.
+//
+// deliberately over `tokio::spawn` rather than an extra dependency: for this
+// one bundle of cover queries `futures` does not pay off
 async fn nebenlaeufig_sammeln<F>(
     aufgaben: impl Iterator<Item = F>,
 ) -> Vec<(String, Option<String>)>
@@ -1528,8 +1527,9 @@ where
     ergebnisse
 }
 
-/// So viele Titel gibt Spotifys öffentliche Einbettung höchstens heraus.
-/// Durch Live-Test belegt (`tests/spotify_live.rs`).
+/// this many tracks at most come out of spotify's public embed.
+///
+/// established by live test (`tests/spotify_live.rs`).
 const SPOTIFY_EMBED_LIMIT: usize = 100;
 
 async fn resolve_spotify(
@@ -1538,8 +1538,8 @@ async fn resolve_spotify(
 ) -> CmdResult<LinkPlan> {
     let release = spotify::resolve(&reference).await?;
 
-    // Einmal alle vorhandenen Titel als Schlüsselpaare holen, statt für jeden
-    // Eintrag der Playlist erneut in die Datenbank zu fassen.
+    // fetch every existing track as key pairs once, instead of reaching into
+    // the database again for each entry of the playlist
     let bereits: std::collections::HashSet<(String, String)> = {
         let conn = state.db();
         library::list_tracks(&conn, None, 100_000)
@@ -1549,7 +1549,7 @@ async fn resolve_spotify(
             .collect()
     };
 
-    // Das Cover einmal laden und für alle Titel des Releases verwenden.
+    // load the cover once and use it for every track of the release
     let cover = match release.cover_url.as_deref() {
         Some(url) => online::fetch_image(url)
             .await
@@ -1561,10 +1561,10 @@ async fn resolve_spotify(
     let is_album = matches!(reference.kind, spotify::SpotifyKind::Album);
     let album_title = if is_album { release.name.clone() } else { String::new() };
 
-    // Das Bild gehört nur dann zu jedem einzelnen Titel, wenn es ein Album
-    // oder ein einzelner Titel ist. Bei einer Playlist ist es deren eigenes
-    // Bild, die Titel darin stammen aus ganz verschiedenen Releases und
-    // bekommen ihr richtiges Cover erst beim Anreichern nach dem Laden.
+    // the image belongs to every single track only where it is an album or a
+    // single track. with a playlist it is that playlist's own image, the
+    // tracks inside come from entirely different releases and get their
+    // proper cover during enrichment after the download
     let track_cover = matches!(
         reference.kind,
         spotify::SpotifyKind::Album | spotify::SpotifyKind::Track
@@ -1572,11 +1572,11 @@ async fn resolve_spotify(
     .then_some(cover.as_ref())
     .flatten();
 
-    // Für Playlists das Bild jedes Titels einzeln nachschlagen. Die Titelliste
-    // gibt nur die Kennung her; ohne diesen Griff trüge jeder Eintrag das Bild
-    // der Playlist. Höchstens acht Abfragen gleichzeitig, damit Spotify nicht
-    // drosselt, und mit Zeitlimit, damit eine lahme Antwort das Auflösen nicht
-    // aufhält.
+    // for playlists, look up the image of every track separately. the track
+    // list hands out the id only, and without this reach every entry would
+    // carry the image of the playlist. at most eight queries at a time so
+    // spotify does not throttle, and with a timeout so one slow answer does
+    // not hold up the resolving
     let einzelbilder: std::collections::HashMap<String, String> =
         if is_album || reference.kind == spotify::SpotifyKind::Track {
             std::collections::HashMap::new()
@@ -1617,8 +1617,8 @@ async fn resolve_spotify(
                 .unwrap_or_else(|| "Unbekannter Künstler".into());
             let metadata = TrackMetadata {
                 title: track.title.clone(),
-                // Spotify kennt keine Rollen, alle Beteiligten sind
-                // Hauptkünstler, außer sie standen als „feat.“ im Titel.
+                // spotify knows no roles, everyone involved is a lead artist
+                // unless they stood in the title as "feat."
                 artist: library::join_artists(&track.artists),
                 featured_artists: (!track.featured.is_empty())
                     .then(|| library::join_artists(&track.featured)),
@@ -1636,10 +1636,10 @@ async fn resolve_spotify(
             };
 
             downloader::DownloadPlan {
-                // Spotify kennt die Laufzeit genau, daraus sucht der
-                // Downloader die am besten passende Aufnahme heraus.
+                // spotify knows the running time exactly, and the downloader
+                // picks the best matching recording from it
                 match_query: Some(format!("{} {}", primary_artist, track.title)),
-                // Spotify nennt Titel und Künstler verbindlich.
+                // spotify names title and artist authoritatively
                 intent: Some(format!("{} {}", primary_artist, track.title)),
                 url: format!("scsearch1:{} {}", primary_artist, track.title),
                 fallbacks: vec![format!(
@@ -1676,9 +1676,8 @@ async fn resolve_spotify(
                 code: "spotify-nur-metadaten".into(),
                 args: Vec::new(),
             }];
-            // Die öffentliche Einbettung rückt nie mehr als 100 Titel heraus.
-            // Ohne Hinweis wundert man sich, warum eine lange Playlist genau
-            // dort aufhört.
+            // the public embed never hands out more than 100 tracks. without
+            // a hint one wonders why a long playlist stops exactly there
             if release.tracks.len() >= SPOTIFY_EMBED_LIMIT {
                 hinweise.push(downloader::PlanHinweis {
                     code: "spotify-grenze".into(),
@@ -1711,7 +1710,7 @@ pub async fn start_download(
     };
     let ytdlp = downloader::ensure_ytdlp(configured.as_deref(), &state.tools_dir()).await?;
 
-    // Die Einstellungen entscheiden, was automatisch nachgeladen wird.
+    // the settings decide what is fetched automatically
     let options = DownloadOptions {
         auto_cover,
         auto_lyrics,
@@ -1726,32 +1725,33 @@ pub fn cancel_download(state: State<'_, AppState>, job_id: String) -> CmdResult<
     Ok(state.downloads.cancel(&job_id))
 }
 
-/// Ersetzt alles, was in Dateinamen Ärger macht.
-/// Unter Windows belegt das Betriebssystem diese Namen für Geräte, eine
-/// Datei „CON.mp3“ lässt sich dort nicht anlegen. Ein Künstler namens „Aux“
-/// würde den Import sonst auf einem Windows-Rechner scheitern lassen.
+/// names windows reserves for devices.
+///
+/// a file called "CON.mp3" cannot be created there, so an artist named "Aux"
+/// would make the import fail on a windows machine.
 const RESERVED_NAMES: [&str; 22] = [
     "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
     "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
 ];
 
-/// Ordner im Arbeitsverzeichnis für übernommene, aber nicht einsortierte
-/// Titel. Vom Aufräumen ausgenommen, siehe [`crate::db::cleanup_work_dir`].
+/// folder in the working directory for tracks taken over but not filed into
+/// the music folder. exempt from the cleanup, see `downloader::cleanup_work_dir`.
 pub const KEEP_DIR: &str = "behalten";
 
-/// Gehört das Verzeichnis zu einem Download-Auftrag?
+/// whether the directory belongs to a download job.
 ///
-/// Der Downloader legt je Auftrag `job-<zeitstempel>-<nr>` an. Die Prüfung
-/// verhindert, dass beim Aufräumen ein anderer Ordner erwischt wird.
+/// the downloader creates `job-<timestamp>-<no>` per job. the check keeps the
+/// cleanup from catching a different folder.
 pub fn is_job_dir(dir: &Path) -> bool {
     dir.file_name()
         .and_then(|name| name.to_str())
         .is_some_and(|name| name.starts_with("job-"))
 }
 
-/// Verschiebt eine Datei in ein Zielverzeichnis, ohne Bestehendes zu
-/// überschreiben. Über Laufwerksgrenzen hinweg scheitert `rename`, dann
-/// wird kopiert und die Quelle entfernt.
+/// moves a file into a target directory without overwriting anything there.
+///
+/// across drive boundaries `rename` fails, and it copies and removes the
+/// source then.
 fn move_file(source: &Path, dir: &Path, file_name: &str) -> std::io::Result<PathBuf> {
     std::fs::create_dir_all(dir)?;
 
@@ -1778,8 +1778,8 @@ fn sanitize(value: &str) -> String {
             c => c,
         })
         .collect();
-    // Das Abschneiden der Punkte am Ende entschärft nebenbei „.“ und „..“:
-    // Beide werden dadurch leer und bekommen den Platzhalter.
+    // cutting the trailing dots defuses "." and ".." along the way: both end
+    // up empty and get the placeholder
     let trimmed = cleaned.trim().trim_end_matches('.').trim();
     if trimmed.is_empty() {
         return "Unbenannt".into();
@@ -1792,8 +1792,9 @@ fn sanitize(value: &str) -> String {
     gekuerzt
 }
 
-/// Verschiebt die Datei in die Bibliothek und legt den Titel an.
-/// Wird nach dem Bestätigen der Metadaten im Downloader aufgerufen.
+/// moves the file into the library and creates the track.
+///
+/// called after confirming the metadata in the downloader.
 #[tauri::command]
 pub fn import_download(
     app: AppHandle,
@@ -1820,9 +1821,9 @@ pub fn import_download(
         _ => format!("{}.{}", sanitize(&metadata.title), extension),
     };
 
-    // Die Datei verlässt in jedem Fall den Job-Ordner. Bleibt sie dort, zeigt
-    // die Bibliothek in ein Arbeitsverzeichnis, das aufgeräumt werden muss,
-    // jede Aufräumlogik würde solche Titel mitreißen.
+    // the file leaves the job folder in any case. staying there, the library
+    // would point into a working directory that has to be cleared out, and
+    // any cleanup would tear such tracks along
     let dir = if move_into_library {
         let artist_folder = sanitize(
             metadata
@@ -1838,15 +1839,15 @@ pub fn import_download(
         });
         state.library_dir().join(artist_folder).join(album_folder)
     } else {
-        // „Nicht einsortieren“ heißt: nicht in den Musikordner, nicht, dass
-        // die Datei im Arbeitsverzeichnis liegen bleibt.
+        // "do not file it" means not into the music folder, not that the
+        // file stays lying in the working directory
         state.work_dir.join(KEEP_DIR)
     };
 
     let final_path = move_file(&source_path, &dir, &file_name)?;
 
-    // Der Job ist erledigt, sein Ordner enthält nur noch Hilfsdateien
-    // (result.txt, uploader.txt, musik.txt, Vorschaubilder).
+    // the job is done, its folder holds nothing but helper files
+    // (result.txt, uploader.txt, musik.txt, thumbnails)
     if let Some(job_dir) = source_path.parent().filter(|dir| is_job_dir(dir)) {
         let _ = std::fs::remove_dir_all(job_dir);
     }
@@ -1872,10 +1873,10 @@ pub fn import_download(
             rusqlite::params![album_id, ReleaseType::parse(rt).as_str()],
         )?;
     } else {
-        // Ohne Angabe aus dem Netz entscheidet die Titelzahl — genau wie beim
-        // Einlesen aus einem Ordner. Bisher lief das nur dort, und ein
-        // geladener Titel ohne erkannte Art blieb für immer ein „Album“,
-        // auch wenn er allein dastand.
+        // without a detail from the net the track count decides, exactly as
+        // when reading a folder. that used to run only there, and a
+        // downloaded track without a recognised type stayed an album forever,
+        // even standing on its own
         library::refresh_release_types(&conn)?;
     }
     if let Some(cover) = metadata.cover_base64.as_deref().filter(|c| !c.is_empty()) {
@@ -1894,7 +1895,7 @@ pub fn import_download(
     }
 
     let track = library::get_track(&conn, track_id)?;
-    // Künstler, die mit diesem Titel neu dazukommen, haben noch keine Angaben.
+    // artists arriving with this track carry no details yet
     let neue_kuenstler = if auto_fetch_artists(&conn) {
         library::artists_missing_metadata(&conn, track_id).unwrap_or_default()
     } else {
@@ -1907,10 +1908,9 @@ pub fn import_download(
     Ok(track)
 }
 
-// ---------------------------------------------------------- Einstellungen
+// --- settings ---
 
-/// Dürfen Künstlerangaben automatisch nachgeladen werden?
-/// Lyrics automatisch suchen? Vorgabe ja.
+// whether lyrics are searched for automatically. defaults to yes
 fn auto_fetch_lyrics(conn: &rusqlite::Connection) -> bool {
     db::get_setting(conn, "auto_fetch_lyrics")
         .ok()
@@ -1919,7 +1919,7 @@ fn auto_fetch_lyrics(conn: &rusqlite::Connection) -> bool {
         != Some("0")
 }
 
-/// Beim Import nachschlagen? Vorgabe ja.
+// whether details are looked up at import. defaults to yes
 fn auto_fetch_import(conn: &rusqlite::Connection) -> bool {
     db::get_setting(conn, "auto_fetch_import")
         .ok()
@@ -1928,6 +1928,7 @@ fn auto_fetch_import(conn: &rusqlite::Connection) -> bool {
         != Some("0")
 }
 
+// whether artist details may be fetched automatically. defaults to yes
 fn auto_fetch_artists(conn: &rusqlite::Connection) -> bool {
     db::get_setting(conn, "auto_fetch_artists")
         .ok()
@@ -1945,44 +1946,44 @@ pub struct Settings {
     pub ytdlp_path: String,
     pub auto_fetch_lyrics: bool,
     pub auto_fetch_cover: bool,
-    /// Bild und Beschreibung beim ersten Titel eines Künstlers holen.
+    /// fetch image and description at the first track of an artist.
     pub auto_fetch_artists: bool,
     pub move_downloads_into_library: bool,
     pub accent: String,
-    /// „system“, „light“ oder „dark“.
+    /// "system", "light" or "dark".
     pub theme: String,
-    /// Playlists als Kacheln („grid“) oder als Liste („list“).
+    /// playlists as tiles ("grid") or as a list ("list").
     pub playlist_view: String,
-    /// Kachelgröße: „sm“, „md“ oder „lg“.
+    /// tile size: "sm", "md" or "lg".
     pub playlist_size: String,
-    /// Vor dem Löschen nachfragen. Lässt sich im Dialog selbst abstellen.
+    /// ask before deleting. can be turned off in the dialog itself.
     pub confirm_delete: bool,
-    /// Aus einer geladenen Playlist eine Playlist in der Bibliothek machen.
+    /// turn a downloaded playlist into a playlist in the library.
     pub playlist_from_download: bool,
-    /// Wie viel vom Rückblick gezeigt wird: „all“, „month“, „year“ oder „off“.
+    /// how much of the review is shown: "all", "month", "year" or "off".
     pub wrapped_mode: String,
-    /// Beim Import fehlende Angaben online nachschlagen.
+    /// look missing details up online at import.
     pub auto_fetch_import: bool,
-    /// Sortierung der Bibliothek: „added“, „title“, „artist“, „album“, „year“.
+    /// sorting of the library: "added", "title", "artist", "album", "year".
     pub library_sort: String,
-    /// Selbst gemischte Akzentfarben, mit Komma getrennt („#ff0000,#00ff00“).
-    /// Als Zeichenkette, weil die Einstellungstabelle nur Text kennt.
-    pub accent_custom: String,
-    /// Oberflächensprache: „system“, „de“ oder „en“.
-    pub language: String,
-    /// Stehen die Speicherorte fest? Dann gibt es nichts einzustellen.
+    /// accent colours mixed by hand, comma separated ("#ff0000,#00ff00").
     ///
-    /// Auf dem Telefon liegen die Titel in `Robify` und alles Übrige in
-    /// `.robify`, beides im Gerätespeicher. Die Oberfläche blendet die
-    /// Ordnerwahl daraufhin aus, statt eine Einstellung anzubieten, die
-    /// nichts bewirkt.
+    /// as a string, because the settings table knows text only.
+    pub accent_custom: String,
+    /// ui language: "system", "de" or "en".
+    pub language: String,
+    /// whether the storage locations are fixed. then there is nothing to set.
+    ///
+    /// on a phone the tracks lie in `Robify` and everything else in
+    /// `.robify`, both in the device storage. the ui hides the folder choice
+    /// accordingly instead of offering a setting that does nothing.
     pub feste_orte: bool,
 }
 
 #[tauri::command]
 pub fn get_settings(state: State<'_, AppState>) -> CmdResult<Settings> {
-    // Vor dem Sperren: `library_dir()` greift selbst auf die Datenbank zu,
-    // und dieselbe Sperre zweimal zu nehmen legt den Aufruf still.
+    // before locking: `library_dir()` reaches into the database itself, and
+    // taking the same lock twice puts the call to sleep
     let library_dir = state.library_dir().to_string_lossy().into_owned();
     let conn = state.db();
     let get = |key: &str, fallback: &str| {
@@ -1995,8 +1996,8 @@ pub fn get_settings(state: State<'_, AppState>) -> CmdResult<Settings> {
     let flag = |key: &str, fallback: bool| get(key, if fallback { "1" } else { "0" }) == "1";
 
     Ok(Settings {
-        // Der Ordner, der wirklich gilt: Auf dem Telefon steht er fest, die
-        // Einstellung wird dort nicht gelesen.
+        // the folder that actually applies: on a phone it is fixed and the
+        // setting is not read there
         library_dir,
         download_format: get("download_format", "best"),
         download_quality: get("download_quality", "0"),
@@ -2007,19 +2008,19 @@ pub fn get_settings(state: State<'_, AppState>) -> CmdResult<Settings> {
         move_downloads_into_library: flag("move_downloads_into_library", true),
         accent: get("accent", "#a8a8b3"),
         theme: get("theme", "system"),
-        // Liste statt Kacheln, und in der großen Fassung: Eine Playlist
-        // erkennt man am Namen, nicht am Mosaik aus vier Covern. Als Zeile
-        // steht der Name daneben statt darunter abgeschnitten.
+        // a list instead of tiles, and in the large form: a playlist is
+        // recognised by its name, not by a mosaic of four covers. as a row the
+        // name stands next to it instead of cut off underneath
         playlist_view: get("playlist_view", "list"),
         playlist_size: get("playlist_size", "lg"),
         confirm_delete: flag("confirm_delete", true),
         playlist_from_download: flag("playlist_from_download", true),
         wrapped_mode: get("wrapped_mode", "all"),
         auto_fetch_import: flag("auto_fetch_import", true),
-        // Nach Künstler ist die Ordnung, in der man eine Sammlung durchgeht.
+        // by artist is the order one walks a collection in
         library_sort: get("library_sort", "artist"),
         accent_custom: get("accent_custom", ""),
-        // „system“ folgt der Einstellung des Betriebssystems.
+        // "system" follows the setting of the operating system
         language: get("language", "system"),
         feste_orte: state.feste_orte,
     })
@@ -2031,23 +2032,23 @@ pub fn set_setting(state: State<'_, AppState>, key: String, value: String) -> Cm
     Ok(db::set_setting(&conn, &key, &value)?)
 }
 
-/// Wie viele Sicherungen aufgehoben werden.
+/// how many backups are kept.
 const MAX_BACKUPS: usize = 5;
 
-/// Ordner für die Sicherungen, wenn die Speicherorte feststehen.
+/// folder for the backups where the storage locations are fixed.
 const SICHERUNGEN: &str = "saves";
 
-/// Legt eine Sicherung der Datenbank an und gibt deren Pfad zurück.
+/// writes a backup of the database and returns its path.
 ///
-/// `VACUUM INTO` schreibt eine in sich stimmige Kopie, auch während die
-/// Datenbank geöffnet ist, ein einfaches Kopieren der Datei könnte mitten
-/// in einer Schreiboperation landen.
+/// `VACUUM INTO` writes a copy consistent in itself even while the database
+/// is open, where plainly copying the file could land in the middle of a
+/// write.
 #[tauri::command]
 pub fn backup_database(state: State<'_, AppState>) -> CmdResult<String> {
-    // Stehen die Orte fest, liegt die Sicherung sichtbar im Musikordner unter
-    // „saves“, nicht im versteckten „.robify“. Eine Sicherung nützt nur, wenn
-    // man sie auch findet und wegkopieren kann; der versteckte Ordner ist für
-    // das gedacht, was der Nutzer nie anfassen soll.
+    // where the locations are fixed, the backup lies visibly in the music
+    // folder under "saves", not in the hidden ".robify". a backup is of use
+    // only where it can be found and copied away, and the hidden folder is
+    // meant for what the user is never to touch
     let dir = if state.feste_orte {
         state.library_dir().join(SICHERUNGEN)
     } else {
@@ -2064,13 +2065,13 @@ pub fn backup_database(state: State<'_, AppState>) -> CmdResult<String> {
 
     {
         let conn = state.db();
-        // Der Pfad wird als Zeichenkette eingesetzt, weil VACUUM keine
-        // Platzhalter erlaubt. Hochkommas verdoppeln, wie in SQL üblich.
+        // the path goes in as a string because vacuum allows no placeholders.
+        // single quotes are doubled, as usual in sql
         let pfad = ziel.to_string_lossy().replace('\'', "''");
         conn.execute_batch(&format!("VACUUM INTO '{pfad}'"))?;
     }
 
-    // Ältere Sicherungen abräumen, damit sie sich nicht anhäufen.
+    // clear older backups away so they do not pile up
     let mut vorhanden: Vec<PathBuf> = std::fs::read_dir(&dir)
         .into_iter()
         .flatten()
@@ -2091,15 +2092,15 @@ pub fn backup_database(state: State<'_, AppState>) -> CmdResult<String> {
     Ok(ziel.to_string_lossy().to_string())
 }
 
-/// Setzt Robify auf den Auslieferungszustand zurück.
+/// resets robify to the state it ships in.
 ///
-/// Vorher wird **immer** eine Sicherung der Datenbank angelegt und ihr Pfad
-/// zurückgegeben. Ohne die wäre der Griff endgültig, und es ist der eine
-/// Knopf, bei dem ein Fehlgriff alles kostet.
+/// a backup of the database is always written first and its path returned.
+/// without it the action would be final, and this is the one button where a
+/// misgrasp costs everything.
 ///
-/// `delete_files` betrifft die Audiodateien. Auch dann werden sie nicht
-/// gelöscht, sondern in den Papierkorb der App verschoben, dort liegen sie
-/// 30 Tage, bevor sie endgültig verschwinden.
+/// `delete_files` concerns the audio files. even then they are not deleted
+/// but moved into the app's trash, where they lie for 30 days before they go
+/// for good.
 #[tauri::command]
 pub fn reset_app(
     app: AppHandle,
@@ -2107,10 +2108,10 @@ pub fn reset_app(
     delete_files: bool,
     keep_settings: bool,
 ) -> CmdResult<String> {
-    // Erst sichern. Scheitert das, wird nichts angefasst.
+    // back up first. where that fails, nothing is touched
     let sicherung = backup_database(state.clone())?;
 
-    // Nichts soll weiterlaufen, während seine Datei verschwindet.
+    // nothing is to keep running while its file disappears
     let _ = state.player.send(crate::player::Cmd::Stop);
 
     let papierkorb = state.trash_dir();
@@ -2133,8 +2134,8 @@ pub fn reset_app(
         }
     }
 
-    // Reihenfolge nach Abhängigkeiten, auch wenn die Fremdschlüssel kaskadieren:
-    // So bleibt nachvollziehbar, was geleert wird.
+    // the order follows the dependencies even though the foreign keys
+    // cascade: that way what gets emptied stays traceable
     conn.execute_batch(
         "DELETE FROM plays;
          DELETE FROM playlist_tracks;
@@ -2149,11 +2150,11 @@ pub fn reset_app(
     if !keep_settings {
         conn.execute_batch("DELETE FROM settings;")?;
     }
-    // Die Datei behält sonst ihre alte Größe, obwohl nichts mehr darin steht.
+    // otherwise the file keeps its old size although nothing is left in it
     conn.execute_batch("VACUUM;")?;
     drop(conn);
 
-    // Liegengebliebene Arbeitsordner gleich mit.
+    // leftover working folders along with it
     let _ = std::fs::remove_dir_all(&state.work_dir);
     let _ = std::fs::create_dir_all(&state.work_dir);
 
@@ -2183,12 +2184,12 @@ pub fn app_paths(app: AppHandle, state: State<'_, AppState>) -> CmdResult<serde_
 mod tests {
     use super::{sanitize, schema_kleinschreiben};
 
-    /// Ein eingetippter Link bleibt ein Link.
+    /// a typed link stays a link.
     ///
-    /// Auf dem Telefon schreibt die Tastatur den Satzanfang groß. Aus
-    /// „https://…“ wurde „HTTPS://…“, und Robify hielt das für ein Stichwort:
-    /// Es suchte den ganzen Link in allen Quellen und warnte danach, das
-    /// Geladene passe nicht zur Eingabe — verglichen mit der Adresse.
+    /// on a phone the keyboard capitalises the start of a sentence, so
+    /// "https://…" became "HTTPS://…" and robify took it for a keyword: it
+    /// searched the whole link in every source and warned afterwards that
+    /// what was loaded did not match the input, compared against the address.
     #[test]
     fn grossgeschriebenes_schema_wird_erkannt() {
         assert_eq!(
@@ -2201,30 +2202,30 @@ mod tests {
         );
     }
 
-    /// Hinter dem Schema bleibt alles, wie es war.
+    /// behind the scheme everything stays as it was.
     ///
-    /// YouTube-Kennungen unterscheiden Groß- und Kleinschreibung; die ganze
-    /// Adresse kleinzuschreiben führte auf ein anderes Video oder ins Leere.
+    /// youtube ids are case sensitive, and lowercasing the whole address led
+    /// to a different video or nowhere at all.
     #[test]
     fn nur_das_schema_wird_angefasst() {
         assert_eq!(
             schema_kleinschreiben("https://youtu.be/AbCdEfGhIjK"),
             "https://youtu.be/AbCdEfGhIjK"
         );
-        // Ein Stichwort bleibt unberührt, auch wenn es groß beginnt.
+        // a keyword stays untouched even where it starts in capitals
         assert_eq!(schema_kleinschreiben("Yeat COMË N GO"), "Yeat COMË N GO");
         assert_eq!(schema_kleinschreiben(""), "");
     }
 
     #[test]
     fn dateinamen_bleiben_im_zielordner() {
-        // Ein Künstlername darf keinen Ordnerwechsel auslösen.
+        // an artist name must not trigger a change of folder
         assert_eq!(sanitize("../../etc"), ".._.._etc");
         assert_eq!(sanitize("/"), "_");
         assert_eq!(sanitize("C:\\Windows"), "C__Windows");
 
-        // Reine Punktnamen zeigen auf den eigenen oder den übergeordneten
-        // Ordner, sie dürfen nie als Ordnername herauskommen.
+        // names of dots alone point at the folder itself or its parent, they
+        // must never come out as a folder name
         for gefaehrlich in [".", "..", "...", " .. ", "..\t"] {
             let sicher = sanitize(gefaehrlich);
             assert!(
@@ -2236,12 +2237,12 @@ mod tests {
 
     #[test]
     fn reservierte_windows_namen_werden_entschaerft() {
-        // „CON.mp3“ lässt sich unter Windows nicht anlegen.
+        // "CON.mp3" cannot be created under windows
         for name in ["CON", "con", "Aux", "NUL", "com1", "LPT9"] {
             let sicher = sanitize(name);
             assert!(sicher.starts_with('_'), "{name} blieb reserviert: {sicher}");
         }
-        // Normale Namen bleiben unangetastet.
+        // ordinary names stay untouched
         assert_eq!(sanitize("Nina Chuba"), "Nina Chuba");
         assert_eq!(sanitize("Console"), "Console");
     }
@@ -2251,7 +2252,7 @@ mod tests {
         assert_eq!(sanitize(""), "Unbenannt");
         assert_eq!(sanitize("   "), "Unbenannt");
         assert_eq!(sanitize("\u{0}\u{1}"), "Unbenannt");
-        // Übermäßig lange Namen werden gekappt, bleiben aber gültig.
+        // excessively long names are cut but stay valid
         let lang = sanitize(&"ä".repeat(500));
         assert_eq!(lang.chars().count(), 120);
     }

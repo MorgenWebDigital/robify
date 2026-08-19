@@ -1,16 +1,16 @@
-//! Härtetest: Alle Textfunktionen, die Angaben aus dem Netz verarbeiten,
-//! bekommen absichtlich unsinnige Eingaben.
+//! hardening test: every text function processing details from the net is
+//! deliberately fed nonsense input.
 //!
 //!     cargo test --test robustness
 //!
-//! Braucht kein Netz. Geprüft wird nicht das Ergebnis, sondern dass es
-//! überhaupt eines gibt: keine Abstürze, keine Endlosschleifen, keine
-//! kaputten Zeichengrenzen. Titel aus dem Netz sind Fremddaten, sie dürfen
-//! die Bibliothek nicht aus dem Tritt bringen.
+//! needs no network. what is checked is not the result but that there is one
+//! at all: no crashes, no endless loops, no broken character boundaries.
+//! titles from the net are foreign data and must not throw the library off
+//! its stride.
 
 use robify_lib::{db, library, online};
 
-/// Eingaben, an denen Textverarbeitung erfahrungsgemäß zerbricht.
+/// inputs text processing is known to break on.
 fn boesartige_eingaben() -> Vec<String> {
     let mut faelle: Vec<String> = vec![
         String::new(),
@@ -31,31 +31,31 @@ fn boesartige_eingaben() -> Vec<String> {
         "( )".into(),
         "(Lyrics)".into(),
         "(Lyrics) - (Official Video)".into(),
-        // Unsichtbare Zeichen und Steuerzeichen.
+        // invisible characters and control characters
         "\u{3164}".into(),
         "\u{200b}\u{200b}\u{feff}".into(),
         "A\u{200b} - \u{3164}B".into(),
         "\u{202e}txeT tfel-ot-thgiR".into(),
-        // Schrift außerhalb des lateinischen Bereichs.
+        // scripts outside the latin range
         "アーティスト - 曲名".into(),
         "Исполнитель - Песня".into(),
         "فنان - أغنية".into(),
         "🎵 - 🎶".into(),
         "𝕬𝖗𝖙𝖎𝖘𝖙 - 𝕾𝖔𝖓𝖌".into(),
-        // Kombinierende Zeichen und Ligaturen.
+        // combining characters and ligatures
         "e\u{0301}\u{0301}\u{0301} - Titel".into(),
         "ǅungla - Ǆ".into(),
-        // Trennzeichen in Serie.
+        // separators in series
         "A - B - C - D - E".into(),
         "A | B ~ C • D".into(),
-        // Sehr lang.
+        // very long
         "x".repeat(10_000),
         format!("{} - {}", "a".repeat(5_000), "b".repeat(5_000)),
         format!("Titel ({})", "feat. ".repeat(500)),
     ];
 
-    // Jeder Fall zusätzlich mit angehängtem Trenner, dort liefen frühere
-    // Zerlegungen ins Leere.
+    // every case with an appended separator as well, earlier splits ran into
+    // nothing there
     let mit_trenner: Vec<String> = faelle.iter().map(|fall| format!("{fall} - ")).collect();
     faelle.extend(mit_trenner);
     faelle
@@ -66,15 +66,15 @@ fn textfunktionen_ueberstehen_unsinn() {
     let uploader_faelle: Vec<Option<&str>> = vec![None, Some(""), Some("\u{3164}"), Some("Kanal")];
 
     for eingabe in boesartige_eingaben() {
-        // Schlüssel und Anzeigename dürfen nie länger werden als die Eingabe
-        // und müssen gültiges UTF-8 bleiben.
+        // key and display name must never grow longer than the input and
+        // have to stay valid utf-8
         let key = db::key_of(&eingabe);
         let sauber = db::clean_text(&eingabe);
         assert!(key.chars().count() <= eingabe.chars().count() + 1, "Schlüssel wuchs: {key:?}");
         assert!(!sauber.contains('\u{3164}'), "unsichtbares Zeichen blieb stehen");
         assert_eq!(sauber.trim(), sauber, "Randleerzeichen blieben stehen");
 
-        // Ein Schlüssel darf nicht aus dem Nichts entstehen.
+        // a key must not appear out of nothing
         if eingabe.chars().all(|c| !c.is_alphanumeric()) {
             assert!(key.is_empty(), "Schlüssel aus zeichenlosem Text: {key:?}");
         }
@@ -86,7 +86,7 @@ fn textfunktionen_ueberstehen_unsinn() {
             }
         }
 
-        // Die Vergleichshelfer der Metadatensuche.
+        // the comparison helpers of the metadata search
         let normal = online::normalize_for_match(&eingabe);
         let worte = online::normalize_words(&eingabe);
         assert!(!normal.starts_with(' ') && !normal.ends_with(' '));
@@ -94,7 +94,7 @@ fn textfunktionen_ueberstehen_unsinn() {
         assert!(online::looks_like_same(&eingabe, &eingabe) || normal.is_empty());
         assert!(online::contains_word_sequence(&normal, &normal) || normal.is_empty());
 
-        // Künstlerfelder.
+        // artist fields
         let (haupt, gaeste) = library::parse_artist_field(&eingabe);
         assert!(haupt.iter().all(|name| !name.trim().is_empty()));
         assert!(gaeste.iter().all(|name| !name.trim().is_empty()));
@@ -130,8 +130,8 @@ fn suchtreffer_mit_unsinnigen_laufzeiten_stuerzen_nicht_ab() {
         })
         .collect();
 
-    // Rechnet intern mit Differenzen, bei i64::MIN/MAX liefe das ohne
-    // Absicherung über und würde im Debug-Build abstürzen.
+    // calculates with differences internally, and with i64::MIN/MAX that
+    // would overflow unguarded and crash in a debug build
     let plaene = plans_with_fallbacks(treffer);
     assert_eq!(plaene.len(), laufzeiten.len());
     for plan in &plaene {
@@ -143,8 +143,8 @@ fn suchtreffer_mit_unsinnigen_laufzeiten_stuerzen_nicht_ab() {
 fn die_gegenprobe_uebersteht_unsinn() {
     use robify_lib::downloader::{plans_with_fallbacks, SearchResult};
 
-    // Die Absichtsprüfung sieht Sucheingaben, also alles, was ein Mensch
-    // tippen kann. Sie darf daran nicht zerbrechen.
+    // the intent check sees search input, so everything a human can type. it
+    // must not break on any of it
     for eingabe in boesartige_eingaben() {
         let treffer = SearchResult {
             id: "1".into(),
@@ -155,8 +155,8 @@ fn die_gegenprobe_uebersteht_unsinn() {
             thumbnail: None,
             source: "YouTube".into(),
         };
-        // Ein Plan mit unsinnigem Titel darf weder abstürzen noch auf sich
-        // selbst ausweichen.
+        // a plan with a nonsense title must neither crash nor fall back onto
+        // itself
         let plaene = plans_with_fallbacks(vec![treffer]);
         assert_eq!(plaene.len(), 1);
         assert!(plaene[0].fallbacks.is_empty());
@@ -165,8 +165,8 @@ fn die_gegenprobe_uebersteht_unsinn() {
 
 #[test]
 fn unsichtbare_namen_werden_zu_platzhaltern() {
-    // Ein Name, der nur aus unsichtbaren Zeichen besteht, ergibt einen leeren
-    // Schlüssel. Ohne Auffangnetz wären alle solchen Einträge derselbe.
+    // a name consisting of invisible characters alone yields an empty key.
+    // without a safety net every such row would be the same one
     for name in ["\u{3164}", "\u{200b}\u{feff}", "   ", ""] {
         assert!(db::key_of(name).is_empty());
         assert!(db::clean_text(name).trim().is_empty());

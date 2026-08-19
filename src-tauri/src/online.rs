@@ -1,6 +1,7 @@
-//! Anreicherung von Metadaten aus offenen Web-Diensten:
-//! iTunes Search (Cover, Release-Art), MusicBrainz (IDs, Release-Gruppen)
-//! und LRCLIB (Lyrics, auch zeitsynchron). Alle drei benötigen keinen Key.
+//! metadata enrichment from open web services: itunes search (cover, release
+//! type), musicbrainz (ids, release groups) and lrclib (lyrics, time-synced
+//! too).
+//! note: none of the three needs an api key.
 
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
@@ -25,15 +26,15 @@ pub fn client() -> &'static reqwest::Client {
     })
 }
 
-/// Ein Metadaten-Vorschlag, den der Nutzer übernehmen oder verwerfen kann.
+/// a metadata suggestion the user can take over or discard.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MetadataCandidate {
     pub source: String,
     pub title: String,
-    /// Hauptkünstler; mehrere mit Semikolon getrennt.
+    /// lead artists, several of them separated by semicolons.
     pub artist: String,
-    /// Gastkünstler, ebenfalls mit Semikolon getrennt.
+    /// guest artists, separated by semicolons as well.
     pub featured_artists: Option<String>,
     pub album: String,
     pub album_artist: Option<String>,
@@ -45,21 +46,21 @@ pub struct MetadataCandidate {
     pub cover_url: Option<String>,
     pub mbid: Option<String>,
     pub duration_ms: Option<i64>,
-    /// Genius-Seite mit den Lyrics.
+    /// genius page carrying the lyrics.
     #[serde(default)]
     pub lyrics_url: Option<String>,
-    /// Genius-Kennungen, um Titelnummer und Release-Art nachzuladen.
+    /// genius ids, for fetching track number and release type later.
     #[serde(default)]
     pub genius_song_id: Option<i64>,
     #[serde(default)]
     pub genius_album_id: Option<i64>,
 }
 
-// ------------------------------------------------------------------ Genius
+// --- genius ---
 
-/// Genius pflegt Haupt- und Gastkünstler getrennt und ist damit die beste
-/// Quelle für Titel mit mehreren Beteiligten. Die öffentliche Web-API
-/// braucht keinen Schlüssel.
+/// searches genius, which keeps lead and guest artists apart and is therefore
+/// the best source for tracks with several participants. its public web api
+/// needs no key.
 async fn search_genius(query: &str, limit: usize) -> Result<Vec<MetadataCandidate>> {
     let url = format!(
         "https://genius.com/api/search/song?q={}",
@@ -67,7 +68,7 @@ async fn search_genius(query: &str, limit: usize) -> Result<Vec<MetadataCandidat
     );
     let body: serde_json::Value = client().get(url).send().await?.json().await?;
 
-    // Je nach Endpunkt liegen die Treffer flach oder in Abschnitten.
+    // depending on the endpoint the hits lie flat or in sections
     let hits = body["response"]["hits"]
         .as_array()
         .or_else(|| body["response"]["sections"][0]["hits"].as_array())
@@ -80,15 +81,15 @@ async fn search_genius(query: &str, limit: usize) -> Result<Vec<MetadataCandidat
         .take(limit)
         .collect();
 
-    // Album und Genre stehen erst in der Detailansicht. Die Abfragen laufen
-    // bewusst nacheinander. Genius drosselt Anfrageflut.
+    // album and genre appear only in the detail view. the queries run one
+    // after another on purpose, genius throttles a flood of requests
     let details = run_sequentially(ids.iter().map(|id| genius_song(*id))).await;
 
     Ok(details.into_iter().flatten().collect())
 }
 
-/// Arbeitet die Abfragen der Reihe nach ab. Genius quittiert zu viele
-/// gleichzeitige Anfragen mit Fehlern, deshalb bewusst nacheinander.
+// works the queries off one by one. genius answers too many simultaneous
+// requests with errors, hence deliberately in sequence
 async fn run_sequentially<T>(
     futures: impl IntoIterator<Item = impl std::future::Future<Output = T>>,
 ) -> Vec<T> {
@@ -136,7 +137,7 @@ async fn genius_song(id: i64) -> Option<MetadataCandidate> {
         artist,
         featured_artists: (!featured.is_empty()).then(|| featured.join("; ")),
         album: album["name"].as_str().unwrap_or("").to_string(),
-        // Das Albumobjekt führt den Künstler als Klartextfeld.
+        // the album object carries the artist as a plain text field
         album_artist: album["primary_artist_names"]
             .as_str()
             .or_else(|| album["artist"]["name"].as_str())
@@ -148,7 +149,7 @@ async fn genius_song(id: i64) -> Option<MetadataCandidate> {
         track_no: None,
         disc_no: None,
         genre: song["primary_tag"]["name"].as_str().map(str::to_string),
-        // Für Titel eines Albums ist das Albumcover das passendere Bild.
+        // for tracks of an album the album cover is the fitting image
         cover_url: album["cover_art_url"]
             .as_str()
             .or_else(|| song["song_art_image_url"].as_str())
@@ -162,9 +163,9 @@ async fn genius_song(id: i64) -> Option<MetadataCandidate> {
     })
 }
 
-// --------------------------------------------------------- Künstlerdaten
+// --- artist data ---
 
-/// Vorschlag für einen Künstler. Bild und Beschreibung zum Übernehmen.
+/// a suggestion for an artist: image and description to take over.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArtistCandidate {
@@ -176,7 +177,7 @@ pub struct ArtistCandidate {
     pub genius_id: Option<i64>,
 }
 
-/// Genius legt Beschreibungen als verschachtelten Baum ab.
+// genius stores descriptions as a nested tree
 fn flatten_dom(node: &serde_json::Value, out: &mut String) {
     if let Some(text) = node.as_str() {
         out.push_str(text);
@@ -214,7 +215,7 @@ fn genius_description(artist: &serde_json::Value) -> Option<String> {
         .join("\n\n");
 
     if cleaned.is_empty() {
-        // Kurzfassung als Rückfall, falls der Baum leer ist.
+        // short form as a fallback where the tree is empty
         return artist["description_preview"]
             .as_str()
             .map(str::trim)
@@ -224,8 +225,8 @@ fn genius_description(artist: &serde_json::Value) -> Option<String> {
     Some(cleaned)
 }
 
-/// Genius nutzt für Künstler ohne Bild ein Platzhaltermotiv, das wollen wir
-/// nicht als Profilbild speichern.
+// genius uses a placeholder motif for artists without an image, and that is
+// not to be stored as a profile picture
 fn usable_image(url: Option<&str>) -> Option<String> {
     let url = url?;
     (!url.contains("default_cover_image") && !url.contains("default_avatar"))
@@ -280,14 +281,13 @@ pub async fn genius_artist(id: i64) -> Option<ArtistCandidate> {
     })
 }
 
-// ------------------------------------------------- Genius: Lyrics und Album
+// --- genius: lyrics and album ---
 
-/// Springt hinter das `<div>`, das an `open_pos` beginnt. Zählt dabei
-/// Die bekanntesten Titel eines Künstlers.
+/// the best known tracks of an artist.
 ///
-/// Dient dem Abgleich bei Namensgleichheit: Zu „Julia“ führt Genius mehrere
-/// Künstler, und ohne Prüfung landet das Bild der falschen im Profil. Wessen
-/// Werk in der Bibliothek steht, ist der Gesuchte.
+/// serves the comparison where names collide: genius lists several artists
+/// under "Julia", and without a check the image of the wrong one lands in the
+/// profile. whoever's work stands in the library is the one meant.
 pub async fn artist_songs(genius_id: i64, limit: usize) -> Vec<String> {
     let url = format!(
         "https://genius.com/api/artists/{genius_id}/songs?per_page={}&sort=popularity",
@@ -312,7 +312,8 @@ pub async fn artist_songs(genius_id: i64, limit: usize) -> Vec<String> {
         .unwrap_or_default()
 }
 
-/// verschachtelte `div`s mit.
+// skips past the `<div>` opening at `open_pos`, counting nested `div`s along
+// the way
 fn skip_div(doc: &str, open_pos: usize) -> usize {
     let mut cursor = match doc[open_pos..].find('>') {
         Some(index) => open_pos + index + 1,
@@ -368,7 +369,7 @@ fn strip_tags(fragment: &str) -> String {
     unescape_entities(&out)
 }
 
-/// Holt die Lyrics von einer Genius-Songseite.
+/// fetches the lyrics off a genius song page.
 pub async fn genius_lyrics(url: &str) -> Result<String> {
     let doc = client()
         .get(url)
@@ -389,7 +390,7 @@ pub async fn genius_lyrics(url: &str) -> Result<String> {
         let container_end = skip_div(&doc, marker);
         let mut fragment = doc[content_start..container_end.saturating_sub(6)].to_string();
 
-        // Genius markiert Kopfzeilen und Hinweise selbst als nicht zugehörig.
+        // genius marks headers and notes as not belonging itself
         while let Some(excluded) = fragment.find(r#"data-exclude-from-selection="true""#) {
             let Some(open) = fragment[..excluded].rfind("<div") else {
                 break;
@@ -409,7 +410,7 @@ pub async fn genius_lyrics(url: &str) -> Result<String> {
     Ok(lyrics)
 }
 
-/// Anzahl der Albumtitel und die Nummer des gesuchten Titels.
+/// number of tracks on the album and the position of the track looked for.
 async fn genius_album_tracks(album_id: i64, song_id: Option<i64>) -> Option<(i64, Option<i64>)> {
     let url = format!("https://genius.com/api/albums/{album_id}/tracks?per_page=50");
     let body: serde_json::Value = client().get(url).send().await.ok()?.json().await.ok()?;
@@ -424,7 +425,7 @@ async fn genius_album_tracks(album_id: i64, song_id: Option<i64>) -> Option<(i64
     Some((tracks.len() as i64, track_no))
 }
 
-// ------------------------------------------------------------------ iTunes
+// --- itunes ---
 
 #[derive(Deserialize)]
 struct ItunesResponse {
@@ -447,7 +448,7 @@ struct ItunesTrack {
     track_time_millis: Option<i64>,
 }
 
-/// iTunes hängt die Release-Art an den Albumnamen ("… - Single", "… - EP").
+// itunes appends the release type to the album name ("… - Single", "… - EP")
 fn itunes_release_type(collection: &str, track_count: Option<i64>) -> (String, String) {
     let lower = collection.to_lowercase();
     if let Some(stripped) = lower.strip_suffix(" - single") {
@@ -496,7 +497,7 @@ async fn search_itunes(query: &str, limit: usize) -> Result<Vec<MetadataCandidat
                 track_no: t.track_number,
                 disc_no: t.disc_number,
                 genre: t.primary_genre_name,
-                // artworkUrl100 lässt sich auf beliebige Größen hochskalieren.
+                // artworkUrl100 scales up to any size
                 cover_url: t
                     .artwork_url100
                     .map(|u| u.replace("100x100bb", "1000x1000bb")),
@@ -510,7 +511,7 @@ async fn search_itunes(query: &str, limit: usize) -> Result<Vec<MetadataCandidat
         .collect())
 }
 
-// ------------------------------------------------------------- MusicBrainz
+// --- musicbrainz ---
 
 #[derive(Deserialize)]
 struct MbResponse {
@@ -550,9 +551,9 @@ struct MbReleaseGroup {
     secondary_types: Vec<String>,
 }
 
-/// MusicBrainz erlaubt laut eigener Richtlinie eine Anfrage pro Sekunde.
-/// Bei einem Album mit dreißig Titeln liefe das sonst dreißigfach parallel,
-/// und endete in einer Sperre.
+// musicbrainz allows one request per second by its own policy. with an album
+// of thirty tracks this would otherwise run thirty times in parallel and end
+// in a block
 async fn musicbrainz_ticket() {
     use std::sync::{Mutex, OnceLock};
     use std::time::{Duration, Instant};
@@ -566,7 +567,7 @@ async fn musicbrainz_ticket() {
         let rest = zuletzt
             .map(|vorher| MIN_GAP.saturating_sub(jetzt.duration_since(vorher)))
             .unwrap_or_default();
-        // Gleich vormerken, damit sich Wartende einreihen statt zu drängeln.
+        // reserve the slot right away so waiters queue up instead of pushing
         *zuletzt = Some(jetzt + rest);
         rest
     };
@@ -628,7 +629,7 @@ async fn search_musicbrainz(query: &str, limit: usize) -> Result<Vec<MetadataCan
                 track_no: None,
                 disc_no: None,
                 genre: None,
-                // Cover Art Archive liefert das Front-Cover zur Release-ID.
+                // cover art archive serves the front cover for a release id
                 cover_url: release
                     .map(|rel| format!("https://coverartarchive.org/release/{}/front-500", rel.id)),
                 mbid: Some(r.id),
@@ -641,8 +642,8 @@ async fn search_musicbrainz(query: &str, limit: usize) -> Result<Vec<MetadataCan
         .collect())
 }
 
-/// Fragt alle Dienste parallel ab; ein Ausfall macht die Suche nicht kaputt.
-/// Genius steht vorn, weil es Haupt- und Gastkünstler sauber trennt.
+/// queries every service in parallel, one outage does not break the search.
+/// genius comes first because it separates lead and guest artists cleanly.
 pub async fn search_metadata(query: &str) -> Result<Vec<MetadataCandidate>> {
     let query = query.trim();
     if query.is_empty() {
@@ -663,14 +664,14 @@ pub async fn search_metadata(query: &str) -> Result<Vec<MetadataCandidate>> {
     Ok(out)
 }
 
-// ------------------------------------------- Automatische Zuordnung
+// --- automatic matching ---
 //
-// Was yt-dlp aus einer Videobeschreibung zieht, ist oft ungenau: Zusätze wie
-// „(Official Video)“ im Titel, alle Künstler in einem Feld, kein Album.
-// Deshalb suchen wir den Titel nach dem Download online, aber nur, wenn der
-// Treffer sicher derselbe ist.
+// what yt-dlp pulls out of a video description is often imprecise: suffixes
+// such as "(Official Video)" in the title, every artist in one field, no
+// album. the track is therefore looked up online after the download, but only
+// where the hit is certainly the same one.
 
-/// Störwörter, die in Videotiteln stehen, aber nicht zum Songtitel gehören.
+/// noise words that stand in video titles without belonging to the song title.
 const TITLE_NOISE: [&str; 14] = [
     "official video",
     "official music video",
@@ -688,12 +689,12 @@ const TITLE_NOISE: [&str; 14] = [
     "explicit",
 ];
 
-/// Bringt einen Titel auf eine vergleichbare Form: ohne Klammerzusätze,
-/// Störwörter und Satzzeichen.
+/// brings a title into comparable shape: no bracketed suffixes, no noise
+/// words, no punctuation.
 pub fn normalize_for_match(value: &str) -> String {
     let mut text = value.to_lowercase();
 
-    // Klammerinhalte entfernen, dort stehen fast immer nur Zusätze.
+    // strip bracket contents, they hold almost nothing but suffixes
     for (open, close) in [('(', ')'), ('[', ']'), ('{', '}')] {
         while let Some(start) = text.find(open) {
             match text[start..].find(close) {
@@ -716,11 +717,11 @@ pub fn normalize_for_match(value: &str) -> String {
     cleaned.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// Zerlegt einen Text in vergleichbare Wörter, **ohne** Klammerinhalte zu
-/// entfernen, anders als [`normalize_for_match`].
+/// splits a text into comparable words without stripping bracket contents,
+/// unlike `normalize_for_match`.
 ///
-/// Für Zusätze wie „(Remix)“ oder „[Edit]“ ist genau das nötig: Sie stehen
-/// fast immer in Klammern und würden sonst unsichtbar.
+/// for suffixes such as "(Remix)" or "[Edit]" that is exactly what is needed:
+/// they almost always stand in brackets and would be invisible otherwise.
 pub fn normalize_words(value: &str) -> String {
     let cleaned: String = value
         .to_lowercase()
@@ -730,10 +731,10 @@ pub fn normalize_words(value: &str) -> String {
     cleaned.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
-/// Steckt `needle` als vollständige Wortfolge in `haystack`?
+/// whether `needle` sits in `haystack` as a complete word sequence.
 ///
-/// Ein reiner Teilstring-Vergleich reicht nicht: „A“ steckt in „PA69“,
-/// gemeint ist aber ein anderer Künstler.
+/// a plain substring comparison does not do: "A" sits inside "PA69" while a
+/// different artist is meant.
 pub fn contains_word_sequence(haystack: &str, needle: &str) -> bool {
     let hay: Vec<&str> = haystack.split(' ').filter(|w| !w.is_empty()).collect();
     let seek: Vec<&str> = needle.split(' ').filter(|w| !w.is_empty()).collect();
@@ -743,7 +744,7 @@ pub fn contains_word_sequence(haystack: &str, needle: &str) -> bool {
     hay.windows(seek.len()).any(|window| window == seek.as_slice())
 }
 
-/// Sind zwei Bezeichnungen mit hoher Sicherheit dasselbe?
+/// whether two labels are the same with high confidence.
 pub fn looks_like_same(a: &str, b: &str) -> bool {
     let (a, b) = (normalize_for_match(a), normalize_for_match(b));
     if a.is_empty() || b.is_empty() {
@@ -752,14 +753,14 @@ pub fn looks_like_same(a: &str, b: &str) -> bool {
     if a == b {
         return true;
     }
-    // Teilstring zählt nur, wenn der kürzere Text den längeren gut abdeckt.
+    // a substring counts only where the shorter text covers the longer well
     let (short, long) = if a.len() <= b.len() { (&a, &b) } else { (&b, &a) };
     long.contains(short.as_str()) && short.len() * 10 >= long.len() * 6
 }
 
-/// Sucht online nach dem Titel und übernimmt die Angaben, wenn der Treffer
-/// eindeutig passt. Gibt `None` zurück, wenn nichts sicher zugeordnet werden
-/// konnte, dann bleiben die Daten aus der Datei unangetastet.
+/// looks the track up online and takes the details over where the hit fits
+/// unambiguously. returns `None` when nothing could be matched with
+/// confidence, and the data from the file stays untouched then.
 pub async fn auto_match(
     metadata: &crate::models::TrackMetadata,
     duration_ms: Option<i64>,
@@ -777,7 +778,7 @@ pub async fn auto_match(
     let best = candidates.into_iter().find(|candidate| {
         looks_like_same(&candidate.title, &metadata.title)
             && (looks_like_same(&candidate.artist, &metadata.artist)
-                // Bei „PA69, Drunken Masters“ steckt der Künstler im Feld drin.
+                // with "PA69, Drunken Masters" the artist sits inside the field
                 || contains_word_sequence(
                     &normalize_for_match(&metadata.artist),
                     &normalize_for_match(&candidate.artist),
@@ -791,9 +792,10 @@ pub async fn auto_match(
     Some(enrich(&best, duration_ms, want_cover, want_lyrics).await)
 }
 
-/// Führt gefundene Angaben mit denen aus der Datei zusammen.
-/// Künstler und Titel gewinnen von der Online-Quelle, weil sie dort sauber
-/// getrennt sind; alles Übrige füllt nur Lücken.
+/// merges the details found with those from the file.
+///
+/// artist and title win from the online source because they are cleanly
+/// separated there, everything else only fills gaps.
 pub fn merge_match(
     from_file: crate::models::TrackMetadata,
     found: crate::models::TrackMetadata,
@@ -827,8 +829,8 @@ pub fn merge_match(
         track_no: found.track_no.or(from_file.track_no),
         disc_no: found.disc_no.or(from_file.disc_no),
         genre: keep(found.genre, from_file.genre),
-        // Ein Cover aus der Datei ist meist das Videobild, das Online-Cover
-        // ist besser, falls vorhanden.
+        // a cover from the file is usually the video thumbnail, the online
+        // cover is better where there is one
         cover_base64: keep(found.cover_base64, from_file.cover_base64),
         cover_mime: keep(found.cover_mime, from_file.cover_mime),
         lyrics_synced: keep(found.lyrics_synced, from_file.lyrics_synced),
@@ -836,9 +838,9 @@ pub fn merge_match(
     }
 }
 
-/// Macht aus einem Treffer vollständige Metadaten: Cover, Lyrics,
-/// Release-Art und Titelnummer werden nachgeladen, soweit die Quelle sie
-/// hergibt. Fehlschläge einzelner Schritte sind unkritisch, der Rest bleibt.
+/// turns a hit into complete metadata: cover, lyrics, release type and track
+/// number are fetched as far as the source hands them out. individual steps
+/// failing does no harm, the rest stays.
 pub async fn enrich(
     candidate: &MetadataCandidate,
     duration_ms: Option<i64>,
@@ -864,7 +866,7 @@ pub async fn enrich(
         lyrics_plain: None,
     };
 
-    // Cover, Albumdaten und Lyrics lassen sich gleichzeitig holen.
+    // cover, album data and lyrics can be fetched at the same time
     let album_lookup = async {
         match candidate.genius_album_id {
             Some(album_id) => genius_album_tracks(album_id, candidate.genius_song_id).await,
@@ -912,11 +914,11 @@ pub async fn enrich(
         }
     }
 
-    // Ohne Albumangabe ist es eine Single.
+    // without an album it is a single
     if metadata.release_type.is_none() && metadata.album.trim().is_empty() {
         metadata.release_type = Some("single".into());
     }
-    // Der Albumkünstler entspricht sonst dem Hauptkünstler.
+    // otherwise the album artist equals the lead artist
     if metadata.album_artist.is_none() && !metadata.album.trim().is_empty() {
         metadata.album_artist = Some(candidate.artist.clone());
     }
@@ -926,7 +928,7 @@ pub async fn enrich(
         metadata.cover_mime = Some(mime);
     }
 
-    // Zeitmarken gibt es nur bei LRCLIB, den Fließtext liefert Genius besser.
+    // timestamps come from lrclib only, genius delivers the running text better
     if let Ok(found) = synced {
         metadata.lyrics_synced = found.synced_lyrics;
         metadata.lyrics_plain = found.plain_lyrics;
@@ -938,11 +940,11 @@ pub async fn enrich(
     metadata
 }
 
-/// Obergrenze für Cover und Künstlerbilder.
+/// upper bound for covers and artist images.
 ///
-/// Sie landen als BLOB in der Datenbank und als Base64 im Arbeitsspeicher,
-/// ohne Grenze reicht ein einziger übergroßer Verweis, um beides zu sprengen.
-/// Ein Cover in Druckauflösung liegt weit darunter.
+/// they land in the database as a blob and in memory as base64, and without a
+/// limit a single oversized link is enough to burst both. a cover at print
+/// resolution stays far below it.
 const MAX_IMAGE_BYTES: usize = 12 * 1024 * 1024;
 
 pub async fn fetch_image(url: &str) -> Result<(Vec<u8>, String)> {
@@ -957,8 +959,8 @@ pub async fn fetch_image(url: &str) -> Result<(Vec<u8>, String)> {
         .unwrap_or("image/jpeg")
         .to_string();
 
-    // Angekündigte Größe zuerst prüfen, dann trotzdem beim Lesen mitzählen:
-    // Die Angabe ist freiwillig und kann fehlen oder lügen.
+    // check the announced size first, then count while reading anyway: the
+    // header is optional and can be missing or lying
     if response.content_length().is_some_and(|len| len > MAX_IMAGE_BYTES as u64) {
         return Err(anyhow!(fehler!("Bild von {0} ist zu groß", url)));
     }
@@ -977,7 +979,7 @@ pub async fn fetch_image(url: &str) -> Result<(Vec<u8>, String)> {
     Ok((bytes, mime))
 }
 
-// ------------------------------------------------------------------ Lyrics
+// --- lyrics ---
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -991,7 +993,7 @@ pub struct LyricsCandidate {
     pub synced_lyrics: Option<String>,
 }
 
-/// Direkter Treffer über exakte Angaben, liefert die beste Synchronisation.
+// a direct hit through exact details, it yields the best synchronisation
 pub async fn get_lyrics(
     artist: &str,
     title: &str,
@@ -1015,7 +1017,7 @@ pub async fn get_lyrics(
         return Ok(response.json().await?);
     }
 
-    // Fallback: unscharfe Suche, dann den besten Treffer nehmen.
+    // fallback: fuzzy search, then take the best hit
     search_lyrics(&format!("{artist} {title}"))
         .await?
         .into_iter()
@@ -1062,7 +1064,7 @@ mod tests {
             "Die Welt zu Gast bei Feinden (Official Video)"
         ));
         assert!(looks_like_same("Monster", "MONSTER"));
-        // Der Künstler steckt im gemeinsamen Feld.
+        // the artist sits in the shared field
         assert!(normalize_for_match("PA69, Drunken Masters")
             .contains(&normalize_for_match("PA69")));
     }
@@ -1071,7 +1073,7 @@ mod tests {
     fn teiltreffer_nur_als_ganze_woerter() {
         assert!(contains_word_sequence("pa69 official", "pa69"));
         assert!(contains_word_sequence("kanye west jay z", "jay z"));
-        // „a“ steckt zwar in „pa69“, ist aber ein anderer Künstler.
+        // "a" does sit inside "pa69" and is still a different artist
         assert!(!contains_word_sequence("pa69", "a"));
         assert!(!contains_word_sequence("powerless", "power"));
         assert!(!contains_word_sequence("kanye", "kanye west"));
@@ -1082,7 +1084,7 @@ mod tests {
         assert!(!looks_like_same("Monster", "Monster Mash"));
         assert!(!looks_like_same("Power", "Powerless"));
         assert!(!looks_like_same("", "Monster"));
-        // Ein kurzer Teiltreffer reicht nicht.
+        // a short partial hit does not do
         assert!(!looks_like_same("Go", "Go Down Deh Remix Version"));
     }
 
@@ -1106,7 +1108,7 @@ mod tests {
 
     #[test]
     fn entfernt_von_genius_ausgeschlossene_bloecke() {
-        // Nachbau des Seitenaufbaus: Kopfbereich im Lyrics-Container.
+        // rebuild of the page layout: header area inside the lyrics container
         let doc = concat!(
             r#"<div data-lyrics-container="true" class="x">"#,
             r#"<div data-exclude-from-selection="true"><div>571 Contributors</div>"#,
@@ -1115,7 +1117,7 @@ mod tests {
             r#"</div>"#,
         );
 
-        // Dieselben Schritte wie in `genius_lyrics`, ohne Netzzugriff.
+        // the same steps as in `genius_lyrics`, without touching the network
         let marker = doc.find(r#"data-lyrics-container="true""#).unwrap();
         let content_start = marker + doc[marker..].find('>').unwrap() + 1;
         let container_end = skip_div(doc, marker);

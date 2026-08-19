@@ -1,9 +1,9 @@
-//! Downloader auf Basis von `yt-dlp`. Die Quelle bestimmt der Nutzer:
-//! entweder eine direkte URL (yt-dlp unterstützt sehr viele Portale) oder
-//! eine Suche in einem der Suchanbieter.
+//! downloader built on `yt-dlp`. the user decides the source: either a
+//! direct url, yt-dlp supports a great many portals, or a search in one of
+//! the search providers.
 //!
-//! Heruntergeladen wird in ein Arbeitsverzeichnis; erst wenn der Nutzer die
-//! Metadaten bestätigt hat, wandert die Datei in die Bibliothek.
+//! note: everything is downloaded into a working directory, and the file
+//! moves into the library only once the user has confirmed the metadata.
 
 use crate::models::TrackMetadata;
 use crate::tags;
@@ -13,8 +13,8 @@ use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-// Nur der Weg über einen eigenen Prozess braucht sie; auf Android laufen
-// yt-dlp und ffmpeg über die Java-Brücke.
+// only the route through a process of its own needs them, on android yt-dlp
+// and ffmpeg run over the java bridge
 #[cfg(not(target_os = "android"))]
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -28,16 +28,16 @@ use crate::fehler;
 
 const PROGRESS_MARKER: &str = "ROBIFYPROGRESS";
 
-/// Registry laufender Jobs, damit sich Downloads abbrechen lassen.
+/// registry of running jobs, so downloads can be cancelled.
 #[derive(Default)]
 pub struct DownloadRegistry {
     cancels: Mutex<HashMap<String, Arc<AtomicBool>>>,
 }
 
 impl DownloadRegistry {
-    /// Meldet einen Auftrag an. Läuft die Kennung bereits, wird deren Flag
-    /// weiterverwendet, sonst verlöre ein Abbruch stillschweigend seine
-    /// Wirkung, weil er auf das ersetzte Flag zeigt.
+    /// registers a job. where the id is already running, its flag is kept:
+    /// otherwise a cancellation would silently lose its effect by pointing at
+    /// the replaced flag.
     fn register(&self, job_id: &str) -> Arc<AtomicBool> {
         let mut cancels = self.cancels.lock();
         cancels
@@ -69,19 +69,19 @@ impl DownloadRegistry {
 #[serde(rename_all = "camelCase")]
 pub enum SearchSource {
     Youtube,
-    /// Der Musikdienst hinter YouTube. Seine Suche liefert die offizielle
-    /// Veröffentlichung statt Lyric-Videos und Fanuploads.
+    /// the music service behind youtube. its search delivers the official
+    /// release rather than lyric videos and fan uploads.
     YoutubeMusic,
     Soundcloud,
-    /// Künstler laden dort selbst hoch, meist vollständig und gut.
+    /// artists upload there themselves, mostly complete and in good quality.
     Bandcamp,
-    /// Offene Musikplattform, liefert MP3 mit bis zu 320 kbit/s.
+    /// open music platform, delivers mp3 at up to 320 kbit/s.
     Audius,
-    /// Die Eingabe ist bereits eine URL und wird direkt an yt-dlp gegeben.
+    /// the input is a url already and goes to yt-dlp directly.
     Url,
 }
 
-/// Quellen, die bei einer Textsuche gleichzeitig befragt werden.
+/// sources queried at the same time on a text search.
 const SEARCHED_SOURCES: [SearchSource; 5] = [
     SearchSource::YoutubeMusic,
     SearchSource::Bandcamp,
@@ -99,14 +99,14 @@ impl SearchSource {
                 "https://music.youtube.com/search?q={}",
                 urlencoding::encode(input)
             ),
-            // Werden über ihre eigenen Schnittstellen gesucht.
+            // these are searched through their own interfaces
             SearchSource::Bandcamp | SearchSource::Audius | SearchSource::Url => input.to_string(),
         }
     }
 
-    /// YouTube Music nennt Laufzeiten nur bei vollständiger Abfrage. Die
-    /// dauert länger, ist die Angabe aber wert: Ohne sie ließe sich weder
-    /// ein Ausschnitt erkennen noch die Mehrheitslänge bilden.
+    /// youtube music names running times on a full query only. that takes
+    /// longer and is worth the detail: without it neither an excerpt could be
+    /// recognised nor the majority length formed.
     fn needs_full_extraction(self) -> bool {
         self == SearchSource::YoutubeMusic
     }
@@ -122,16 +122,16 @@ impl SearchSource {
         }
     }
 
-    /// Abschlag auf die Bewertung, je verlässlicher die Quelle den ganzen
-    /// Titel in guter Qualität liefert, desto größer.
+    /// deduction on the score, the larger the more reliably the source
+    /// delivers the whole track in good quality.
     ///
-    /// Bewusst klein gehalten: Ein Messlauf über 15 Titel zeigte, dass
-    /// Bandcamp bei bekannten Songs überwiegend fremde Bearbeitungen
-    /// ausliefert. Die Quelle darf den Ausschlag geben, wenn sonst alles
-    /// gleich ist, aber nie gegen den passenderen Titel gewinnen.
+    /// deliberately kept small: a measured run over 15 tracks showed bandcamp
+    /// delivering mostly foreign rework of well-known songs. the source may
+    /// tip the scale where everything else is equal, but never win against
+    /// the better matching track.
     ///
-    /// YouTube Music steht vorn, weil dort die Veröffentlichung des
-    /// Künstlers liegt und nicht die Nachbearbeitung eines Dritten.
+    /// youtube music comes first because the artist's release lies there, not
+    /// a third party's rework.
     fn quality_bonus(self) -> f64 {
         match self {
             SearchSource::YoutubeMusic => 4.0,
@@ -155,8 +155,9 @@ impl SearchSource {
     }
 }
 
-/// Bandcamp bietet eine offene Suche ohne Zugangsdaten. Laufzeiten liefert
-/// sie allerdings nicht mit.
+/// searches bandcamp, which offers an open search without credentials.
+///
+/// it does not supply running times though.
 async fn search_bandcamp(query: &str, limit: usize) -> Result<Vec<SearchResult>> {
     let body = serde_json::json!({
         "search_text": query,
@@ -177,7 +178,7 @@ async fn search_bandcamp(query: &str, limit: usize) -> Result<Vec<SearchResult>>
     let results = response["auto"]["results"].as_array().cloned().unwrap_or_default();
     Ok(results
         .iter()
-        // "t" steht für einen einzelnen Titel.
+        // "t" stands for a single track
         .filter(|item| item["type"].as_str() == Some("t"))
         .filter_map(|item| {
             let url = item["item_url_path"].as_str()?.to_string();
@@ -195,8 +196,8 @@ async fn search_bandcamp(query: &str, limit: usize) -> Result<Vec<SearchResult>>
         .collect())
 }
 
-/// Audius ist offen zugänglich und nennt die Laufzeit, dadurch lässt sich
-/// die passende Aufnahme besonders sicher bestimmen.
+/// searches audius, which is openly reachable and names the running time,
+/// which makes finding the matching recording particularly reliable.
 async fn search_audius(query: &str, limit: usize) -> Result<Vec<SearchResult>> {
     let url = format!(
         "https://api.audius.co/v1/tracks/search?query={}&app_name=Robify",
@@ -233,21 +234,21 @@ async fn search_audius(query: &str, limit: usize) -> Result<Vec<SearchResult>> {
         .collect())
 }
 
-/// Ein Eintrag, der heruntergeladen werden kann, entweder direkt über eine
-/// URL oder über eine Suche, wenn die Quelle selbst keine Audiodaten liefert.
+/// an entry that can be downloaded, either directly over a url or over a
+/// search where the source supplies no audio data itself.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DownloadPlan {
-    /// Wird unverändert an yt-dlp gegeben; bei Spotify ein Suchausdruck.
+    /// goes to yt-dlp unchanged, with spotify it is a search expression.
     pub url: String,
-    /// Ausweichadressen, falls die erste Quelle nichts liefert.
+    /// fallback addresses where the first source delivers nothing.
     #[serde(default)]
     pub fallbacks: Vec<String>,
-    /// Suchbegriff, aus dem der beste Treffer bestimmt wird.
+    /// search term the best hit is determined from.
     #[serde(default)]
     pub match_query: Option<String>,
-    /// Wonach der Nutzer gesucht hat. Dient nur der Gegenprobe nach dem
-    /// Laden, anders als `match_query` löst es keine neue Suche aus.
+    /// what the user searched for. serves the check after downloading only,
+    /// unlike `match_query` it triggers no new search.
     #[serde(default)]
     pub intent: Option<String>,
     pub title: String,
@@ -255,57 +256,49 @@ pub struct DownloadPlan {
     pub thumbnail: Option<String>,
     pub duration_ms: Option<i64>,
     pub source: String,
-    /// Vorbekannte Metadaten, die den Tags der geladenen Datei vorgehen.
+    /// metadata known beforehand, which wins over the tags of the file.
     pub metadata: Option<TrackMetadata>,
-    /// Liegt schon ein Titel gleichen Namens desselben Künstlers in der
-    /// Bibliothek? Dann lässt sich der Eintrag beim Stapel überspringen.
+    /// whether a track of the same name by the same artist lies in the
+    /// library already. the entry can be skipped in a batch then.
     #[serde(default)]
     pub already_in_library: bool,
 }
 
-/// Ein Hinweis, den die Oberfläche selbst in Worte fasst.
+/// a hint the ui puts into words itself.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanHinweis {
-    /// Welcher Hinweis; die Oberfläche hält den Wortlaut in allen Sprachen.
+    /// which hint. the ui holds the wording in every language.
     pub code: String,
-    /// Einsetzwerte in der Reihenfolge der Platzhalter `{0}`, `{1}`, …
+    /// values in the order of the placeholders `{0}`, `{1}` and so on.
     pub args: Vec<String>,
 }
 
-/// Was hinter einem eingefügten Link steckt.
+/// what sits behind a pasted link.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LinkPlan {
     pub label: String,
     pub kind: String,
-    /// Hinweise für die Oberfläche, als Kennung statt als fertiger Satz.
+    /// hints for the ui, as an id rather than a finished sentence.
     ///
-    /// Der Rust-Teil kennt die eingestellte Oberflächensprache nicht, sie
-    /// steht im Frontend. Ein hier zusammengesetzter Satz käme darum in jeder
-    /// Sprache auf Deutsch an, und genau so stand der Spotify-Hinweis auch in
-    /// der russischen Fassung.
+    /// the rust side does not know the selected interface language, it lives
+    /// in the frontend. a sentence assembled here would therefore arrive in
+    /// german whatever the language, and that is exactly how the spotify hint
+    /// stood in the russian version too.
     pub notes: Vec<PlanHinweis>,
-    /// Gehören die Einträge zusammen (Album, Playlist)? Dann ergibt
-    /// „Alle laden“ Sinn, bei Suchtreffern nicht.
+    /// whether the entries belong together, an album or a playlist. then
+    /// downloading all of them makes sense, with search hits it does not.
     pub batch: bool,
     pub items: Vec<DownloadPlan>,
 }
 
-/// Macht aus Suchtreffern Download-Aufträge und hängt jedem die übrigen
-/// Treffer als Ausweichadressen an.
-///
-/// Nötig, weil sich manche Hindernisse erst beim Laden zeigen: SoundCloud
-/// gibt die Label-Uploads bekannter Künstler DRM-geschützt heraus, und das
-/// steht in keinem Suchergebnis. Ein Messlauf über 30 Titel traf das bei
-/// acht davon. Ohne Ausweichkette bliebe es bei „nicht möglich“, obwohl
-/// dieselbe Aufnahme über eine andere Quelle bereitsteht.
-/// Taugt ein Treffer als Ersatz für einen anderen?
-///
-/// Ein reiner Namensvergleich reicht nicht: Dieselbe Aufnahme heißt bei einer
-/// Quelle „BIRDS OF A FEATHER“ und bei der nächsten „Billie Eilish - BIRDS OF
-/// A FEATHER“. Deshalb genügt es, wenn der eine Titel im anderen als
-/// Wortfolge steckt, solange keine andere Fassung angekündigt wird.
+// whether one hit serves as a substitute for another.
+//
+// a plain comparison of names does not do: the same recording is called
+// "BIRDS OF A FEATHER" at one source and "Billie Eilish - BIRDS OF A FEATHER"
+// at the next. it is therefore enough for one title to sit inside the other
+// as a word sequence, as long as no different version is announced
 fn same_song(candidate: &SearchResult, wanted: &SearchResult) -> bool {
     let a = crate::online::normalize_for_match(&candidate.title);
     let b = crate::online::normalize_for_match(&wanted.title);
@@ -315,10 +308,10 @@ fn same_song(candidate: &SearchResult, wanted: &SearchResult) -> bool {
     let gleicher_name = crate::online::contains_word_sequence(&a, &b)
         || crate::online::contains_word_sequence(&b, &a);
 
-    // Gleicher Name heißt nicht gleicher Song: „Naked“ gibt es von Yeat (93 s)
-    // und von Kraak & Smaak. Die Laufzeit trennt beide, fehlt sie, taugt der
-    // Treffer nicht als Ersatz. Ungeprüft eingesetzt landete sonst der falsche
-    // Song in der Bibliothek, und das fällt später kaum noch auf.
+    // the same name does not mean the same song: "Naked" exists by yeat (93 s)
+    // and by kraak & smaak. the running time separates the two, and where it
+    // is missing the hit does not serve as a substitute. used unchecked, the
+    // wrong song landed in the library, and that is hard to notice later
     let gleiche_laenge = match (candidate.duration_ms, wanted.duration_ms) {
         (Some(a), Some(b)) => a.saturating_sub(b).saturating_abs() <= SAME_TAKE_MS,
         _ => false,
@@ -327,25 +320,32 @@ fn same_song(candidate: &SearchResult, wanted: &SearchResult) -> bool {
     gleicher_name && gleiche_laenge && version_penalty(&candidate.title, &wanted.title) == 0.0
 }
 
+/// turns search hits into download jobs and hangs the remaining hits onto
+/// each of them as fallback addresses.
+///
+/// needed because some obstacles show only while downloading: soundcloud
+/// hands out the label uploads of well-known artists drm-protected, and that
+/// stands in no search result. a measured run over 30 tracks hit it on eight
+/// of them. without a fallback chain it would stop at "not possible" although
+/// the same recording stands ready at another source.
 pub fn plans_with_fallbacks(found: Vec<SearchResult>) -> Vec<DownloadPlan> {
     let alle = found.clone();
     found
         .into_iter()
         .map(|treffer| {
-            // Nur Treffer, die denselben Titel meinen. Vorher stand hier die
-            // ganze Trefferliste, bei „Yeat Naked“ wich der Download dann
-            // bis auf „Back Home“ aus, einen völlig anderen Song.
+            // hits meaning the same track only. the whole result list stood
+            // here before, and with "Yeat Naked" the download strayed all the
+            // way to "Back Home", an entirely different song
             let mut ausweich: Vec<&SearchResult> = alle
                 .iter()
                 .filter(|andere| andere.url != treffer.url && same_song(andere, &treffer))
                 .collect();
-            // Erst eine andere Quelle, dann der Rest derselben.
+            // a different source first, then the rest of the same one.
             //
-            // Sagt eine Quelle ab, sagt sie meist für alle ihre Treffer ab:
-            // Bei YouTube endeten drei Ausweichadressen dreimal mit demselben
-            // 403, während der SoundCloud-Treffer unversucht danebenlag. Die
-            // Sortierung ist stabil, die Reihenfolge nach Passgenauigkeit
-            // bleibt innerhalb jeder Gruppe erhalten.
+            // where a source refuses, it usually refuses for all of its hits:
+            // at youtube three fallback addresses ended three times in the
+            // same 403 while the soundcloud hit lay untried next to them. the
+            // sort is stable, so the order by fit is kept inside each group
             let eigene = source_label(&treffer.url);
             ausweich.sort_by_key(|andere| source_label(&andere.url) == eigene);
             let fallbacks = ausweich
@@ -395,38 +395,39 @@ pub struct SearchResult {
 #[serde(rename_all = "camelCase")]
 pub struct DownloadOptions {
     pub url: String,
-    /// "mp3", "opus", "flac", "m4a", "vorbis" oder "best" (keine Umwandlung).
+    /// "mp3", "opus", "flac", "m4a", "vorbis" or "best" (no conversion).
     #[serde(default = "default_format")]
     pub format: String,
-    /// 0 = beste Qualität … 9 (nur bei verlustbehafteten Formaten relevant).
+    /// 0 is the best quality up to 9, relevant with lossy formats only.
     #[serde(default)]
     pub quality: Option<String>,
     #[serde(default = "default_true")]
     pub embed_thumbnail: bool,
-    /// Bereits bekannte Metadaten (z. B. aus einem Spotify-Link). Sie haben
-    /// Vorrang vor dem, was in der heruntergeladenen Datei steht.
+    /// metadata known already, from a spotify link for instance. it wins over
+    /// whatever stands in the downloaded file.
     #[serde(default)]
     pub metadata: Option<TrackMetadata>,
-    /// Wird `url` nicht fündig, werden diese Adressen der Reihe nach probiert.
+    /// where `url` finds nothing, these addresses are tried in order.
     #[serde(default)]
     pub fallbacks: Vec<String>,
-    /// Nach dem Laden online nach passenden Metadaten suchen.
+    /// search online for matching metadata after downloading.
     #[serde(default = "default_true")]
     pub auto_match: bool,
     #[serde(default = "default_true")]
     pub auto_cover: bool,
     #[serde(default = "default_true")]
     pub auto_lyrics: bool,
-    /// Bekannte Länge des Titels. Ist die geladene Datei deutlich kürzer,
-    /// war es ein Ausschnitt, dann wird die nächste Quelle versucht.
+    /// known length of the track. where the downloaded file is markedly
+    /// shorter it was an excerpt, and the next source is tried.
     #[serde(default)]
     pub expected_duration_ms: Option<i64>,
-    /// Statt einer festen Adresse: passenden Treffer selbst heraussuchen.
-    /// Wird für Spotify-Links genutzt, wo nur Metadaten vorliegen.
+    /// instead of a fixed address, pick the matching hit here.
+    ///
+    /// used for spotify links, where only metadata is on hand.
     #[serde(default)]
     pub match_query: Option<String>,
-    /// Wonach der Nutzer gesucht hat. Nur für die Gegenprobe nach dem Laden,
-    /// anders als `match_query` löst es keine neue Suche aus.
+    /// what the user searched for. for the check after downloading only,
+    /// unlike `match_query` it triggers no new search.
     #[serde(default)]
     pub intent: Option<String>,
 }
@@ -451,8 +452,8 @@ pub struct DownloadProgress {
     pub message: Option<String>,
 }
 
-/// Ergebnis eines Downloads: die Datei liegt im Arbeitsverzeichnis und die
-/// Metadaten sind ein Vorschlag, den der Nutzer noch ändern kann.
+/// result of a download: the file lies in the working directory and the
+/// metadata is a suggestion the user can still change.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DownloadOutcome {
@@ -462,23 +463,23 @@ pub struct DownloadOutcome {
     pub format: String,
     pub metadata: TrackMetadata,
     pub source_url: String,
-    /// Gesetzt, wenn das Ergebnis nicht zur Sucheingabe passt.
+    /// set where the result does not match the search input.
     #[serde(default)]
     pub warning: Option<String>,
 }
 
-/// Passt das Geladene zu dem, wonach gesucht wurde?
-///
-/// Manche Titel gibt es auf keiner erreichbaren Quelle in sauberer Fassung.
-/// Dann lädt Robify, was am nächsten kommt, bei „The Killers. Mr. Brightside“
-/// war das ein Upload von „Julia“. Die Metadaten beschreiben ihn korrekt, nur
-/// eben den falschen Song. Erfinden lässt sich der richtige nicht; verschweigen
-/// sollte man den Fehlgriff aber auch nicht.
-///
-/// Geprüft wird, ob jedes bedeutsame Wort der Eingabe irgendwo in Titel,
-/// Künstler oder Gästen vorkommt.
-/// `unbestaetigt` heißt: Die Metadatensuche hat nichts gefunden. Dann fehlt
-/// die Bestätigung von außen, und schwächere Anzeichen wiegen schwerer.
+// whether what was downloaded matches what was searched for.
+//
+// some tracks exist in a clean version at no reachable source. robify then
+// downloads what comes closest, and with "The Killers. Mr. Brightside" that
+// was an upload by "Julia". the metadata describes it correctly, only it is
+// the wrong song. the right one cannot be invented, but the misgrasp should
+// not be kept quiet either.
+//
+// what is checked is whether every meaningful word of the input appears
+// somewhere in title, artist or guests. `unbestaetigt` means the metadata
+// search found nothing: confirmation from outside is missing then, and weaker
+// signs weigh heavier
 fn intent_warning(
     intent: Option<&str>,
     metadata: &TrackMetadata,
@@ -504,18 +505,18 @@ fn intent_warning(
         .copied()
         .collect();
 
-    // Ein einzelnes fehlendes Wort ist Alltag. Schreibweisen weichen ab,
-    // Zusätze fallen weg. Erst wenn die Hälfte fehlt, stimmt etwas nicht.
+    // a single missing word is everyday. spellings differ, suffixes fall
+    // away. only once half of them are missing is something wrong
     if fehlend.len() * 2 < woerter.len() {
-        // Zweite Prüfung: Steht der Künstler überhaupt in der Suche?
+        // second check: does the artist appear in the search at all?
         //
-        // Nötig, weil der Künstlername oft auch im Titel steht. Bei
-        // „The Killers- Mr. Brightside“ von „Julia“ waren alle gesuchten
-        // Wörter vorhanden, im Titel. Das Künstlerfeld war trotzdem falsch.
+        // needed because the artist name often stands in the title as well.
+        // with "The Killers- Mr. Brightside" by "Julia" every searched word
+        // was there, in the title. the artist field was wrong all the same.
         //
-        // Wer nur einen Songtitel sucht, kennt den Künstler womöglich nicht;
-        // deshalb zählt das allein noch nicht. Kam aber auch online nichts
-        // an, deutet alles auf einen Fehlgriff.
+        // whoever searches for a song title alone may not know the artist, so
+        // this does not count on its own. where nothing arrived online
+        // either, everything points at a misgrasp
         let kuenstler = crate::online::normalize_words(&metadata.artist);
         let kuenstler_gesucht = kuenstler
             .split(' ')
@@ -534,11 +535,10 @@ fn intent_warning(
     ))
 }
 
-/// Findet yt-dlp: erst der in den Einstellungen hinterlegte Pfad, sonst PATH.
-/// Dateiname des eigenständigen yt-dlp für dieses Betriebssystem.
-///
-/// yt-dlp veröffentlicht je Plattform ein Programm ohne Abhängigkeiten; die
-/// Namen sind bei jeder Veröffentlichung gleich.
+// filename of the standalone yt-dlp for this operating system.
+//
+// yt-dlp publishes a program without dependencies per platform, and the names
+// are the same at every release
 fn ytdlp_asset() -> &'static str {
     if cfg!(target_os = "windows") {
         "yt-dlp.exe"
@@ -549,7 +549,7 @@ fn ytdlp_asset() -> &'static str {
     }
 }
 
-/// Wo Robify sein eigenes yt-dlp ablegt.
+/// where robify keeps its own yt-dlp.
 pub fn managed_ytdlp(tools_dir: &Path) -> PathBuf {
     tools_dir.join(if cfg!(target_os = "windows") {
         "yt-dlp.exe"
@@ -558,8 +558,8 @@ pub fn managed_ytdlp(tools_dir: &Path) -> PathBuf {
     })
 }
 
-/// Sucht yt-dlp, ohne etwas zu laden: erst der eingestellte Pfad, dann die
-/// eigene Ablage, dann das System.
+/// looks for yt-dlp without downloading anything: the configured path first,
+/// then its own storage, then the system.
 pub fn find_ytdlp(configured: Option<&str>, tools_dir: &Path) -> Option<PathBuf> {
     if let Some(path) = configured.filter(|p| !p.trim().is_empty()) {
         let path = PathBuf::from(path);
@@ -576,21 +576,21 @@ pub fn find_ytdlp(configured: Option<&str>, tools_dir: &Path) -> Option<PathBuf>
         .ok()
 }
 
-/// Liefert yt-dlp und holt es beim ersten Mal selbst, wenn nichts da ist.
+/// delivers yt-dlp and fetches it on the first run where nothing is there.
 ///
-/// Bewusst erst bei Bedarf statt beim Start: Wer die App nur zum Abspielen
-/// benutzt, soll keine 30 MB laden. Heruntergeladen wird die eigenständige
-/// Fassung von GitHub, danach einmal `--version` zur Probe, ein halb
-/// geladenes Programm wäre schlimmer als gar keines und würde später mit
-/// unverständlichen Fehlern auffallen.
+/// deliberately on demand rather than at startup: whoever uses the app for
+/// playback alone is not to download 30 mb. the standalone build comes from
+/// github, followed by one `--version` as a probe, a half-downloaded program
+/// would be worse than none and would show up later with incomprehensible
+/// errors.
 pub async fn ensure_ytdlp(configured: Option<&str>, tools_dir: &Path) -> Result<PathBuf> {
-    // Auf Android gibt es nichts zu holen: yt-dlp liegt als Bibliothek bei,
-    // samt Python-Laufzeit, und wird beim Start eingerichtet. Ohne diese
-    // Ausnahme lud die App die Linux-Binärdatei herunter und scheiterte
-    // danach an der Probe, weil Android eine andere C-Bibliothek verwendet.
+    // on android there is nothing to fetch: yt-dlp ships as a library,
+    // python runtime included, and is set up at startup. without this
+    // exception the app downloaded the linux binary and then failed the probe
+    // because android uses a different c library.
     //
-    // Der Pfad ist ein Platzhalter: Die Brücke in `crate::ytdlp` braucht ihn
-    // nicht, sie ruft in die Java-Laufzeit statt ein Programm zu starten.
+    // the path is a placeholder: the bridge in `crate::ytdlp` does not need
+    // it, it calls into the java runtime instead of starting a program
     if cfg!(target_os = "android") {
         return Ok(PathBuf::from("eingebaut"));
     }
@@ -607,8 +607,8 @@ pub async fn ensure_ytdlp(configured: Option<&str>, tools_dir: &Path) -> Result<
 
     let daten = crate::online::client()
         .get(&url)
-        // Das Programm ist rund 30 MB groß, das übliche Zeitlimit von 20
-        // Sekunden reicht dafür auf langsamen Leitungen nicht.
+        // the program is around 30 mb, and the usual timeout of 20 seconds
+        // does not stretch that far on slow lines
         .timeout(Duration::from_secs(300))
         .send()
         .await
@@ -619,8 +619,8 @@ pub async fn ensure_ytdlp(configured: Option<&str>, tools_dir: &Path) -> Result<
         .map_err(|e| anyhow!(fehler!("yt-dlp konnte nicht geladen werden: {0}", e)))?;
 
     std::fs::create_dir_all(tools_dir)?;
-    // Erst daneben schreiben, dann umbenennen: Bricht das Laden ab, bleibt
-    // kein halbes Programm unter dem richtigen Namen liegen.
+    // write next to it first, then rename: where the download breaks off, no
+    // half a program is left lying under the right name
     let vorlaeufig = ziel.with_extension("teil");
     std::fs::write(&vorlaeufig, &daten)?;
 
@@ -648,23 +648,25 @@ pub async fn ensure_ytdlp(configured: Option<&str>, tools_dir: &Path) -> Result<
 }
 
 pub fn ffmpeg_available() -> bool {
-    // Auf Android liegt ffmpeg als Bibliothek bei und wird beim Start
-    // eingerichtet; im Suchpfad steht es dort nie. Ohne diese Ausnahme
-    // meldete die Oberfläche „ffmpeg fehlt“, obwohl es zur Verfügung steht.
+    // on android ffmpeg ships as a library and is set up at startup, it never
+    // stands in the search path there. without this exception the ui reported
+    // ffmpeg missing although it stands ready
     if cfg!(target_os = "android") {
         return true;
     }
     which::which("ffmpeg").is_ok()
 }
 
-/// YouTube stellt beim Abruf eine JavaScript-Aufgabe. Ohne Laufzeitumgebung
-/// weicht yt-dlp auf einen veralteten Weg aus, dessen Adressen häufig mit
-/// „403 Forbidden“ abgelehnt werden. Deno ist die Vorgabe von yt-dlp; Node
-/// bringt dieses Projekt ohnehin mit.
+/// whether a javascript runtime is available.
+///
+/// youtube poses a javascript challenge on retrieval. without a runtime
+/// yt-dlp falls back to an outdated route whose addresses are frequently
+/// refused with "403 Forbidden". deno is yt-dlp's default, and node comes
+/// with this project anyway.
 pub fn js_runtime() -> Option<&'static str> {
-    // Android bringt keine dieser Laufzeiten mit, und installieren lässt sich
-    // dort auch keine. Die Warnung bliebe also für immer stehen, ohne dass
-    // jemand etwas tun könnte; yt-dlp weicht dann auf seinen älteren Weg aus.
+    // android brings neither of these runtimes and none can be installed
+    // there. the warning would stand forever without anybody being able to
+    // act on it, and yt-dlp falls back to its older route then
     if cfg!(target_os = "android") {
         return None;
     }
@@ -673,8 +675,8 @@ pub fn js_runtime() -> Option<&'static str> {
         .find(|runtime| which::which(runtime).is_ok())
 }
 
-/// Ältere yt-dlp-Fassungen kennen `--js-runtimes` noch nicht. Einmal prüfen
-/// und merken. `--help` antwortet in Sekundenbruchteilen.
+// older yt-dlp versions do not know `--js-runtimes` yet. check once and
+// remember, `--help` answers in fractions of a second
 async fn supports_js_runtimes(ytdlp: &Path) -> bool {
     static SUPPORTED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     if let Some(known) = SUPPORTED.get() {
@@ -688,16 +690,16 @@ async fn supports_js_runtimes(ytdlp: &Path) -> bool {
     *SUPPORTED.get_or_init(|| supported)
 }
 
-/// Dateiendungen, die der eingebaute Player entschlüsseln kann.
+/// file extensions the built-in player can decode.
 ///
-/// **Opus fehlt bewusst.** rodio dekodiert über Symphonia, und Symphonia
-/// bringt keinen Opus-Dekoder mit. Eine `.opus`-Datei landet zwar sauber in
-/// der Bibliothek, lässt sich dort aber nicht abspielen.
+/// opus is deliberately absent: rodio decodes through symphonia, and
+/// symphonia brings no opus decoder. an `.opus` file lands in the library
+/// cleanly enough but cannot be played there.
 pub const PLAYABLE_EXTENSIONS: [&str; 9] = [
     "mp3", "m4a", "mp4", "aac", "flac", "ogg", "oga", "wav", "aiff",
 ];
 
-/// Ist die Datei mit Bordmitteln abspielbar?
+/// whether the file can be played with what is on board.
 pub fn is_playable(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
@@ -705,15 +707,14 @@ pub fn is_playable(path: &Path) -> bool {
         .is_some_and(|ext| PLAYABLE_EXTENSIONS.contains(&ext.as_str()))
 }
 
-/// Welche Aufnahme yt-dlp laden soll.
+/// which recording yt-dlp is to download.
 ///
-/// Bei „Beste Qualität (Original)“ wird nicht umgewandelt, deshalb muss
-/// schon die Auswahl auf ein abspielbares Format fallen. YouTube bietet
-/// neben Opus fast immer M4A in derselben Bitrate an; ohne diese Vorgabe
-/// gewinnt Opus und der Titel bleibt stumm.
+/// at best quality nothing is converted, so the choice itself has to fall on
+/// a playable format. besides opus youtube almost always offers m4a at the
+/// same bitrate, and without this rule opus wins and the track stays mute.
 ///
-/// `[format_id!*=preview]` hält SoundCloud-Vorschauen heraus, die nur
-/// 30 Sekunden lang sind.
+/// `[format_id!*=preview]` keeps soundcloud previews out, which run for 30
+/// seconds only.
 fn format_selector(original: bool) -> String {
     let mut wahl: Vec<&str> = Vec::new();
     if original {
@@ -726,8 +727,8 @@ fn format_selector(original: bool) -> String {
             "bestaudio[ext=mp3]",
         ]);
     }
-    // Zuletzt zählt nur noch, dass überhaupt etwas kommt. Wird umgewandelt,
-    // ist das Ausgangsformat ohnehin gleichgültig.
+    // in the end only getting anything at all counts. where it is converted,
+    // the source format does not matter anyway
     wahl.extend(["bestaudio", "best"]);
 
     wahl.iter()
@@ -736,23 +737,23 @@ fn format_selector(original: bool) -> String {
         .join("/")
 }
 
-/// Kann yt-dlp Cover in die Audiodatei schreiben?
+/// whether yt-dlp can write covers into the audio file.
 ///
-/// Für Opus und OGG braucht es dafür die Python-Bibliothek `mutagen`. Fehlt
-/// sie, scheitert nicht nur das Einbetten, sondern der ganze Download, die
-/// fertige Audiodatei wird mit der Nachbearbeitung verworfen.
+/// for opus and ogg it needs the python library `mutagen`. without it not
+/// only the embedding fails but the whole download, the finished audio file
+/// being discarded along with the post-processing.
 ///
-/// yt-dlp nennt seine Zusatzbibliotheken selbst, wenn man es ausführlich
-/// bittet. Das ist genauer als eine Suche nach `mutagen` im System: yt-dlp
-/// bringt je nach Installationsart seine eigene Python-Umgebung mit.
+/// yt-dlp names its extra libraries itself when asked verbosely. that is more
+/// precise than searching the system for `mutagen`: depending on how it was
+/// installed, yt-dlp brings a python environment of its own.
 async fn supports_thumbnail_embedding(ytdlp: &Path) -> bool {
     static SUPPORTED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
     if let Some(known) = SUPPORTED.get() {
         return *known;
     }
 
-    // Ohne Adresse bricht yt-dlp sofort ab, die Diagnosezeilen stehen aber
-    // schon vorher auf der Fehlerausgabe. Kein Netzzugriff, rund 0,5 s.
+    // without an address yt-dlp stops right away, but the diagnostic lines
+    // stand on stderr before that. no network access, around 0.5 s
     let supported = match crate::ytdlp::einmal(ytdlp, &["--verbose".into(), String::new()]).await {
         Ok(ausgabe) => ausgabe
             .stderr
@@ -764,7 +765,7 @@ async fn supports_thumbnail_embedding(ytdlp: &Path) -> bool {
     *SUPPORTED.get_or_init(|| supported)
 }
 
-/// Die Laufzeitumgebung als Argumentliste, sofern vorhanden und unterstützt.
+/// the runtime as an argument list, where present and supported.
 async fn js_runtime_args(ytdlp: &Path) -> Vec<String> {
     match js_runtime() {
         Some(runtime) if supports_js_runtimes(ytdlp).await => {
@@ -774,49 +775,48 @@ async fn js_runtime_args(ytdlp: &Path) -> Vec<String> {
     }
 }
 
-// ------------------------------------------------------------- Lastbremse
+// --- load brake ---
 //
-// yt-dlp-Aufrufe müssen sich gegenseitig aus dem Weg gehen. Eine einzelne
-// Suche startet bis zu vier Prozesse gleichzeitig, ein Album mit dreißig
-// Titeln über hundert nacheinander, ohne Pause. Genau dieses Muster
-// beantwortet YouTube mit „403 Forbidden“, und die Sperre trifft dann auch
-// alles Folgende.
+// yt-dlp calls have to keep out of each other's way. a single search starts
+// up to four processes at once, an album of thirty tracks over a hundred in
+// sequence without a pause. youtube answers exactly that pattern with "403
+// Forbidden", and the block then hits everything that follows.
 
-/// So viele yt-dlp-Prozesse laufen höchstens gleichzeitig.
+/// this many yt-dlp processes run at once at most.
 const MAX_PARALLEL_YTDLP: usize = 2;
 
-// -------------------------------------------------------------- Zeitlimits
+// --- timeouts ---
 //
-// Ohne Grenze blockiert ein hängender Prozess die Oberfläche dauerhaft:
-// Suchen lassen sich gar nicht abbrechen, und die Ausgabeschleife eines
-// Downloads dreht sich endlos weiter, solange yt-dlp nichts schreibt.
+// without a limit a hanging process blocks the ui for good: searches cannot
+// be cancelled at all, and the output loop of a download keeps turning
+// endlessly as long as yt-dlp writes nothing.
 
-/// So viele Treffer holt eine Quelle höchstens vollständig.
+/// this many hits at most are fetched in full from one source.
 ///
-/// YouTube Music nennt Laufzeiten nur bei vollständiger Abfrage, und die kostet
-/// eine Anfrage **je Treffer**. Auf dem Telefon waren das gemessene 6,8
-/// Sekunden pro Stück: Eine Suche über zwölf Treffer je Quelle brauchte 74
-/// Sekunden, dieselbe über drei nur 13. Die übrigen Quellen fragen flach ab und
-/// kosten unabhängig von der Zahl eine Anfrage.
+/// youtube music names running times on a full query only, and that costs one
+/// request per hit. on a phone those were measured 6.8 seconds apiece: a
+/// search over twelve hits per source took 74 seconds, the same over three
+/// only 13. the remaining sources query flat and cost one request whatever
+/// the number.
 ///
-/// Vier reichen für den Zweck der vollständigen Abfrage — eine Laufzeit zum
-/// Abgleichen zu haben. Die Breite der Trefferliste kommt ohnehin von den
-/// anderen Quellen, die davon unberührt bleiben.
+/// four are enough for what the full query is for, having a running time to
+/// compare against. the breadth of the result list comes from the other
+/// sources anyway, and they stay untouched by it.
 const VOLLE_ABFRAGE_MAX: usize = 4;
 
-/// Nach dieser Zeit gilt eine Suche als gescheitert.
+/// after this time a search counts as failed.
 const SEARCH_TIMEOUT: Duration = Duration::from_secs(90);
 
-/// Obergrenze für einen einzelnen Download.
+/// upper bound for a single download.
 const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 
-/// So lange darf ein laufender Download schweigen, bevor er als hängend gilt.
+/// this long a running download may stay silent before it counts as hanging.
 const IDLE_TIMEOUT: Duration = Duration::from_secs(120);
 
-/// Obergrenze für die Umwandlung in ein abspielbares Format.
+/// upper bound for the conversion into a playable format.
 const CONVERT_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 
-/// Mindestabstand zwischen zwei Zugriffen auf dieselbe Quelle.
+/// minimum distance between two accesses to the same source.
 const MIN_SPACING: Duration = Duration::from_millis(700);
 
 fn ytdlp_slots() -> &'static tokio::sync::Semaphore {
@@ -824,20 +824,20 @@ fn ytdlp_slots() -> &'static tokio::sync::Semaphore {
     SLOTS.get_or_init(|| tokio::sync::Semaphore::new(MAX_PARALLEL_YTDLP))
 }
 
-/// Wann zuletzt auf eine Quelle zugegriffen wurde.
+/// when a source was last accessed.
 fn last_access() -> &'static Mutex<HashMap<&'static str, Instant>> {
     static LAST: OnceLock<Mutex<HashMap<&'static str, Instant>>> = OnceLock::new();
     LAST.get_or_init(Default::default)
 }
 
-/// Räumt liegengebliebene Auftragsordner weg.
+/// clears leftover job folders away.
 ///
-/// Ein Download, der weder importiert noch abgebrochen wurde, hinterlässt
-/// seinen kompletten Ordner samt Audiodatei. Über Wochen summiert sich das,
-/// im Betrieb waren es 16 MB, ohne dass jemand etwas davon hatte.
+/// a download neither imported nor cancelled leaves its complete folder
+/// behind, audio file included. over weeks that adds up, in practice it was
+/// 16 mb without anybody getting anything out of it.
 ///
-/// Verschont wird [`crate::commands::KEEP_DIR`]: Dort liegen übernommene
-/// Titel, auf die die Bibliothek zeigt.
+/// `crate::commands::KEEP_DIR` is spared: tracks taken over lie there and the
+/// library points at them.
 pub fn cleanup_work_dir(work_dir: &Path, max_age: Duration) -> usize {
     let Ok(entries) = std::fs::read_dir(work_dir) else {
         return 0;
@@ -853,7 +853,7 @@ pub fn cleanup_work_dir(work_dir: &Path, max_age: Duration) -> usize {
             .metadata()
             .and_then(|meta| meta.modified())
             .map(|zeitpunkt| zeitpunkt.elapsed().unwrap_or_default() > max_age)
-            // Ohne lesbaren Zeitstempel lieber stehen lassen.
+            // without a readable timestamp, better leave it standing
             .unwrap_or(false);
 
         if zu_alt && std::fs::remove_dir_all(&path).is_ok() {
@@ -863,28 +863,28 @@ pub fn cleanup_work_dir(work_dir: &Path, max_age: Duration) -> usize {
     entfernt
 }
 
-// ----------------------------------------------------- Absagen von YouTube
+// --- refusals from youtube ---
 //
-// YouTube gibt Tondateien nur noch heraus, wenn yt-dlp die Abrufadressen auf
-// dem neuen Weg bildet, und dafür braucht es eine JavaScript-Laufzeit. Fehlt
-// sie, weicht yt-dlp auf einen Notweg aus, und jeder Download endet mit
-// „HTTP Error 403“ — jeder, nicht nur gesperrte Titel. Auf einem Telefon
-// lässt sich dagegen nichts installieren.
+// youtube hands audio files out only where yt-dlp forms the retrieval
+// addresses the new way, and that takes a javascript runtime. without one
+// yt-dlp falls back to an emergency route and every download ends in "HTTP
+// Error 403", every one of them, not only blocked tracks. on a phone nothing
+// can be installed against it.
 //
-// Die anderen Quellen sind davon nicht betroffen. Statt weiter gegen eine
-// verschlossene Tür zu laufen, merkt Robify sich die Absage und stellt für
-// eine Weile SoundCloud, Bandcamp und Audius nach vorn. Der Vermerk verfällt
-// von selbst: Die Lage bei YouTube ändert sich, und ohne Ablauf bliebe
-// Robify für den Rest der Sitzung bei den Ausweichquellen.
+// the other sources are untouched by this. instead of running against a
+// locked door, robify remembers the refusal and puts soundcloud, bandcamp and
+// audius in front for a while. the note expires by itself: the situation at
+// youtube changes, and without an expiry robify would stay with the fallback
+// sources for the rest of the session.
 
-/// So lange gilt eine Absage von YouTube als noch aktuell.
+/// this long a refusal from youtube counts as current.
 const ABSAGE_GILT: Duration = Duration::from_secs(30 * 60);
 
-/// Abschlag für YouTube-Treffer, solange die Absage gilt.
+/// deduction for youtube hits while the refusal holds.
 ///
-/// Kleiner als ein fehlendes Suchwort (20). Der Abzug soll gleichwertige
-/// Treffer umsortieren, nicht einen unpassenden Titel nach vorn holen: Lieber
-/// ein Download, der scheitert, als der falsche Song in der Bibliothek.
+/// smaller than a missing search word (20). the deduction is to reorder hits
+/// of equal standing, not to pull an unfitting track forward: better a
+/// download that fails than the wrong song in the library.
 const ABSAGE_ABZUG: f64 = 12.0;
 
 fn absage_vermerk() -> &'static Mutex<Option<Instant>> {
@@ -892,36 +892,36 @@ fn absage_vermerk() -> &'static Mutex<Option<Instant>> {
     VERMERK.get_or_init(|| Mutex::new(None))
 }
 
-/// Gehört die Adresse zu YouTube oder YouTube Music?
+/// whether the address belongs to youtube or youtube music.
 fn ist_youtube(url: &str) -> bool {
     let quelle = source_label(url);
     quelle == SearchSource::Youtube.label() || quelle == SearchSource::YoutubeMusic.label()
 }
 
-/// Hält fest, dass YouTube den Zugriff verweigert hat.
+/// records that youtube refused the access.
 fn absage_merken() {
     *absage_vermerk().lock() = Some(Instant::now());
 }
 
-/// Sagt YouTube gerade ab?
+/// whether youtube is refusing right now.
 fn youtube_sagt_ab() -> bool {
     matches!(*absage_vermerk().lock(), Some(zeit) if zeit.elapsed() < ABSAGE_GILT)
 }
 
-/// Hat die Quelle den Zugriff verweigert?
+/// whether the source refused the access.
 fn zugriff_verweigert(fehler: &anyhow::Error) -> bool {
     fehler.to_string().contains("(403)")
 }
 
-/// Der Abschlag für einen Treffer, solange die Absage gilt.
+/// the deduction for a hit while the refusal holds.
 fn absage_abzug(url: &str) -> f64 {
     abzug_bei(url, youtube_sagt_ab())
 }
 
-/// Dasselbe ohne den Vermerk, damit es sich prüfen lässt.
+/// the same without the note, so it can be tested.
 ///
-/// Der Vermerk ist modulweit; ein Test, der ihn setzt, färbte auf alle
-/// nebenher laufenden ab.
+/// the note is module-wide, and a test setting it rubbed off on every test
+/// running alongside.
 fn abzug_bei(url: &str, sagt_ab: bool) -> f64 {
     if sagt_ab && ist_youtube(url) {
         ABSAGE_ABZUG
@@ -930,6 +930,10 @@ fn abzug_bei(url: &str, sagt_ab: bool) -> f64 {
     }
 }
 
+// maps an address to its source, for the minimum distance.
+//
+// rough but sufficient: all it does is pull accesses to the same service
+// apart. whatever cannot be mapped shares one pot
 fn source_label(url: &str) -> &'static str {
     let lower = url.to_ascii_lowercase();
     if lower.contains("music.youtube") || lower.starts_with("ytmsearch") {
@@ -948,23 +952,19 @@ fn source_label(url: &str) -> &'static str {
     }
 }
 
-/// Ordnet eine Adresse ihrer Quelle zu, für den Mindestabstand.
-///
-/// Grob, aber ausreichend: Es geht nur darum, Zugriffe auf denselben Dienst
-/// auseinanderzuziehen. Was sich nicht zuordnen lässt, teilt sich einen Topf.
-/// Belegt einen Platz und wartet, bis die Quelle wieder an der Reihe ist.
-///
-/// Die Genehmigung wird zurückgegeben; solange sie lebt, ist der Platz belegt.
-/// Absichtlich modulweit statt im `AppState`: Die Live-Tests rufen diese
-/// Funktionen unmittelbar auf und leiden am stärksten unter der Sperre.
+// takes a slot and waits until the source is due again.
+//
+// the permit is returned, and the slot stays taken as long as it lives.
+// deliberately module-wide rather than in `AppState`: the live tests call
+// these functions directly and suffer most under the block
 async fn acquire_slot(source: &'static str) -> tokio::sync::SemaphorePermit<'static> {
     let permit = ytdlp_slots()
         .acquire()
         .await
         .expect("Lastbremse wird nie geschlossen");
 
-    // Erst nach dem Platz warten, sonst hielte die Wartezeit den Platz frei
-    // und zwei Aufrufer stünden gleichzeitig vor derselben Quelle.
+    // wait for the slot first, otherwise the waiting time would keep the slot
+    // free and two callers would stand before the same source at once
     let warten = {
         let mut karte = last_access().lock();
         let jetzt = Instant::now();
@@ -972,7 +972,7 @@ async fn acquire_slot(source: &'static str) -> tokio::sync::SemaphorePermit<'sta
             .get(source)
             .map(|zuletzt| MIN_SPACING.saturating_sub(jetzt.duration_since(*zuletzt)))
             .unwrap_or_default();
-        // Den Zeitpunkt gleich vormerken, damit Wartende sich einreihen.
+        // note the moment right away so waiters queue up
         karte.insert(source, jetzt + rest);
         rest
     };
@@ -983,7 +983,7 @@ async fn acquire_slot(source: &'static str) -> tokio::sync::SemaphorePermit<'sta
     permit
 }
 
-/// Versteckt das Konsolenfenster unter Windows.
+/// hides the console window under windows.
 pub(crate) fn configure(cmd: &mut Command) {
     #[cfg(windows)]
     {
@@ -993,13 +993,14 @@ pub(crate) fn configure(cmd: &mut Command) {
     let _ = cmd;
 }
 
-/// YouTube beantwortet manche Suchbegriffe mit einer Seite, aus der yt-dlp
-/// keine Einträge lesen kann, ohne Fehler, einfach leer. Ein zusätzliches
-/// Wort ändert die Antwort.
+/// a second attempt for youtube with one more word.
 ///
-/// Nachgewiesen an „Yeat Naked“: keine Treffer, während „Yeat Naked audio“
-/// sofort das Original liefert. Ohne den zweiten Versuch fehlte YouTube
-/// vollständig, und die Auswahl bestand nur aus fremden Fassungen.
+/// youtube answers some search terms with a page yt-dlp can read no entries
+/// from, without an error, simply empty. one extra word changes the answer.
+///
+/// shown with "Yeat Naked": no hits, while "Yeat Naked audio" delivers the
+/// original right away. without the second attempt youtube was missing
+/// entirely and the choice consisted of foreign versions only.
 pub async fn search(
     ytdlp: &Path,
     query: &str,
@@ -1024,7 +1025,7 @@ async fn search_once(
         return Ok(Vec::new());
     }
 
-    // Diese beiden haben eigene Schnittstellen und brauchen kein yt-dlp.
+    // these two have interfaces of their own and need no yt-dlp
     match source {
         SearchSource::Bandcamp => return search_bandcamp(query, limit).await,
         SearchSource::Audius => return search_audius(query, limit).await,
@@ -1035,8 +1036,8 @@ async fn search_once(
         "--dump-json",
         "--no-warnings",
         "--ignore-errors",
-        // Dieselbe Nachsicht wie beim Download: Eine kurze Störung darf die
-        // Quelle nicht aus der Trefferliste werfen.
+        // the same leniency as with a download: a brief disturbance must not
+        // throw the source out of the result list
         "--retries",
         "3",
         "--retry-sleep",
@@ -1047,13 +1048,13 @@ async fn search_once(
     .collect();
 
     if source.needs_full_extraction() {
-        // Die Trefferseite ist selbst eine Liste, sie darf nicht als
-        // einzelner Titel behandelt werden.
+        // the result page is a list itself and must not be treated as a
+        // single track
         args.push("--playlist-items".into());
         args.push(format!("1-{}", limit.min(VOLLE_ABFRAGE_MAX)));
     } else {
         args.push("--flat-playlist".into());
-        // Sammlungen nur aufklappen, wenn die Adresse wirklich auf eine zeigt.
+        // unfold collections only where the address really points at one
         if source != SearchSource::Url || !is_collection_url(query) {
             args.push("--no-playlist".into());
         }
@@ -1084,8 +1085,8 @@ async fn search_once(
         if url.is_empty() {
             continue;
         }
-        // Die Trefferseite von YouTube Music enthält auch Künstler- und
-        // Albumseiten. Nur einzelne Titel sind brauchbar.
+        // the result page of youtube music holds artist and album pages as
+        // well. only single tracks are usable
         if source.needs_full_extraction() && !url.contains("watch?v=") {
             continue;
         }
@@ -1106,13 +1107,13 @@ async fn search_once(
     Ok(results)
 }
 
-// ------------------------------------------------------- Trefferauswahl
+// --- picking a hit ---
 //
-// Für einen Spotify-Link ist die genaue Laufzeit bekannt. Statt blind den
-// ersten Suchtreffer zu nehmen, holen wir mehrere und wählen den aus, der am
-// besten passt, so fallen Remixe, Live-Fassungen und Videos mit Vorspann weg.
+// for a spotify link the exact running time is known. instead of taking the
+// first search hit blindly, several are fetched and the best fitting one is
+// chosen, which drops remixes, live versions and videos with an intro.
 
-/// Zusätze, die auf eine andere Fassung hindeuten.
+/// suffixes hinting at a different version.
 const VERSION_MARKERS: [&str; 34] = [
     "remix",
     "rmx",
@@ -1131,8 +1132,8 @@ const VERSION_MARKERS: [&str; 34] = [
     "snippet",
     "teaser",
     "acapella",
-    // Auf Bandcamp und SoundCloud stehen fremde Fassungen fast immer unter
-    // einem dieser Wörter, ohne sie gewinnen sie gegen das Original.
+    // on bandcamp and soundcloud foreign versions almost always stand under
+    // one of these words, and without them they win against the original
     "edit",
     "bootleg",
     "flip",
@@ -1142,25 +1143,25 @@ const VERSION_MARKERS: [&str; 34] = [
     "in the style of",
     "made famous by",
     "type beat",
-    // Aus dem Tonspur-Vergleich über 30 Titel nachgetragen: „Xtal (Duty Paid
-    // Refix)“ und „Tropical Island [TEKK]“ gewannen gegen das Original.
+    // added from the audio comparison over 30 tracks: "Xtal (Duty Paid
+    // Refix)" and "Tropical Island [TEKK]" won against the original
     "refix",
     "tekk",
-    // „Creep (Acoustic)“ gewann gegen die Albumfassung.
+    // "Creep (Acoustic)" won against the album version
     "acoustic",
     "akustik",
     "unplugged",
-    // Spuren von Mitschnitt-Diensten: „Money Trees (HD Lyrics) - [www Flvto
-    // Com]“ stand über der offiziellen Veröffentlichung.
+    // traces of ripping services: "Money Trees (HD Lyrics) - [www Flvto Com]"
+    // stood above the official release
     "flvto",
     "y2mate",
     "320kbps",
 ];
 
-/// Abschlag für Hinweise auf eine andere Fassung, die im gesuchten Titel
-/// nicht vorkommen. Wer einen Remix sucht, bekommt ihn also weiterhin.
+/// deduction for hints at a different version that do not appear in the
+/// track searched for. whoever searches for a remix still gets it.
 ///
-/// Verglichen wird wortweise: „edit“ darf nicht auf „editor“ anspringen.
+/// the comparison runs word by word: "edit" must not fire on "editor".
 fn version_penalty(candidate_title: &str, wanted_title: &str) -> f64 {
     let candidate = crate::online::normalize_words(candidate_title);
     let wanted = crate::online::normalize_words(wanted_title);
@@ -1174,11 +1175,11 @@ fn version_penalty(candidate_title: &str, wanted_title: &str) -> f64 {
         * 25.0
 }
 
-/// Wie weit liegt ein Treffer textlich vom Gesuchten weg? 0.0 heißt: jedes
-/// gesuchte Wort kommt in Titel oder Kanalname vor.
+/// how far a hit lies from what was searched for, in text. 0.0 means every
+/// searched word appears in the title or the channel name.
 ///
-/// Ohne diese Prüfung entschieden allein Laufzeit und Quelle, und wer
-/// irgendetwas Ähnliches anbot, gewann gegen den richtigen Titel.
+/// without this check running time and source decided alone, and whoever
+/// offered anything similar won against the right track.
 fn coverage_penalty(query: &str, candidate: &SearchResult) -> f64 {
     let wanted = crate::online::normalize_for_match(query);
     let wanted_words: Vec<&str> = wanted.split(' ').filter(|w| !w.is_empty()).collect();
@@ -1199,8 +1200,8 @@ fn coverage_penalty(query: &str, candidate: &SearchResult) -> f64 {
         .filter(|word| !available.contains(*word))
         .count();
 
-    // Zusätzliche Wörter im Titel deuten auf eine andere Fassung hin
-    // („… (XY Remix)“), wiegen aber weniger als ein fehlendes Wort.
+    // extra words in the title hint at a different version ("… (XY Remix)")
+    // but weigh less than a missing word
     let extra = title
         .split(' ')
         .filter(|word| !word.is_empty() && !wanted_words.contains(word))
@@ -1209,42 +1210,44 @@ fn coverage_penalty(query: &str, candidate: &SearchResult) -> f64 {
     missing as f64 * 20.0 + (extra as f64 * 3.0).min(15.0)
 }
 
-/// Kürzer als das ist kein ganzer Titel, sondern eine Vorschau.
+/// shorter than this is no whole track but a preview.
 const PREVIEW_LIMIT_MS: i64 = 60_000;
 
-/// Länger als das ist kein Musiktitel. Kaputte oder böswillige Angaben aus
-/// einer Suchantwort landen sonst als `i64::MAX` in der Bewertung. `as i64`
-/// sättigt still auf den Höchstwert, statt zu scheitern.
+/// longer than this is no music track.
+///
+/// broken or malicious values from a search answer would otherwise land in
+/// the score as `i64::MAX`, since `as i64` saturates at the maximum silently
+/// instead of failing.
 const MAX_DURATION_MS: i64 = 24 * 60 * 60 * 1000;
 
-/// Nimmt nur Laufzeiten an, mit denen sich rechnen lässt.
+/// accepts only running times that can be calculated with.
 fn sane_duration(value: Option<i64>) -> Option<i64> {
     value.filter(|ms| *ms > 0 && *ms <= MAX_DURATION_MS)
 }
 
-/// Laufzeiten, die weiter als das auseinanderliegen, gehören nicht zur
-/// selben Aufnahme.
+/// running times further apart than this do not belong to the same
+/// recording.
 const SAME_TAKE_MS: i64 = 15_000;
 
-/// Wie lang ist der gesuchte Titel wirklich? Die Quellen wissen es gemeinsam:
-/// Dieselbe Aufnahme taucht mehrfach auf, ihre Laufzeiten bilden eine Traube.
-/// Ausreißer sind Ausschnitte, verlängerte Fassungen oder ein anderer Titel.
+/// how long the searched track really is. the sources know it together: the
+/// same recording turns up several times and their running times form a
+/// cluster. outliers are excerpts, extended versions or a different track.
 ///
-/// Das ersetzt eine Vorgabe von außen, wenn es keine gibt, also bei jeder
-/// Suche über das Eingabefeld.
+/// this stands in for a value from outside where there is none, so on every
+/// search through the input field.
 fn consensus_duration_ms(results: &[SearchResult]) -> Option<i64> {
     let mut durations: Vec<i64> = results
         .iter()
         .filter_map(|r| r.duration_ms)
         .filter(|ms| *ms > 0)
         .collect();
-    // Unter drei Angaben ist von einer Mehrheit keine Rede.
+    // below three values there is no talk of a majority
     if durations.len() < 3 {
         return None;
     }
     durations.sort_unstable();
 
-    // Die größte Gruppe, in der alle nah beieinanderliegen.
+    // the largest group in which all of them lie close together
     let mut best: Option<(usize, i64)> = None;
     for (index, start) in durations.iter().enumerate() {
         let group: Vec<i64> = durations[index..]
@@ -1260,8 +1263,10 @@ fn consensus_duration_ms(results: &[SearchResult]) -> Option<i64> {
     best.filter(|(count, _)| *count >= 2).map(|(_, ms)| ms)
 }
 
-/// Abschlag für Abweichungen von der Mehrheitsmeinung. Gedeckelt, damit die
-/// Länge den Titelabgleich unterstützt, ihn aber nicht überstimmt.
+/// deduction for straying from the majority opinion.
+///
+/// capped, so the length supports the title comparison without outvoting
+/// it.
 fn consensus_penalty(candidate: &SearchResult, consensus: Option<i64>) -> f64 {
     let (Some(consensus), Some(actual)) = (consensus, candidate.duration_ms) else {
         return 0.0;
@@ -1273,11 +1278,11 @@ fn consensus_penalty(candidate: &SearchResult, consensus: Option<i64>) -> f64 {
     (difference_seconds * 0.5).min(40.0)
 }
 
-/// Abschlag für offensichtliche Ausschnitte. Greift nur, solange die
-/// eigentliche Laufzeit unbekannt ist, sonst entscheidet der Vergleich.
+/// deduction for obvious excerpts. takes effect only while the actual
+/// running time is unknown, otherwise the comparison decides.
 ///
-/// Bewusst kleiner als ein fehlendes Suchwort: Der Ausschnitt des richtigen
-/// Titels ist immer noch näher dran als ein fremder Titel in voller Länge.
+/// deliberately smaller than a missing search word: an excerpt of the right
+/// track is still closer than a foreign track at full length.
 fn preview_penalty(candidate: &SearchResult) -> f64 {
     match candidate.duration_ms {
         Some(ms) if ms > 0 && ms < PREVIEW_LIMIT_MS => 15.0,
@@ -1285,7 +1290,7 @@ fn preview_penalty(candidate: &SearchResult) -> f64 {
     }
 }
 
-/// Je kleiner, desto besser. `None` bedeutet: kommt nicht infrage.
+/// scores a hit, the smaller the better. `None` means out of the question.
 fn score_candidate(
     candidate: &SearchResult,
     query: &str,
@@ -1298,25 +1303,25 @@ fn score_candidate(
         Some(expected) => match candidate.duration_ms {
             Some(actual) => {
                 let difference_seconds = (actual.saturating_sub(expected).saturating_abs() as f64) / 1000.0;
-                // Mehr als eine halbe Minute daneben ist ein anderer Titel.
+                // more than half a minute off is a different track
                 if difference_seconds > 30.0 {
                     return None;
                 }
                 score += difference_seconds * 2.0;
             }
-            // Bandcamp nennt keine Laufzeit. Solche Treffer fliegen nicht
-            // raus, rutschen aber hinter alle nachweislich passenden.
+            // bandcamp names no running time. such hits do not fly out but
+            // slide behind every provably fitting one
             None => score += 12.0,
         },
-        // Ohne Vorgabe bleibt nur die Plausibilität der Länge.
+        // without a given value only the plausibility of the length is left
         None => score += preview_penalty(candidate),
     }
 
-    // Zusätze, die im gesuchten Titel nicht vorkommen, sprechen dagegen.
+    // suffixes not appearing in the searched track speak against it
     score += version_penalty(&candidate.title, expected_title);
 
-    // Quellen, die verlässlich den ganzen Titel in guter Qualität liefern,
-    // bekommen einen Vorsprung.
+    // sources that reliably deliver the whole track in good quality get a
+    // head start
     if let Some(source) = SearchSource::from_label(&candidate.source) {
         score -= source.quality_bonus();
     }
@@ -1324,17 +1329,17 @@ fn score_candidate(
     Some(score)
 }
 
-/// Ordnet gefundene Treffer nach Passgenauigkeit. Zurück kommen die Adressen
-/// in der Reihenfolge, in der sie probiert werden.
+/// orders the hits found by fit. the addresses come back in the order they
+/// are to be tried in.
 fn rank_candidates(
     found: &[SearchResult],
     query: &str,
     expected_duration_ms: Option<i64>,
     expected_title: &str,
 ) -> Vec<String> {
-    // Ohne Vorgabe von außen entscheidet die Mehrheit der Quellen, wie lang
-    // der Titel ist. Nur abwerten, nicht ausschließen: Die Mehrheit kann
-    // sich irren, eine bekannte Laufzeit nicht.
+    // without a value from outside the majority of the sources decides how
+    // long the track is. only deduct, do not exclude: the majority can be
+    // wrong where a known running time cannot
     let consensus = match expected_duration_ms.filter(|ms| *ms > 0) {
         Some(_) => None,
         None => consensus_duration_ms(found),
@@ -1355,8 +1360,8 @@ fn rank_candidates(
         .collect();
 
     if ranked.is_empty() {
-        // Kein Treffer hielt der Längenprüfung stand. Dann wenigstens nach
-        // Textnähe ordnen, statt blind den ersten zu nehmen.
+        // no hit held up to the length check. then at least order by textual
+        // closeness instead of taking the first one blindly
         ranked = found
             .iter()
             .map(|candidate| {
@@ -1376,7 +1381,7 @@ fn rank_candidates(
         .collect()
 }
 
-/// Sucht mehrere Treffer und ordnet sie nach Passgenauigkeit.
+/// searches several hits and orders them by fit.
 pub async fn select_matches(
     ytdlp: &Path,
     query: &str,
@@ -1387,11 +1392,11 @@ pub async fn select_matches(
     Ok(rank_candidates(&found, query, expected_duration_ms, expected_title))
 }
 
-/// Zeigt die Adresse auf eine ganze Sammlung (Album, Playlist, Set)?
+/// whether the address points at a whole collection: album, playlist, set.
 ///
-/// Ein YouTube-Link mit `v=` bleibt ein einzelnes Video, auch wenn zusätzlich
-/// eine Playlist im Link steht, sonst würde aus einem kopierten Titel
-/// versehentlich eine ganze Playlist.
+/// a youtube link with `v=` stays a single video even where a playlist stands
+/// in the link as well, otherwise a copied track would accidentally turn into
+/// a whole playlist.
 fn is_collection_url(url: &str) -> bool {
     let lower = url.to_ascii_lowercase();
 
@@ -1413,34 +1418,35 @@ fn is_collection_url(url: &str) -> bool {
         .any(|marker| lower.contains(marker))
 }
 
-/// Ordnet Suchtreffer für die Anzeige: erst was zum Suchbegriff passt, dann
-/// der Rest. Die Sortierung ist stabil, deshalb bleibt die Mischung der
-/// Quellen bei gleichwertigen Treffern erhalten.
+/// orders search hits for display: what fits the search term first, then the
+/// rest. the sort is stable, so the mixture of sources is kept among hits of
+/// equal standing.
 ///
-/// Ungeordnet stand sonst der erste Treffer irgendeiner Quelle oben, auch
-/// wenn es ein ganz anderer Titel oder nur ein Ausschnitt war.
+/// unordered, the first hit of whichever source stood on top, even where it
+/// was an entirely different track or only an excerpt.
 fn sort_by_relevance(results: &mut [SearchResult], query: &str) {
     let consensus = consensus_duration_ms(results);
     let rang = |candidate: &SearchResult| {
         coverage_penalty(query, candidate)
-            // Ohne diese Prüfung standen Remixe und Edits ganz oben: der
-            // Wortabgleich blendet Klammerinhalte aus, dort stehen sie aber.
+            // without this check remixes and edits stood right on top: the
+            // word comparison hides bracket contents, and that is where they
+            // stand
             + version_penalty(&candidate.title, query)
             + preview_penalty(candidate)
-            // Angeschnittene Uploads erkennt man daran, dass alle anderen
-            // Quellen sich auf eine andere Länge einigen.
+            // truncated uploads are recognised by every other source
+            // agreeing on a different length
             + consensus_penalty(candidate, consensus)
-            // Ohne Laufzeitangabe lässt sich weder ein Ausschnitt erkennen
-            // noch die Mehrheitslänge prüfen. Im Tonspur-Vergleich waren das
-            // durchweg Bandcamp-Treffer, und darunter auffällig viele
-            // Fremdfassungen, die sonst ungeprüft nach oben rutschten.
+            // without a running time neither an excerpt can be recognised
+            // nor the majority length checked. in the audio comparison those
+            // were bandcamp hits throughout, and among them strikingly many
+            // foreign versions that would otherwise slide up unchecked
             + if candidate.duration_ms.is_none() { 12.0 } else { 0.0 }
     };
     results.sort_by(|a, b| rang(a).total_cmp(&rang(b)));
 }
 
-/// Fragt alle Suchquellen gleichzeitig ab und mischt die Treffer, sodass jede
-/// Quelle oben vertreten ist. So muss niemand vorher eine Quelle auswählen.
+/// queries every search source at once and mixes the hits so each source is
+/// represented at the top. nobody has to pick a source beforehand this way.
 pub async fn search_everywhere(
     ytdlp: &Path,
     query: &str,
@@ -1449,11 +1455,11 @@ pub async fn search_everywhere(
     Ok(search_all_sources(ytdlp, query, per_source).await?.0)
 }
 
-/// Wie [`search_everywhere`], nennt zusätzlich die ausgefallenen Quellen.
+/// like `search_everywhere`, and names the sources that dropped out as well.
 ///
-/// Fällt eine Quelle aus, während andere liefern, wirkt die Trefferliste nur
-/// dünn, der Nutzer sieht nicht, dass ihm etwas fehlt. Bei einer Sperre von
-/// YouTube betrifft das genau die Quelle mit der größten Auswahl.
+/// where one source drops out while others deliver, the result list merely
+/// looks thin and the user does not see that something is missing. with a
+/// block from youtube that hits exactly the source with the widest choice.
 pub async fn search_all_sources(
     ytdlp: &Path,
     query: &str,
@@ -1483,7 +1489,7 @@ pub async fn search_all_sources(
         }
     }
 
-    // Reihum je einen Treffer entnehmen.
+    // take one hit from each in turn
     let mut merged: Vec<SearchResult> = Vec::new();
     loop {
         let mut added = false;
@@ -1510,19 +1516,15 @@ pub async fn search_all_sources(
     Ok((merged, ausgefallen))
 }
 
-/// Übersetzt die Ausgabe von yt-dlp in eine Meldung, mit der man etwas
-/// anfangen kann. yt-dlp verteilt Fehler oft über mehrere Zeilen und hängt
-/// Hinweise für Issue-Meldungen an, die reine letzte Zeile ist deshalb
-/// meist wertlos.
-/// Erklärung für einen abgelehnten Zugriff. Ohne JavaScript-Laufzeit ist das
-/// fast immer die Ursache, mit einer ist es meist nur eine kurze Drosselung.
+// explanation for a refused access. without a javascript runtime that is
+// almost always the cause, with one it is usually a brief throttling
 fn blocked_message(has_js_runtime: bool) -> String {
-    // Auf Android geht beides ins Leere, was die anderen beiden Sätze raten:
-    // Eine JavaScript-Laufzeit lässt sich nicht nachinstallieren, und `yt-dlp
-    // -U` gibt es nicht, weil yt-dlp dort keine Datei ist, sondern in der
-    // Bibliothek steckt. Fehlen tut auch nichts: Dieselbe Bibliothek bringt
-    // QuickJS mit und reicht es yt-dlp über `--js-runtimes` weiter. Bleibt
-    // also nur die Drosselung — und der Rat, es woanders zu versuchen.
+    // on android both pieces of advice the other two sentences give lead
+    // nowhere: a javascript runtime cannot be installed afterwards, and
+    // `yt-dlp -U` does not exist because yt-dlp is no file there but sits in
+    // the library. nothing is missing either: that same library brings
+    // quickjs and hands it to yt-dlp through `--js-runtimes`. so only the
+    // throttling is left, and the advice to try elsewhere
     if cfg!(target_os = "android") {
         return fehler!(
             "Die Quelle hat den Zugriff abgelehnt (403). Das kann an zu vielen Abrufen kurz hintereinander liegen. Warte ein paar Minuten oder versuche einen anderen Treffer; oft liegt derselbe Titel auch bei SoundCloud oder Bandcamp."
@@ -1539,13 +1541,12 @@ fn blocked_message(has_js_runtime: bool) -> String {
     }
 }
 
-/// Hängt die Originalzeile an, damit die Ursache nachvollziehbar bleibt.
-/// Hängt die wörtliche Meldung der Quelle an die eigene Erklärung.
-///
-/// Verkettet statt zusammengesetzt: Beide Sätze bleiben einzeln nachschlagbar,
-/// und der Nachsatz muss nicht in jede der Erklärungen hineingeschrieben
-/// werden. Die Meldung der Quelle selbst ist Englisch und bleibt es, sie
-/// stammt von yt-dlp.
+// appends the verbatim message of the source to our own explanation.
+//
+// chained rather than assembled: both sentences stay individually
+// translatable, and the trailing one does not have to be written into each of
+// the explanations. the message of the source itself is english and stays
+// that way, it comes from yt-dlp
 fn with_details(message: String, raw: &str) -> String {
     let detail = raw.trim().trim_start_matches("ERROR:").trim();
     if detail.is_empty() {
@@ -1554,6 +1555,10 @@ fn with_details(message: String, raw: &str) -> String {
     crate::meldung::verketten(message, fehler!("Meldung der Quelle: {0}", detail))
 }
 
+// translates the output of yt-dlp into a message one can act on.
+//
+// yt-dlp spreads errors over several lines and appends notes for issue
+// reports, so the last line on its own is usually worthless
 fn explain_failure(stderr: &str) -> String {
     let lines: Vec<&str> = stderr
         .lines()
@@ -1568,20 +1573,20 @@ fn explain_failure(stderr: &str) -> String {
         .copied()
         .unwrap_or("unbekannter Fehler");
 
-    // Der komplette Text wird durchsucht, weil die Ursache manchmal in einer
-    // Zeile vor oder nach der ERROR-Zeile steht.
+    // the complete text is searched because the cause sometimes stands in a
+    // line before or after the error line
     let haystack = stderr.to_lowercase();
 
-    // Nur echte HTTP-Fehler, nicht jede Ziffernfolge: „403“ kann auch in
-    // einer Video-Kennung oder Byte-Zahl stecken.
+    // real http errors only, not every run of digits: "403" can sit inside a
+    // video id or a byte count as well
     if haystack.contains("http error 403")
         || haystack.contains("http error 429")
         || haystack.contains("too many requests")
     {
         return with_details(blocked_message(js_runtime().is_some()), raw);
     }
-    // Die Nachbearbeitung stolpert über eine fehlende Python-Bibliothek.
-    // Der Ton wäre da gewesen, nur das Cover ließ sich nicht einbetten.
+    // the post-processing stumbles over a missing python library. the audio
+    // would have been there, only the cover could not be embedded
     if haystack.contains("module mutagen was not found") {
         return with_details(
             fehler!(
@@ -1646,11 +1651,11 @@ fn explain_failure(stderr: &str) -> String {
     fehler!("yt-dlp: {0}", raw.trim_start_matches("ERROR:").trim())
 }
 
-/// Lässt yt-dlp laufen und meldet den Fortschritt.
+/// runs yt-dlp and reports the progress.
 ///
-/// Auf dem Rechner ein eigener Prozess, dessen Ausgabe zeilenweise mitgelesen
-/// wird: So greift ein Abbruch zeitnah, und ein hängender Lauf fällt an der
-/// ausbleibenden Zeile auf.
+/// on a desktop a process of its own whose output is read line by line: that
+/// way a cancellation takes effect promptly, and a hanging run shows up
+/// through the line that fails to arrive.
 #[cfg(not(target_os = "android"))]
 async fn laufen_lassen<R: Runtime>(
     app: &AppHandle<R>,
@@ -1692,8 +1697,8 @@ async fn laufen_lassen<R: Runtime>(
             bail!(fehler!("Download abgebrochen"));
         }
 
-        // Ein hängender Prozess schreibt nichts mehr. Beides begrenzen: die
-        // Gesamtdauer und die Stille dazwischen.
+        // a hanging process writes nothing any more. bound both: the total
+        // duration and the silence in between
         if gestartet.elapsed() > DOWNLOAD_TIMEOUT || letzte_zeile.elapsed() > IDLE_TIMEOUT {
             let _ = child.kill().await;
             let _ = std::fs::remove_dir_all(job_dir);
@@ -1703,7 +1708,7 @@ async fn laufen_lassen<R: Runtime>(
             );
         }
 
-        // Zeilenweise lesen, damit der Abbruch zeitnah greift.
+        // read line by line so the cancellation takes effect promptly
         let next =
             tokio::time::timeout(std::time::Duration::from_millis(400), out_lines.next_line())
                 .await;
@@ -1730,12 +1735,12 @@ async fn laufen_lassen<R: Runtime>(
     Ok(())
 }
 
-/// Lässt yt-dlp laufen, über die Java-Brücke.
+/// runs yt-dlp over the java bridge.
 ///
-/// Dort gibt es keinen Prozess und keine Ausgabe zum Mitlesen: Der Aufruf
-/// blockiert bis zum Ende und liefert erst dann. Den Fortschritt führt die
-/// Brücke deshalb als abfragbaren Wert, den dieser Lauf im Takt abholt und
-/// weitergibt. Ein Abbruch geht denselben Weg zurück.
+/// there is no process and no output to read along there: the call blocks
+/// until the end and only delivers then. the bridge therefore keeps the
+/// progress as a value to be polled, which this run picks up on a tick and
+/// passes on. a cancellation goes back the same way.
 #[cfg(target_os = "android")]
 async fn laufen_lassen<R: Runtime>(
     app: &AppHandle<R>,
@@ -1856,7 +1861,7 @@ pub async fn download<R: Runtime>(
 ) -> Result<DownloadOutcome> {
     let cancel = registry.register(&job_id);
 
-    // Entweder den besten Treffer heraussuchen …
+    // either pick the best hit out …
     let attempts = match options.match_query.as_deref() {
         Some(query) if !query.trim().is_empty() => {
             emit(
@@ -1872,23 +1877,22 @@ pub async fn download<R: Runtime>(
             match select_matches(&ytdlp, query, options.expected_duration_ms, expected_title).await
             {
                 Ok(urls) if !urls.is_empty() => urls,
-                // Findet die Auswahl nichts, bleibt der ursprüngliche Weg.
+                // where the picking finds nothing, the original route stays
                 _ => std::iter::once(options.url.clone())
                     .chain(options.fallbacks.iter().cloned())
                     .collect(),
             }
         }
-        // … oder die vorgegebene Adresse samt Ausweichliste nehmen.
+        // … or take the given address along with its fallback list
         _ => std::iter::once(options.url.clone())
             .chain(options.fallbacks.iter().cloned())
             .collect(),
     };
 
-    // Sagt YouTube gerade ab, kommt es nach hinten.
+    // where youtube is refusing right now, it goes to the back.
     //
-    // Der gewählte Treffer verliert damit seinen Vorrang, aber ein Versuch,
-    // von dem man weiß, dass er scheitert, kostet nur eine halbe Minute. Die
-    // Reihenfolge unter den übrigen bleibt, wie sie war.
+    // the chosen hit loses its precedence that way, but an attempt known to
+    // fail costs half a minute. the order among the rest stays as it was
     let mut attempts = attempts;
     if youtube_sagt_ab() {
         attempts.sort_by_key(|url| ist_youtube(url));
@@ -1905,9 +1909,10 @@ pub async fn download<R: Runtime>(
         if result.is_ok() || cancel.load(Ordering::SeqCst) {
             break;
         }
-        // Eine Absage von YouTube gilt für alle seine Treffer, nicht nur für
-        // diesen. Erkannt am „(403)“ aus `blocked_message`; die Meldung wird
-        // erst in der Oberfläche übersetzt, die Nummer steht in jeder Sprache.
+        // a refusal from youtube holds for all of its hits, not for this one
+        // alone. recognised by the "(403)" from `blocked_message`, the
+        // message is translated in the ui only and the number stands in every
+        // language
         if ist_youtube(url) && result.as_ref().err().is_some_and(zugriff_verweigert) {
             absage_merken();
         }
@@ -1933,8 +1938,8 @@ pub async fn download<R: Runtime>(
             );
         }
         Err(err) => {
-            // Keine Adresse hat geliefert. Bruchstücke und Teildateien
-            // hätten sonst dauerhaft im Arbeitsverzeichnis gelegen.
+            // no address delivered. fragments and partial files would
+            // otherwise lie in the working directory for good
             let _ = std::fs::remove_dir_all(work_dir.join(&job_id));
             emit(&app, status(&job_id, "error", 0.0, Some(err.to_string())));
         }
@@ -1953,7 +1958,7 @@ async fn download_inner<R: Runtime>(
     if options.url.trim().is_empty() {
         bail!(fehler!("Keine Quelle angegeben"));
     }
-    // Bei einem zweiten Versuch soll nichts vom ersten herumliegen.
+    // on a second attempt nothing from the first is to lie around
     let job_dir = work_dir.join(job_id);
     let _ = std::fs::remove_dir_all(&job_dir);
     std::fs::create_dir_all(&job_dir)?;
@@ -1966,21 +1971,21 @@ async fn download_inner<R: Runtime>(
         status(job_id, "starting", 0.0, Some("Quelle wird gelesen…".into())),
     );
 
-    // Als Liste statt am Befehl aufgebaut: Auf Android startet kein Programm,
-    // dort geht dieselbe Liste über die Java-Brücke an yt-dlp.
+    // built as a list rather than on the command: on android no program
+    // starts, the same list goes to yt-dlp over the java bridge there
     let mut args: Vec<String> = vec![
         "--newline".into(),
         "--no-playlist".into(),
-        // Die Warnungen bleiben an.
+        // the warnings stay on.
         //
-        // Sie standen früher unter `--no-warnings`, und damit verschwand
-        // ausgerechnet der Hinweis, der einen tagelang unerklärlichen 403
-        // aufklärte: „No supported JavaScript runtime could be found …
-        // YouTube extraction without a JS runtime has been deprecated.“ Der
-        // Fehler nennt nur die Absage, den Grund nennt die Warnung davor.
-        // `explain_failure` sucht ohnehin die ERROR-Zeile und nimmt die
-        // letzte Zeile nur, wenn es keine gibt.
-        // Kurzzeitige Sperren (HTTP 403) verschwinden meist von selbst.
+        // they used to sit under `--no-warnings`, and that made exactly the
+        // note disappear which cleared up a 403 that had been inexplicable
+        // for days: "No supported JavaScript runtime could be found … YouTube
+        // extraction without a JS runtime has been deprecated." the error
+        // names the refusal only, the warning before it names the reason.
+        // `explain_failure` looks for the error line anyway and takes the
+        // last line only where there is none
+        // short-lived blocks (http 403) usually go away by themselves
         "--retries".into(),
         "5".into(),
         "--extractor-retries".into(),
@@ -1996,27 +2001,27 @@ async fn download_inner<R: Runtime>(
         "--print-to-file".into(),
         "after_move:filepath".into(),
         result_file.to_string_lossy().into_owned(),
-        // Das Konto, unter dem der Titel veröffentlicht wurde.
+        // the account the track was published under
         "--print-to-file".into(),
         "%(uploader,channel,creator,artist)s".into(),
         uploader_file.to_string_lossy().into_owned(),
-        // Die Musikangaben der Quelle. Wo es sie gibt (YouTube Music, offizielle
-        // Uploads, SoundCloud), sind sie sauberer als alles, was sich aus dem
-        // Videotitel ableiten lässt.
+        // the music fields of the source. where they exist (youtube music,
+        // official uploads, soundcloud) they are cleaner than anything that
+        // can be derived from the video title
         "--print-to-file".into(),
         "%(track)s\u{1f}%(artist)s\u{1f}%(album)s\u{1f}%(release_year)s\u{1f}%(track_number)s".into(),
         music_file.to_string_lossy().into_owned(),
-        // Welchen Abspiel-Client yt-dlp bei YouTube benutzt.
+        // which playback client yt-dlp uses at youtube.
         //
-        // Von sich aus wählt yt-dlp `android_vr`; dessen Abrufadressen weist
-        // YouTube inzwischen mit „HTTP Error 403“ ab — bei jedem Titel, auch
-        // bei frei lizenzierten. `web_embedded` liefert Adressen, die YouTube
-        // annimmt, sofern eine JavaScript-Laufzeit da ist. Nachgemessen:
-        // `default` scheitert, `web_embedded,default` lädt.
+        // left alone yt-dlp picks `android_vr`, whose retrieval addresses
+        // youtube now refuses with "HTTP Error 403", on every track, freely
+        // licensed ones included. `web_embedded` delivers addresses youtube
+        // accepts, provided a javascript runtime is there. measured:
+        // `default` fails, `web_embedded,default` downloads.
         //
-        // Die übrigen Clients bleiben als Rückfall dahinter stehen, sonst
-        // fiele weg, was nur einer von ihnen hergibt. Die Angabe trägt den
-        // Namensraum `youtube:` und geht andere Quellen nichts an.
+        // the remaining clients stay behind it as a fallback, otherwise what
+        // only one of them hands out would fall away. the option carries the
+        // `youtube:` namespace and is no business of other sources
         "--extractor-args".into(),
         "youtube:player_client=web_embedded,default".into(),
         "-f".into(),
@@ -2029,8 +2034,8 @@ async fn download_inner<R: Runtime>(
     ];
 
     if ffmpeg_available() {
-        // `-x` löst die Audiospur aus dem Container. Ohne `--audio-format`
-        // bleibt sie unverändert, kein zweiter verlustbehafteter Durchgang.
+        // `-x` lifts the audio track out of the container. without
+        // `--audio-format` it stays unchanged, no second lossy pass
         args.push("-x".into());
         if options.format != "best" {
             args.push("--audio-format".into());
@@ -2044,8 +2049,8 @@ async fn download_inner<R: Runtime>(
             options.format
         );
     }
-    // Fehlt `mutagen`, wird das Cover ausgelassen statt den Download zu
-    // verlieren. Robify schreibt es beim Import ohnehin selbst hinein.
+    // where `mutagen` is missing, the cover is left out rather than losing
+    // the download. robify writes it in itself at import anyway
     if options.embed_thumbnail && ffmpeg_available() && supports_thumbnail_embedding(ytdlp).await {
         args.push("--embed-thumbnail".into());
     }
@@ -2053,8 +2058,8 @@ async fn download_inner<R: Runtime>(
     args.push(options.url.clone());
     args.extend(js_runtime_args(ytdlp).await);
 
-    // Der Platz bleibt für die gesamte Dauer des Downloads belegt, sonst
-    // liefen bei „Alle laden“ beliebig viele Übertragungen nebeneinander.
+    // the slot stays taken for the whole duration of the download, otherwise
+    // any number of transfers would run side by side on "download all"
     let _slot = acquire_slot(source_label(&options.url)).await;
 
     laufen_lassen(app, job_id, ytdlp, &args, &job_dir, cancel).await?;
@@ -2073,11 +2078,11 @@ async fn download_inner<R: Runtime>(
     let path = ensure_playable(app, job_id, path).await?;
     let file_tags = tags::read(&path)?;
 
-    // Ein deutlich zu kurzes Ergebnis ist ein Ausschnitt, kein ganzer Titel.
+    // a markedly too short result is an excerpt, not a whole track
     if let Some(expected) = options.expected_duration_ms.filter(|ms| *ms > 0) {
         let actual = file_tags.duration_ms;
-        // Als Verhältnis statt als Produkt: Eine kaputte Laufzeitangabe darf
-        // die Rechnung nicht überlaufen lassen.
+        // as a ratio rather than a product: a broken running time must not
+        // make the calculation overflow
         if (actual as f64) < (expected as f64) * 0.8 {
             bail!(
                 "Diese Quelle lieferte nur {} von {}, vermutlich eine Vorschau.",
@@ -2098,15 +2103,15 @@ async fn download_inner<R: Runtime>(
         .and_then(|text| text.lines().next().map(str::trim).map(str::to_string))
         .filter(|name| !name.is_empty() && name != "NA");
 
-    // Erst die Angaben der Quelle, dann der Videotitel. Beides steht vor dem,
-    // was yt-dlp mangels Musikfeldern in die Datei geschrieben hat, dort
-    // landet sonst der Kanalname als Künstler.
+    // the fields of the source first, then the video title. both stand
+    // before what yt-dlp wrote into the file for lack of music fields, where
+    // the channel name lands as the artist otherwise
     let source = SourceMetadata::read(&music_file);
     apply_source_metadata(&mut metadata, &source, uploader.as_deref());
 
-    // Die Angaben aus einer Videobeschreibung sind oft grob, online
-    // nachschlagen und korrigieren, sofern der Treffer eindeutig ist.
-    // Nach einem Abbruch lohnt die Suche nicht mehr.
+    // details from a video description are often rough. look them up online
+    // and correct them where the hit is unambiguous. after a cancellation the
+    // search is no longer worth it
     if options.auto_match && !cancel.load(Ordering::SeqCst) {
         emit(
             app,
@@ -2124,9 +2129,10 @@ async fn download_inner<R: Runtime>(
         }
     }
 
-    // Gäste, die im Titel stehen, gehören ins Gästefeld, sonst tauchen sie
-    // in der Bibliothek bei keinem Künstler auf. Bisher passierte das nur bei
-    // Spotify-Links; die übrigen Quellen schreiben es genauso in den Titel.
+    // guests standing in the title belong in the guest field, otherwise they
+    // show up under no artist in the library. this used to happen with
+    // spotify links only, the other sources write it into the title just the
+    // same
     let (ohne_gaeste, aus_titel) = crate::spotify::split_feature_suffix(&metadata.title);
     if !aus_titel.is_empty() {
         metadata.title = ohne_gaeste;
@@ -2141,13 +2147,13 @@ async fn download_inner<R: Runtime>(
         metadata.featured_artists = Some(crate::library::join_artists(&gaeste));
     }
 
-    // Die Quelle weiß, aus welcher Veröffentlichung die Aufnahme stammt,
-    // die Metadatensuche rät dagegen und landet auch mal bei einer
-    // Vinyl-Auskopplung oder einem Sampler.
+    // the source knows which release the recording comes from, while the
+    // metadata search guesses and lands on a vinyl cut or a sampler now and
+    // then.
     //
-    // Ausnahme: Heißt das „Album“ genauso wie der Titel, ist es nur der
-    // Platzhalter einer Single. Dann führt die Suche eher zum echten Album
-    // („Creep“ → „Pablo Honey“).
+    // the exception: where the album carries the same name as the track it is
+    // only the placeholder of a single. the search then leads to the real
+    // album more often ("Creep" to "Pablo Honey")
     if let Some(album) = source
         .album
         .as_deref()
@@ -2156,14 +2162,15 @@ async fn download_inner<R: Runtime>(
         metadata.album = album.to_string();
     }
 
-    // Vorbekannte Angaben (z. B. aus einem Spotify-Link) haben das letzte Wort.
+    // details known beforehand, from a spotify link for instance, have the
+    // last word
     if let Some(known) = &options.metadata {
         metadata = merge_metadata(known, metadata);
     }
 
-    // Spotify kennt keine Gastrollen und wirft alle Beteiligten in eine Liste.
-    // Hat die Online-Suche Gäste erkannt, gehören sie nicht zusätzlich unter
-    // die Hauptkünstler.
+    // spotify knows no guest roles and throws everyone involved into one
+    // list. where the online search recognised guests, they do not belong
+    // among the lead artists as well
     if let Some(featured) = metadata.featured_artists.clone() {
         let guests = crate::library::split_artists(&featured);
         let mains: Vec<String> = crate::library::split_artists(&metadata.artist)
@@ -2175,8 +2182,8 @@ async fn download_inner<R: Runtime>(
         }
     }
 
-    // Der Kanal, von dem geladen wurde, ist der Hauptkünstler, sofern er
-    // überhaupt zu den Beteiligten gehört.
+    // the channel downloaded from is the lead artist, provided it belongs to
+    // the participants at all
     if let Some(uploader) = uploader {
         if let Some((main, featured)) = crate::library::promote_uploader(
             &metadata.artist,
@@ -2188,7 +2195,7 @@ async fn download_inner<R: Runtime>(
         }
     }
 
-    // Ohne Album ist es eine Single. „Album“ wäre hier schlicht falsch.
+    // without an album it is a single, and "album" would plainly be wrong
     if metadata.release_type.is_none() {
         metadata.release_type = Some(
             if metadata.album.trim().is_empty() {
@@ -2200,8 +2207,8 @@ async fn download_inner<R: Runtime>(
         );
     }
 
-    // Ohne Cover hat auch die Metadatensuche nichts gefunden, bei allen
-    // beobachteten Fehlgriffen war das so.
+    // without a cover the metadata search found nothing either, which was
+    // the case with every misgrasp observed
     let unbestaetigt = metadata.cover_base64.is_none();
     let warning = intent_warning(options.intent.as_deref(), &metadata, unbestaetigt).map(|text| {
         if unbestaetigt {
@@ -2222,8 +2229,8 @@ async fn download_inner<R: Runtime>(
     })
 }
 
-/// Verbindet vorbekannte Metadaten mit denen aus der Datei. Was die Quelle
-/// sicher weiß, gewinnt; alles andere wird aus der Datei aufgefüllt.
+// joins metadata known beforehand with that from the file. what the source
+// knows for certain wins, everything else is filled from the file
 fn merge_metadata(known: &TrackMetadata, from_file: TrackMetadata) -> TrackMetadata {
     let pick = |preferred: &str, fallback: String| {
         if preferred.trim().is_empty() {
@@ -2258,13 +2265,11 @@ fn merge_metadata(known: &TrackMetadata, from_file: TrackMetadata) -> TrackMetad
     }
 }
 
-/// yt-dlp schreibt den Endpfad in `result.txt`; falls das fehlschlägt,
-/// nehmen wir die neueste Audiodatei im Arbeitsverzeichnis.
-/// Was die Quelle selbst über den Titel weiß.
+/// what the source itself knows about the track.
 ///
-/// yt-dlp füllt diese Felder für Musik, bei YouTube Music immer, bei
-/// offiziellen YouTube-Uploads und SoundCloud meistens. Fremde Lyric- und
-/// Repost-Kanäle liefern nichts; dort bleibt nur der Videotitel.
+/// yt-dlp fills these fields for music, at youtube music always, at official
+/// youtube uploads and soundcloud mostly. foreign lyric and repost channels
+/// deliver nothing, and only the video title is left there.
 #[derive(Debug, Default, PartialEq)]
 pub struct SourceMetadata {
     pub track: Option<String>,
@@ -2282,7 +2287,7 @@ impl SourceMetadata {
             .unwrap_or_default()
     }
 
-    /// Die Felder kommen durch `\u{1f}` getrennt; „NA“ steht für „unbekannt“.
+    /// the fields arrive separated by `\u{1f}`, and "NA" stands for unknown.
     fn parse(line: &str) -> SourceMetadata {
         let mut felder = line.split('\u{1f}').map(|wert| {
             let wert = wert.trim();
@@ -2299,12 +2304,13 @@ impl SourceMetadata {
     }
 }
 
-/// Übernimmt Titel und Künstler aus der besten verfügbaren Quelle.
+/// takes title and artist from the best source available.
 ///
-/// Reihenfolge: Musikfelder der Quelle → Zerlegung des Videotitels → das, was
-/// schon in der Datei stand. Ohne diesen Schritt steht bei Uploads ohne
-/// Musikfelder der komplette Videotitel als Songtitel und der Kanalname als
-/// Künstler in der Bibliothek („xTheLYRICS“ statt „Nina Chuba“).
+/// the order: music fields of the source, then splitting the video title,
+/// then what already stood in the file. without this step, uploads without
+/// music fields put the complete video title into the library as the song
+/// title and the channel name as the artist ("xTheLYRICS" instead of "Nina
+/// Chuba").
 fn apply_source_metadata(
     metadata: &mut TrackMetadata,
     source: &SourceMetadata,
@@ -2324,20 +2330,22 @@ fn apply_source_metadata(
     metadata.year = metadata.year.or(source.year);
     metadata.track_no = metadata.track_no.or(source.track_no);
 
-    // SoundCloud setzt `track` einfach auf den Namen der hochgeladenen Datei,
-    // samt Endung. Ohne das Abschneiden hieße der Titel „Xtal.mp3“.
+    // soundcloud plainly sets `track` to the name of the uploaded file,
+    // extension included. without cutting it the track would be called
+    // "Xtal.mp3"
     metadata.title = strip_file_suffix(&metadata.title);
 
     let Some((artist, title)) = crate::library::split_video_title(&metadata.title, uploader) else {
         return;
     };
 
-    // Wann trägt der Titel den ganzen Upload-Namen?
+    // when does the title carry the whole upload name?
     //
-    // * Es gibt gar kein Titelfeld, dann steht alles im Videotitel.
-    // * Es gibt keine Künstlerangabe. Beide Felder kommen aus derselben
-    //   Auswertung: Fehlt die eine, ist die andere ebenfalls ungefiltert.
-    // * Die linke Hälfte ist nachweislich der bereits bekannte Künstler.
+    // * there is no title field at all, then everything stands in the video
+    //   title.
+    // * there is no artist. both fields come out of the same extraction:
+    //   where one is missing, the other is unfiltered as well.
+    // * the left half is provably the artist already known
     let ungefiltert = source.track.is_none()
         || source.artist.is_none()
         || bezeichnet_denselben(&artist, source.artist.as_deref().or(uploader));
@@ -2350,7 +2358,7 @@ fn apply_source_metadata(
     }
 }
 
-/// Endungen, die in Upload-Namen stehen bleiben.
+/// extensions that stay behind in upload names.
 const FILE_SUFFIXES: [&str; 8] = [
     ".mp3", ".wav", ".flac", ".m4a", ".ogg", ".opus", ".aac", ".aiff",
 ];
@@ -2365,16 +2373,16 @@ fn strip_file_suffix(title: &str) -> String {
     title.to_string()
 }
 
-/// Meint `name` denselben Künstler wie die bekannte Angabe?
+/// whether `name` means the same artist as the value already known.
 fn bezeichnet_denselben(name: &str, bekannt: Option<&str>) -> bool {
     bekannt.is_some_and(|bekannt| crate::online::looks_like_same(name, bekannt))
 }
 
-/// Sorgt dafür, dass die geladene Datei auch abspielbar ist.
+/// makes sure the downloaded file can be played.
 ///
-/// Die Formatauswahl bevorzugt bereits passende Codecs. Manche Quellen bieten
-/// aber ausschließlich Opus an, dann bleibt nur eine Umwandlung, sonst läge
-/// ein stummer Titel in der Bibliothek.
+/// the format selection prefers fitting codecs already. some sources offer
+/// opus alone though, and then only a conversion is left, otherwise a mute
+/// track would lie in the library.
 async fn ensure_playable<R: Runtime>(
     app: &AppHandle<R>,
     job_id: &str,
@@ -2403,8 +2411,8 @@ async fn ensure_playable<R: Runtime>(
             job_id,
             "processing",
             99.0,
-            // Über die Vorlage, nicht fertig zusammengesetzt: Die Oberfläche
-            // setzt den Satz in ihrer Sprache zusammen.
+            // through the template, not finished: the ui assembles the
+            // sentence in its own language
             Some(crate::meldung::bauen(
                 "{0} wird in ein abspielbares Format gebracht…",
                 &[&format],
@@ -2440,12 +2448,12 @@ async fn ensure_playable<R: Runtime>(
     Ok(target)
 }
 
-/// Ruft ffmpeg auf, gleich auf welchem System.
-///
-/// Auf dem Rechner ist es ein Programm im Suchpfad. Auf Android liegt es als
-/// Bibliothek bei — dort gibt es kein `ffmpeg` zu finden, und ein eigener
-/// Prozessstart scheiterte schon daran, dass Android das Ausführen außerhalb
-/// des Bibliotheksordners nicht erlaubt.
+// calls ffmpeg, whatever the system.
+//
+// on a desktop it is a program in the search path. on android it ships as a
+// library, there is no `ffmpeg` to find there, and starting a process of our
+// own already failed on android not allowing execution outside the library
+// folder
 #[cfg(not(target_os = "android"))]
 async fn ffmpeg_lassen(args: Vec<String>) -> Result<crate::ytdlp::Ausgabe> {
     let mut cmd = Command::new("ffmpeg");
@@ -2465,6 +2473,8 @@ async fn ffmpeg_lassen(args: Vec<String>) -> Result<crate::ytdlp::Ausgabe> {
     crate::ytdlp::ffmpeg(args).await
 }
 
+// yt-dlp writes the final path into `result.txt`. where that fails, the
+// newest audio file in the working directory is taken
 fn locate_output(result_file: &Path, job_dir: &Path) -> Result<PathBuf> {
     if let Ok(content) = std::fs::read_to_string(result_file) {
         if let Some(line) = content.lines().find(|l| !l.trim().is_empty()) {
@@ -2501,7 +2511,7 @@ mod tests {
         sort_by_relevance, version_penalty, SearchResult, TrackMetadata, ABSAGE_ABZUG,
     };
 
-    /// Ein Treffer mit einer Adresse, an der die Quelle erkennbar ist.
+    /// a hit with an address the source can be recognised by.
     fn treffer_bei(titel: &str, sekunden: i64, adresse: &str) -> SearchResult {
         SearchResult {
             id: adresse.into(),
@@ -2523,17 +2533,17 @@ mod tests {
         assert!(!ist_youtube("https://kuenstler.bandcamp.com/track/was"));
     }
 
-    /// Der Abschlag darf umsortieren, aber nichts Falsches nach vorn holen.
+    /// the deduction may reorder but must pull nothing wrong to the front.
     ///
-    /// Ein fehlendes Suchwort kostet 20. Läge der Abschlag darüber, gewänne
-    /// ein SoundCloud-Treffer mit fremdem Titel gegen den richtigen Song bei
-    /// YouTube — und ein falscher Titel in der Bibliothek fällt später kaum
-    /// noch auf, ein gescheiterter Download dagegen sofort.
+    /// a missing search word costs 20. were the deduction above that, a
+    /// soundcloud hit with a foreign title would win against the right song
+    /// at youtube, and a wrong track in the library is hard to notice later
+    /// while a failed download shows at once.
     #[test]
     fn abschlag_bleibt_unter_einem_fehlenden_wort() {
-        // Gemessen statt behauptet: Was ein fehlendes Wort kostet, steht in
-        // `coverage_penalty` und darf sich ändern, ohne dass dieser Test
-        // stillschweigend nutzlos wird.
+        // measured rather than claimed: what a missing word costs stands in
+        // `coverage_penalty` and may change without this test quietly
+        // becoming useless
         let fremd = treffer_bei("Ganz was anderes", 199, "https://soundcloud.com/wer/was");
         let fehlendes_wort = coverage_penalty("Impact Prelude", &fremd);
         assert!(
@@ -2547,15 +2557,15 @@ mod tests {
         let youtube = "https://www.youtube.com/watch?v=abc";
         assert_eq!(abzug_bei(youtube, false), 0.0);
         assert_eq!(abzug_bei(youtube, true), ABSAGE_ABZUG);
-        // Die übrigen Quellen trifft die Absage nie.
+        // the refusal never hits the remaining sources
         assert_eq!(abzug_bei("https://soundcloud.com/wer/was", true), 0.0);
     }
 
-    /// Die Ausweichliste soll die Quelle wechseln.
+    /// the fallback list is to change the source.
     ///
-    /// Sagt YouTube ab, sagt es für alle seine Treffer ab. Vorher standen
-    /// drei YouTube-Adressen in der Liste und endeten dreimal mit demselben
-    /// 403, während der SoundCloud-Treffer unversucht danebenlag.
+    /// where youtube refuses, it refuses for all of its hits. three youtube
+    /// addresses used to stand in the list and ended three times in the same
+    /// 403 while the soundcloud hit lay untried next to them.
     #[test]
     fn die_ausweichliste_wechselt_zuerst_die_quelle() {
         let treffer = vec![
@@ -2577,7 +2587,7 @@ mod tests {
 
     #[test]
     fn abgelehnter_zugriff_wird_als_absage_erkannt() {
-        // Genau der Weg, den `download` geht: erklärte Meldung, dann Prüfung.
+        // exactly the route `download` takes: explained message, then check
         let meldung = explain_failure("ERROR: unable to download video data: HTTP Error 403: Forbidden\n");
         assert!(super::zugriff_verweigert(&anyhow::anyhow!(meldung)));
         assert!(!super::zugriff_verweigert(&anyhow::anyhow!(explain_failure(
@@ -2587,7 +2597,7 @@ mod tests {
 
     #[test]
     fn drm_meldung_wird_erklaert() {
-        // Originalausgabe von yt-dlp: die Ursache steht nicht in der letzten Zeile.
+        // original output of yt-dlp: the cause is not in the last line
         let stderr = "\
 [youtube] AbCdEf: Some formats are drm protected
 ERROR: [youtube] AbCdEf: This video is DRM protected
@@ -2595,7 +2605,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 ";
         let message = explain_failure(stderr);
         assert!(message.contains("kopiergeschützt"), "unerwartet: {message}");
-        // Die Meldung muss den Ausweg nennen, nicht nur das Hindernis.
+        // the message has to name the way out, not the obstacle alone
         assert!(message.contains("übrigen Treffer"), "kein Ausweg genannt: {message}");
         assert!(!message.contains("DO NOT open an issue"));
     }
@@ -2605,7 +2615,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
         let message =
             explain_failure("ERROR: unable to download video data: HTTP Error 403: Forbidden\n");
         assert!(message.contains("(403)"), "unerwartet: {message}");
-        // Die Originalmeldung bleibt zur Nachvollziehbarkeit erhalten.
+        // the original message is kept so the cause stays traceable
         assert!(message.contains("Meldung der Quelle"), "Details fehlen: {message}");
 
         assert!(explain_failure("ERROR: HTTP Error 429: Too Many Requests").contains("(403)"));
@@ -2614,20 +2624,20 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
     #[test]
     #[cfg(not(target_os = "android"))]
     fn fehlende_js_laufzeit_wird_als_ursache_genannt() {
-        // Ohne Laufzeit ist das die eigentliche Ursache …
+        // without a runtime that is the actual cause …
         assert!(blocked_message(false).contains("JavaScript-Laufzeit"));
         assert!(blocked_message(false).contains("Node.js"));
-        // … mit Laufzeit bleibt nur die Drosselung als Erklärung.
+        // … with one, only the throttling is left as an explanation
         assert!(!blocked_message(true).contains("JavaScript-Laufzeit"));
         assert!(blocked_message(true).contains("yt-dlp -U"));
     }
 
-    /// Auf Android taugt keiner der beiden Ratschläge.
+    /// on android neither piece of advice is any use.
     ///
-    /// Node.js lässt sich dort nicht installieren, und `yt-dlp -U` greift ins
-    /// Leere, weil yt-dlp aus der Bibliothek kommt. Genau das stand nach einem
-    /// 403 auf dem Telefon: „Es ist keine JavaScript-Laufzeit installiert“ —
-    /// obwohl QuickJS mitgeliefert wird und yt-dlp es benutzt.
+    /// node.js cannot be installed there, and `yt-dlp -U` reaches into thin
+    /// air because yt-dlp comes out of the library. exactly that stood on the
+    /// phone after a 403: "no javascript runtime is installed", although
+    /// quickjs ships with it and yt-dlp uses it.
     #[test]
     #[cfg(target_os = "android")]
     fn auf_android_wird_nichts_zum_installieren_geraten() {
@@ -2641,7 +2651,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 
     #[test]
     fn ziffernfolgen_loesen_keine_falsche_sperrmeldung_aus() {
-        // „403“ steckt hier in einer Kennung, nicht in einem HTTP-Fehler.
+        // "403" sits inside an id here, not inside an http error
         let stderr = "ERROR: [soundcloud] 403291102: Requested format is not available\n";
         let message = explain_failure(stderr);
         assert!(
@@ -2650,7 +2660,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
         );
         assert!(!message.contains("vorübergehend gesperrt"));
 
-        // Auch eine Bytezahl mit 429 darf nichts auslösen.
+        // a byte count holding 429 must trigger nothing either
         let stderr = "ERROR: [generic] xyz: Kaputt nach 4291 Bytes\n";
         assert!(!explain_failure(stderr).contains("vorübergehend gesperrt"));
     }
@@ -2661,10 +2671,10 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
         assert!(explain_failure(stderr).contains("yt-dlp -U"));
     }
 
-    /// Vorlage und Wert reisen getrennt, damit die Oberfläche übersetzen kann.
+    /// template and value travel separately so the ui can translate.
     ///
-    /// Die Zeile von yt-dlp selbst bleibt unangetastet: Sie ist Englisch und
-    /// stammt nicht von uns.
+    /// the line from yt-dlp itself stays untouched: it is english and does
+    /// not come from here.
     #[test]
     fn unbekannter_fehler_zeigt_die_error_zeile() {
         let stderr = "[debug] irgendwas\nERROR: [generic] xyz: Kaputt\n";
@@ -2675,7 +2685,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
         assert_eq!(teile, vec!["yt-dlp: {0}", "[generic] xyz: Kaputt"]);
     }
 
-    /// Erklärung und Quellmeldung bleiben zwei nachschlagbare Sätze.
+    /// explanation and source message stay two translatable sentences.
     #[test]
     fn erklaerung_und_quellmeldung_stehen_getrennt() {
         let stderr = "ERROR: [youtube] xyz: Private video\n";
@@ -2719,15 +2729,15 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 
     #[test]
     fn verwirft_deutlich_abweichende_laengen() {
-        // Ein Mix von zehn Minuten ist nicht derselbe Titel.
+        // a ten minute mix is not the same track
         let langer_mix = treffer("Die Welt zu Gast bei Feinden Mix", 600, "YouTube");
         assert!(score_candidate(&langer_mix, "Die Welt zu Gast bei Feinden", Some(167_000), "Die Welt zu Gast bei Feinden").is_none());
 
-        // Auch knapp jenseits der Grenze wird verworfen.
+        // just beyond the bound it is discarded as well
         let knapp = treffer("Die Welt zu Gast bei Feinden", 167 + 31, "YouTube");
         assert!(score_candidate(&knapp, "Die Welt zu Gast bei Feinden", Some(167_000), "Die Welt zu Gast bei Feinden").is_none());
 
-        // Fehlende Laufzeiten deckt `unbekannte_laenge_wird_abgewertet_aber_zugelassen` ab.
+        // missing running times are covered by `unbekannte_laenge_wird_abgewertet_aber_zugelassen`
     }
 
     #[test]
@@ -2746,7 +2756,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 
     #[test]
     fn gewollte_fassungen_bleiben_unbestraft() {
-        // Wer einen Remix sucht, soll ihn auch bekommen.
+        // whoever searches for a remix is to get it
         let remix = treffer("Song (Remix)", 200, "YouTube");
         let a = score_candidate(&remix, "Song (Remix)", Some(200_000), "Song (Remix)").unwrap();
         let b = score_candidate(&remix, "Song", Some(200_000), "Song").unwrap();
@@ -2755,7 +2765,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 
     #[test]
     fn bessere_quellen_haben_bei_gleichstand_vorrang() {
-        // Bei identischer Länge entscheidet die Verlässlichkeit der Quelle.
+        // at identical length the reliability of the source decides
         let reihenfolge = ["Bandcamp", "Audius", "SoundCloud", "YouTube"];
         let bewertungen: Vec<f64> = reihenfolge
             .iter()
@@ -2771,21 +2781,21 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 
     #[test]
     fn unbekannte_laenge_wird_abgewertet_aber_zugelassen() {
-        // Bandcamp nennt keine Laufzeit, der Treffer bleibt trotzdem nutzbar.
+        // bandcamp names no running time, the hit stays usable anyway
         let mut ohne = treffer("Song", 0, "Bandcamp");
         ohne.duration_ms = None;
         let bandcamp = score_candidate(&ohne, "Song", Some(200_000), "Song")
             .expect("darf nicht ausgeschlossen werden");
 
-        // Ein nachweislich passender Treffer gewinnt trotzdem.
+        // a provably fitting hit wins all the same
         let genau = treffer("Song", 200, "YouTube");
         assert!(score_candidate(&genau, "Song", Some(200_000), "Song").unwrap() < bandcamp);
     }
 
     #[test]
     fn ein_fremder_titel_verliert_gegen_den_gesuchten() {
-        // Der Kern des Fehlers: ohne Textvergleich gewann allein die Quelle,
-        // und Bandcamp lieferte einen ganz anderen Song.
+        // the core of the bug: without a text comparison the source alone
+        // won, and bandcamp delivered an entirely different song
         let fremd = treffer("Ganz anderer Song", 200, "Bandcamp");
         let richtig = treffer("Tropical Island", 200, "YouTube");
 
@@ -2798,7 +2808,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 
     #[test]
     fn remix_eines_fremden_titels_landet_hinten() {
-        // Genau der gemeldete Fall: ein Remix eines anderen Songs.
+        // exactly the reported case: a remix of a different song
         let gesucht = "PA69 Tropical Island";
         let treffer_liste = [
             treffer("Irgendwas anderes (PA69 Remix)", 200, "Bandcamp"),
@@ -2811,8 +2821,8 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 
     #[test]
     fn ohne_brauchbare_laenge_bleibt_die_textnaehe_massgeblich() {
-        // Alle Treffer fallen durch die Längenprüfung, dann darf nicht
-        // einfach der erste genommen werden.
+        // every hit falls through the length check, and then the first one
+        // must not simply be taken
         let treffer_liste = [
             treffer("Ganz anderer Song", 600, "Bandcamp"),
             treffer("Tropical Island", 600, "YouTube"),
@@ -2824,7 +2834,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 
     #[test]
     fn kuenstler_im_kanalnamen_zaehlt_mit() {
-        // SoundCloud nennt den Künstler oft nur im Kanal, nicht im Titel.
+        // soundcloud often names the artist in the channel only, not in the title
         let mut vom_kuenstler = treffer("Tropical Island", 200, "SoundCloud");
         vom_kuenstler.uploader = Some("PA69".into());
         let fremd = treffer("Tropical Island", 200, "SoundCloud");
@@ -2837,7 +2847,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 
     #[test]
     fn passende_treffer_stehen_in_der_liste_oben() {
-        // So kam die Liste bisher an: reihum gemischt, ohne Ordnung.
+        // this is how the list used to arrive: mixed in turn, without order
         let mut liste = vec![
             treffer("Ganz anderer Song", 200, "Bandcamp"),
             treffer("Creep", 30, "SoundCloud"),
@@ -2847,9 +2857,9 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 
         let titel: Vec<&str> = liste.iter().map(|t| t.title.as_str()).collect();
         assert_eq!(titel[0], "Radiohead - Creep", "Reihenfolge: {titel:?}");
-        // Ein 30-Sekunden-Ausschnitt ist kein guter erster Vorschlag …
+        // a 30 second excerpt is no good first suggestion …
         assert_eq!(titel[1], "Creep", "Reihenfolge: {titel:?}");
-        // … ein fremder Titel aber ein noch schlechterer.
+        // … but a foreign track is a worse one
         assert_eq!(titel[2], "Ganz anderer Song", "Reihenfolge: {titel:?}");
     }
 
@@ -2861,15 +2871,15 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
             artist: "Julia".into(),
             ..Default::default()
         };
-        // Der beobachtete Fall: gesucht war „The Killers Mr. Brightside“.
+        // the observed case: the search was "The Killers Mr. Brightside"
         let warnung = intent_warning(Some("The Killers Mr. Brightside"), &julia, true)
             .expect("Fehlgriff blieb unbemerkt");
         assert!(warnung.contains("Mr. Brightside"), "Suche fehlt: {warnung}");
         assert!(warnung.contains("Julia"), "Ergebnis fehlt: {warnung}");
 
-        // Der zweite beobachtete Fall: Der Künstlername steckte im Titel,
-        // deshalb schienen alle gesuchten Wörter vorhanden, das Künstlerfeld
-        // trug aber den Kanalnamen.
+        // the second observed case: the artist name sat inside the title, so
+        // every searched word seemed present while the artist field carried
+        // the channel name
         let getarnt = TrackMetadata {
             title: "The Killers- Mr. Brightside".into(),
             artist: "Julia".into(),
@@ -2880,8 +2890,8 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
             "Künstler im Titel verdeckte den Fehlgriff"
         );
 
-        // Bestätigt die Metadatensuche den Fund, zählt das schwächere
-        // Anzeichen nicht mehr.
+        // where the metadata search confirms the find, the weaker sign no
+        // longer counts
         assert!(intent_warning(Some("The Killers Mr. Brightside"), &getarnt, false).is_none());
     }
 
@@ -2895,7 +2905,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
         };
         assert!(intent_warning(Some("The Killers Mr. Brightside"), &treffer, true).is_none());
 
-        // Gastkünstler zählen mit.
+        // guest artists count as well
         let mit_gast = TrackMetadata {
             title: "Money Trees".into(),
             artist: "Kendrick Lamar".into(),
@@ -2904,7 +2914,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
         };
         assert!(intent_warning(Some("Kendrick Lamar Money Trees Jay Rock"), &mit_gast, true).is_none());
 
-        // Ein einzelnes abweichendes Wort ist Alltag, kein Fehlgriff.
+        // a single differing word is everyday, not a misgrasp
         let fast = TrackMetadata {
             title: "Naked".into(),
             artist: "Yeat".into(),
@@ -2912,8 +2922,8 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
         };
         assert!(intent_warning(Some("Yeat Naked Official"), &fast, true).is_none());
 
-        // Wer nur den Titel sucht, kennt den Künstler vielleicht nicht,
-        // solange die Metadatensuche zustimmt, ist das kein Fehlgriff.
+        // whoever searches for the title alone may not know the artist. as
+        // long as the metadata search agrees, that is no misgrasp
         let nur_titel = TrackMetadata {
             title: "Wildberry Lillet".into(),
             artist: "Nina Chuba".into(),
@@ -2921,7 +2931,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
         };
         assert!(intent_warning(Some("Wildberry Lillet"), &nur_titel, false).is_none());
 
-        // Ohne Absicht gibt es nichts zu prüfen.
+        // without an intent there is nothing to check
         assert!(intent_warning(None, &fast, true).is_none());
         assert!(intent_warning(Some("   "), &fast, true).is_none());
     }
@@ -2940,11 +2950,11 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
             std::fs::write(ordner.join("datei.txt"), b"x").unwrap();
         }
 
-        // Mit sehr großer Altersgrenze bleibt alles stehen.
+        // with a very large age bound everything stays
         assert_eq!(super::cleanup_work_dir(&basis, Duration::from_secs(3600)), 0);
         assert!(alt.exists());
 
-        // Mit Grenze Null gilt der Auftragsordner als alt, die anderen nicht.
+        // with a bound of zero the job folder counts as old, the others do not
         assert_eq!(super::cleanup_work_dir(&basis, Duration::ZERO), 1);
         assert!(!alt.exists(), "Auftragsordner blieb liegen");
         assert!(behalten.exists(), "übernommene Titel wurden gelöscht");
@@ -2955,8 +2965,8 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 
     #[test]
     fn adressen_werden_ihrer_quelle_zugeordnet() {
-        // Grundlage des Mindestabstands: Zugriffe auf denselben Dienst
-        // müssen als solche erkannt werden, egal in welcher Schreibweise.
+        // the basis of the minimum distance: accesses to the same service
+        // have to be recognised as such, whatever the spelling
         use super::source_label;
         assert_eq!(source_label("https://music.youtube.com/watch?v=x"), "YouTube Music");
         assert_eq!(source_label("https://www.youtube.com/watch?v=x"), "YouTube");
@@ -2973,7 +2983,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
     async fn die_lastbremse_zieht_zugriffe_auseinander() {
         use std::time::Instant;
         let start = Instant::now();
-        // Zwei Zugriffe auf dieselbe Quelle nacheinander.
+        // two accesses to the same source in sequence
         {
             let _a = super::acquire_slot("Testquelle").await;
         }
@@ -2986,7 +2996,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
             start.elapsed()
         );
 
-        // Verschiedene Quellen bremsen sich nicht gegenseitig aus.
+        // different sources do not brake each other
         let start = Instant::now();
         let _c = super::acquire_slot("AndereQuelle").await;
         assert!(start.elapsed() < super::MIN_SPACING);
@@ -2995,13 +3005,13 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
     #[test]
     fn quellenangaben_haben_vorrang_vor_dem_videotitel() {
         let mut metadata = TrackMetadata {
-            // So schreibt yt-dlp es ohne Musikfelder in die Datei.
+            // this is how yt-dlp writes it into the file without music fields
             title: "Nina Chuba - WILDBERRY LILLET [Lyrics]".into(),
             artist: "xTheLYRICS".into(),
             ..Default::default()
         };
 
-        // 1) Mit Musikfeldern zählen nur diese.
+        // with music fields only those count
         let quelle = super::SourceMetadata::parse("Naked\u{1f}Yeat\u{1f}ADL\u{1f}2026\u{1f}3");
         apply_source_metadata(&mut metadata, &quelle, Some("Yeat"));
         assert_eq!(metadata.title, "Naked");
@@ -3013,9 +3023,10 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 
     #[test]
     fn upload_namen_im_musikfeld_werden_zerlegt() {
-        // SoundCloud füllt `track` mit dem Dateinamen des Uploads. Im großen
-        // Messlauf stand deshalb „Aphex Twin. Xtal.mp3“ als Songtitel in der
-        // Bibliothek, und die Metadatensuche fand dazu nichts.
+        // soundcloud fills `track` with the filename of the upload. in the
+        // large measured run "Aphex Twin. Xtal.mp3" therefore stood in the
+        // library as the song title, and the metadata search found nothing
+        // for it
         let mut metadata = TrackMetadata::default();
         let quelle = super::SourceMetadata::parse(
             "Aphex Twin – Xtal.mp3\u{1f}Aphex Twin\u{1f}NA\u{1f}NA\u{1f}NA",
@@ -3024,7 +3035,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
         assert_eq!(metadata.title, "Xtal");
         assert_eq!(metadata.artist, "Aphex Twin");
 
-        // Ohne Künstlerangabe genügt der Kanalname als Beleg.
+        // without an artist the channel name suffices as evidence
         let mut metadata = TrackMetadata::default();
         let quelle = super::SourceMetadata::parse(
             "Boards of Canada - Roygbiv\u{1f}NA\u{1f}NA\u{1f}NA\u{1f}NA",
@@ -3036,8 +3047,8 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 
     #[test]
     fn titel_mit_bindestrich_bleiben_unangetastet() {
-        // Ein Songtitel darf einen Trenner enthalten. Zerlegt wird nur, wenn
-        // die linke Hälfte nachweislich der Künstler ist.
+        // a song title may hold a separator. it is split only where the left
+        // half is provably the artist
         let mut metadata = TrackMetadata::default();
         let quelle = super::SourceMetadata::parse(
             "Sunday Bloody Sunday - Live\u{1f}U2\u{1f}NA\u{1f}NA\u{1f}NA",
@@ -3055,7 +3066,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
             ..Default::default()
         };
 
-        // Lyric-Kanäle liefern keine Musikfelder, alles steht im Titel.
+        // lyric channels deliver no music fields, everything stands in the title
         let leer = super::SourceMetadata::parse("NA\u{1f}NA\u{1f}NA\u{1f}NA\u{1f}NA");
         assert_eq!(leer, super::SourceMetadata::default());
 
@@ -3066,7 +3077,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 
     #[test]
     fn ausweichadressen_bleiben_beim_selben_titel() {
-        // „Yeat Naked“ wich bis auf „Back Home“ aus, ein anderer Song.
+        // "Yeat Naked" strayed all the way to "Back Home", a different song
         let plaene = super::plans_with_fallbacks(vec![
             treffer("Naked", 93, "YouTube Music"),
             treffer("Naked", 94, "YouTube"),
@@ -3082,8 +3093,8 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 
     #[test]
     fn derselbe_song_zaehlt_auch_mit_kuenstler_im_titel() {
-        // Quellen schreiben denselben Titel unterschiedlich, der Ersatz darf
-        // daran nicht scheitern, sonst bleibt ein DRM-Titel ohne Ausweg.
+        // sources write the same title differently, and the substitute must
+        // not fail on that, otherwise a drm track is left without a way out
         let plaene = super::plans_with_fallbacks(vec![
             treffer("BIRDS OF A FEATHER", 210, "SoundCloud"),
             treffer("Billie Eilish - BIRDS OF A FEATHER", 210, "YouTube"),
@@ -3095,21 +3106,21 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
             vec![plaene[1].url.clone()],
             "Schreibweise mit Künstler wurde nicht erkannt"
         );
-        // Eine andere Fassung ist kein Ersatz.
+        // a different version is no substitute
         assert!(!plaene[0].fallbacks.contains(&plaene[2].url));
     }
 
     #[test]
     fn gleicher_name_bei_anderer_laenge_ist_kein_ersatz() {
-        // „Naked“ gibt es von Yeat (93 s) und von Kraak & Smaak. Ohne
-        // Längenprüfung landete der falsche Song in der Bibliothek.
+        // "Naked" exists by yeat (93 s) and by kraak & smaak. without the
+        // length check the wrong song landed in the library
         let plaene = super::plans_with_fallbacks(vec![
             treffer("Naked", 93, "YouTube Music"),
             treffer("Naked", 214, "SoundCloud"),
         ]);
         assert!(plaene[0].fallbacks.is_empty(), "fremder Song als Ersatz");
 
-        // Ohne Laufzeit lässt sich nichts ausschließen. Bandcamp nennt keine.
+        // without a running time nothing can be ruled out, and bandcamp names none
         let mut ohne_laufzeit = treffer("Naked", 0, "Bandcamp");
         ohne_laufzeit.duration_ms = None;
         let plaene = super::plans_with_fallbacks(vec![
@@ -3124,8 +3135,8 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
 
     #[test]
     fn jeder_treffer_bekommt_die_uebrigen_als_ausweg() {
-        // Ohne das bleibt ein DRM-geschützter Treffer ein Sackgassen-Download.
-        // Derselbe Titel bei drei Quellen, genau der DRM-Fall.
+        // without it a drm-protected hit stays a dead end download.
+        // the same track at three sources, exactly the drm case
         let plaene = super::plans_with_fallbacks(vec![
             treffer("Song", 200, "SoundCloud"),
             treffer("Song", 200, "YouTube Music"),
@@ -3140,14 +3151,13 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
                 "ein Treffer weicht auf sich selbst aus"
             );
         }
-        // Die Reihenfolge der Auswege folgt der Bewertung.
+        // the order of the ways out follows the score
         assert_eq!(plaene[0].fallbacks[0], plaene[1].url);
     }
 
     #[test]
     fn youtube_music_steht_vor_den_uebrigen_quellen() {
-        // Dort liegt die Veröffentlichung des Künstlers, nicht die
-        // Nachbearbeitung eines Dritten.
+        // the artist's release lies there, not a third party's rework
         let reihenfolge = ["YouTube Music", "Bandcamp", "Audius", "SoundCloud", "YouTube"];
         let bewertungen: Vec<f64> = reihenfolge
             .iter()
@@ -3171,14 +3181,14 @@ ERROR: Postprocessing: module mutagen was not found. Please install using `pytho
         let message = explain_failure(stderr);
         assert!(message.contains("mutagen"), "unerwartet: {message}");
         assert!(message.contains("Cover"), "Zusammenhang fehlt: {message}");
-        // Kein Grund, hier von einer Sperre zu sprechen.
+        // no reason to speak of a block here
         assert!(!message.contains("403"), "falsch eingeordnet: {message}");
     }
 
     #[test]
     fn zusaetze_in_klammern_zaehlen_mit() {
-        // Der Messlauf zeigte: Fremdfassungen stehen fast immer in Klammern,
-        // und genau die blendet der Wortabgleich aus.
+        // the measured run showed foreign versions standing in brackets
+        // almost always, and those are exactly what the word comparison hides
         let fremd = [
             "Money Trees (Kolosal Cover)",
             "SICKO MODE (HYLO EDIT)",
@@ -3192,17 +3202,17 @@ ERROR: Postprocessing: module mutagen was not found. Please install using `pytho
             );
         }
 
-        // Nur ganze Wörter: „edit“ steckt auch in „Editors“ und „Credits“.
+        // whole words only: "edit" sits inside "Editors" and "Credits" too
         assert_eq!(version_penalty("Editors - Munich", "Munich"), 0.0);
         assert_eq!(version_penalty("Song (Credits Version)", "Song"), 0.0);
 
-        // Wer die Fassung sucht, bekommt sie.
+        // whoever searches for the version gets it
         assert_eq!(version_penalty("Song (Remix)", "Song (Remix)"), 0.0);
     }
 
     #[test]
     fn mehrheit_der_quellen_bestimmt_die_laenge() {
-        // Vier Quellen führen dieselbe Aufnahme, eine einen Ausschnitt.
+        // four sources carry the same recording, one an excerpt
         let liste = [
             treffer("Money Trees", 91, "SoundCloud"),
             treffer("Money Trees", 387, "YouTube"),
@@ -3215,14 +3225,14 @@ ERROR: Postprocessing: module mutagen was not found. Please install using `pytho
             "unerwartete Länge: {consensus} ms"
         );
 
-        // Zu wenige Angaben: lieber keine Aussage als eine schlechte.
+        // too few values: better no statement than a poor one
         assert!(consensus_duration_ms(&liste[..2]).is_none());
     }
 
     #[test]
     fn angeschnittene_uploads_verlieren_gegen_die_mehrheit() {
-        // Der gemeldete Fall aus dem Messlauf: ein 91-Sekunden-Upload stand
-        // über der vollständigen Aufnahme.
+        // the reported case from the measured run: a 91 second upload stood
+        // above the complete recording
         let mut liste = vec![
             treffer("Kendrick Lamar - Money Trees", 91, "SoundCloud"),
             treffer("Money Trees", 387, "YouTube"),
@@ -3240,8 +3250,8 @@ ERROR: Postprocessing: module mutagen was not found. Please install using `pytho
 
     #[test]
     fn gleichwertige_treffer_behalten_die_quellenmischung() {
-        // Bei gleicher Passgenauigkeit bleibt die Reihenfolge, wie sie das
-        // Mischen erzeugt hat, die Vielfalt geht nicht verloren.
+        // at equal fit the order stays as the mixing produced it, and the
+        // variety is not lost
         let mut liste = vec![
             treffer("Song", 200, "Bandcamp"),
             treffer("Song", 200, "Audius"),
@@ -3255,13 +3265,13 @@ ERROR: Postprocessing: module mutagen was not found. Please install using `pytho
 
     #[test]
     fn sammlungen_werden_nur_bei_echten_listen_aufgeklappt() {
-        // Einzelne Titel bleiben einzeln, auch mit Playlist-Parameter.
+        // single tracks stay single, playlist parameter or not
         assert!(!is_collection_url("https://www.youtube.com/watch?v=abc"));
         assert!(!is_collection_url("https://www.youtube.com/watch?v=abc&list=PL123"));
         assert!(!is_collection_url("https://youtu.be/abc"));
         assert!(!is_collection_url("https://soundcloud.com/kuenstler/titel"));
 
-        // Echte Sammlungen werden aufgeklappt.
+        // real collections are unfolded
         assert!(is_collection_url("https://www.youtube.com/playlist?list=PL123"));
         assert!(is_collection_url("https://soundcloud.com/kuenstler/sets/mein-album"));
         assert!(is_collection_url("https://band.bandcamp.com/album/mein-album"));

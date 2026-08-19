@@ -1,43 +1,43 @@
-//! Fehlermeldungen, die die Oberfläche übersetzen kann.
+//! error messages the ui is able to translate.
 //!
-//! Der Rust-Teil kennt die eingestellte Oberflächensprache nicht; sie steht
-//! im Frontend. Ein hier fertig zusammengesetzter Satz käme darum in jeder
-//! Sprache auf Deutsch an, und genau so war es: „Der Name darf nicht leer
-//! sein." stand auch über einer russischen Oberfläche.
+//! the rust side does not know the selected interface language, it lives in
+//! the frontend. a sentence assembled here would arrive in german whatever
+//! the language, and that is exactly what happened: "Der Name darf nicht leer
+//! sein." stood above a russian interface too.
 //!
-//! Statt eine eigene Fehlerart mit Kennungen durch `anyhow` zu fädeln, bleibt
-//! es beim bewährten Muster der App: **Der deutsche Text ist der Schlüssel.**
-//! Meldungen ohne Einsetzwerte brauchen deshalb gar keine Behandlung, ihr
-//! Wortlaut *ist* schon der Nachschlagebegriff.
+//! rather than threading a custom error type with ids through `anyhow`, this
+//! keeps to the pattern the app uses everywhere: the german text is the key.
+//! messages without interpolated values need no handling at all, their
+//! wording already is the lookup term.
 //!
-//! Bleibt das Problem der Werte. „Datei nicht gefunden: /pfad/zu/x.mp3" wäre
-//! als Ganzes ein Schlüssel, den keine Tabelle je enthielte. Darum reisen
-//! Vorlage und Werte getrennt, verbunden durch ein Zeichen, das in keinem
-//! Dateinamen und keiner Fehlerbeschreibung vorkommt.
+//! that leaves the values. "Datei nicht gefunden: /pfad/zu/x.mp3" as a whole
+//! would be a key no table could ever hold. template and values therefore
+//! travel separately, joined by a character that occurs in no filename and no
+//! error description.
 
 use std::fmt::Display;
 
-/// Trennt Vorlage und Einsetzwerte.
+/// separates template and interpolated values.
 ///
-/// U+001F ist das Trennzeichen für Datenfelder aus ASCII, ohne Darstellung
-/// und in keinem Text zu erwarten. Ein sichtbares Zeichen wie `|` stünde
-/// irgendwann in einem Dateinamen und zerlegte die Meldung an falscher Stelle.
+/// u+001f is the ascii unit separator, it has no rendering and is to be
+/// expected in no text. a visible character such as `|` would end up in a
+/// filename one day and split the message in the wrong place.
 pub const TRENNER: char = '\u{1f}';
 
-/// Trennt zwei eigenständige Meldungen voneinander.
+/// separates two independent messages.
 ///
-/// Manche Fehler bestehen aus zwei Sätzen mit verschiedenem Ursprung: die
-/// Erklärung von uns, dahinter die wörtliche Meldung der Quelle. Beide je für
-/// sich nachschlagbar zu halten ist besser, als den Nachsatz in jede der
-/// sieben Erklärungen hineinzuschreiben.
+/// some errors consist of two sentences of different origin: the explanation
+/// from here, followed by the verbatim message of the source. keeping both
+/// individually translatable beats writing the trailing sentence into each of
+/// the seven explanations.
 pub const ABSATZ: char = '\u{1e}';
 
-/// Hängt zwei gebaute Meldungen aneinander.
+/// joins two assembled messages.
 pub fn verketten(erste: String, zweite: String) -> String {
     format!("{erste}{ABSATZ}{zweite}")
 }
 
-/// Setzt Vorlage und Werte zu einer übertragbaren Meldung zusammen.
+/// assembles template and values into one transferable message.
 pub fn bauen(vorlage: &str, werte: &[&dyn Display]) -> String {
     let mut text = String::from(vorlage);
     for wert in werte {
@@ -47,11 +47,11 @@ pub fn bauen(vorlage: &str, werte: &[&dyn Display]) -> String {
     text
 }
 
-/// Baut eine übersetzbare Meldung.
+/// builds a translatable message.
 ///
-/// Die Platzhalter heißen `{0}`, `{1}` und so fort, nicht `{pfad}`: Andere
-/// Sprachen stellen den Satz um, und eine Nummer lässt sich verschieben, ein
-/// eingebauter Name nicht.
+/// the placeholders are called `{0}`, `{1}` and so on, not `{pfad}`: other
+/// languages reorder the sentence, and a number can be moved around where a
+/// built-in name cannot.
 ///
 /// ```ignore
 /// bail!(fehler!("Datei nicht gefunden: {0}", pfad.display()));
@@ -83,7 +83,7 @@ mod tests {
         let meldung = fehler!("Datei nicht gefunden: {0}", "/musik/a.mp3");
         assert_eq!(meldung, format!("Datei nicht gefunden: {{0}}{TRENNER}/musik/a.mp3"));
 
-        // Die Vorlage bleibt für sich nachschlagbar, das ist der ganze Zweck.
+        // the template stays translatable on its own, which is the entire point
         assert_eq!(meldung.split(TRENNER).next().unwrap(), "Datei nicht gefunden: {0}");
     }
 

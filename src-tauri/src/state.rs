@@ -1,3 +1,5 @@
+//! shared application state: database, paths and the running player.
+
 use crate::downloader::DownloadRegistry;
 use crate::player::PlayerHandle;
 use parking_lot::Mutex;
@@ -8,34 +10,34 @@ use std::sync::Arc;
 pub struct AppState {
     pub db: Mutex<Connection>,
     pub db_path: PathBuf,
-    /// Arbeitsverzeichnis für laufende Downloads.
+    /// working directory for downloads in flight.
     pub work_dir: PathBuf,
-    /// Musikordner des Systems. Rückfallebene für die Bibliothek.
+    /// music folder of the system, the fallback for the library.
     pub default_library_dir: PathBuf,
-    /// Stehen die Ordner fest, oder darf der Nutzer sie wählen?
+    /// whether the folders are fixed or the user picks them.
     ///
-    /// Auf dem Telefon stehen sie fest — aber nur, wenn Robify im
-    /// Gerätespeicher auch schreiben darf. Fehlt die Erlaubnis, arbeitet es
-    /// im eigenen Ordner, und dann wäre „deine Titel liegen in Robify“ eine
-    /// Unwahrheit. Darum das gemessene Ergebnis und nicht `cfg!`.
+    /// on a phone they are fixed, but only where robify may actually write to
+    /// the device storage. without that permission it works inside its own
+    /// folder, and then "your tracks are in Robify" would be untrue. hence a
+    /// measured result rather than `cfg!`.
     pub feste_orte: bool,
     pub player: PlayerHandle,
     pub downloads: Arc<DownloadRegistry>,
 }
 
 impl AppState {
-    /// Die Datenbank, mit einer Spur für den Fall, dass sie klemmt.
+    /// the database, with a trace for the case where it jams.
     ///
-    /// `parking_lot::Mutex` wartet ohne Ende und ohne ein Wort. Stirbt ein
-    /// Befehl, während er die Sperre hält — in einer Testfassung reicht dafür
-    /// ein Überlauf beim Rechnen —, bleibt sie für immer zu: Jeder weitere
-    /// Aufruf hängt, die Oberfläche wartet auf Antworten, die nie kommen,
-    /// und nichts davon steht irgendwo. Genau dieses Bild trat einmal auf und
-    /// ließ sich hinterher nicht nachstellen.
+    /// `parking_lot::Mutex` waits forever and without a word. if a command
+    /// dies while holding the lock, and in a debug build an arithmetic
+    /// overflow is enough for that, it stays shut for good: every further
+    /// call hangs, the ui waits for answers that never come, and none of it
+    /// is written down anywhere. exactly that picture appeared once and could
+    /// not be reproduced afterwards.
     ///
-    /// Behoben ist es damit nicht, aber sichtbar: Nach zehn Sekunden steht im
-    /// Systemprotokoll, dass die Datenbank blockiert, und beim nächsten Mal
-    /// gibt es etwas zu lesen statt nur eine stehende App.
+    /// this does not fix it, it makes it visible: after ten seconds the
+    /// system log says the database is blocked, and next time there is
+    /// something to read instead of just a standing app.
     pub fn db(&self) -> parking_lot::MutexGuard<'_, Connection> {
         match self.db.try_lock_for(std::time::Duration::from_secs(10)) {
             Some(griff) => griff,
@@ -49,7 +51,7 @@ impl AppState {
         }
     }
 
-    /// Ablage für selbst beschaffte Hilfsprogramme (yt-dlp).
+    /// storage for tools fetched by the app itself (yt-dlp).
     pub fn tools_dir(&self) -> PathBuf {
         self.db_path
             .parent()
@@ -57,10 +59,10 @@ impl AppState {
             .unwrap_or_else(|| PathBuf::from("werkzeuge"))
     }
 
-    /// Ablage für entfernte Dateien. Wird beim ersten Bedarf angelegt.
+    /// storage for removed files, created when first needed.
     ///
-    /// Liegt neben der Datenbank, nicht im Musikordner: Der Abgleich soll die
-    /// Dateien dort nicht als verwaist wieder einsammeln.
+    /// sits next to the database, not in the music folder: the reconciliation
+    /// pass must not pick these files up again as orphans.
     pub fn trash_dir(&self) -> PathBuf {
         self.db_path
             .parent()
@@ -68,12 +70,12 @@ impl AppState {
             .unwrap_or_else(|| PathBuf::from("papierkorb"))
     }
 
-    /// Zielordner der Bibliothek. Einstellung, sonst der Musikordner.
+    /// target folder of the library: the setting, otherwise the music folder.
     ///
-    /// Auf dem Telefon gibt es die Einstellung nicht: Dort steht der Ordner
-    /// fest. Eine früher einmal gesetzte Angabe wird bewusst übergangen — sie
-    /// zeigte auf einen Ort, den seit Android 11 kein Dateimanager mehr
-    /// sieht, und niemand käme an sie heran, um sie zu ändern.
+    /// on a phone the setting does not exist, the folder is fixed there. a
+    /// value set at some earlier point is deliberately ignored, it pointed at
+    /// a place no file manager has shown since android 11 and nobody could
+    /// reach it to change it.
     pub fn library_dir(&self) -> PathBuf {
         if self.feste_orte {
             return self.default_library_dir.clone();
@@ -90,7 +92,7 @@ impl AppState {
     }
 }
 
-/// Fehlerbrücke zwischen `anyhow` und den Tauri-Commands.
+/// error bridge between `anyhow` and the tauri commands.
 #[derive(Debug)]
 pub struct Error(pub String);
 
