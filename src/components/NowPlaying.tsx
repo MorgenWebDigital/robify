@@ -116,17 +116,22 @@ export function NowPlaying() {
    */
   const SICHTBAR = 8;
   const VORLAUF = 2;
-  const vorschau = (() => {
-    if (synchron.length === 0) return anfang;
-    const jetzt = Math.max(0, activeLineIndex(synchron, positionMs));
+  const vorschau: { text: string; jetzt: boolean }[] = (() => {
+    if (synchron.length === 0) {
+      return anfang.map((text) => ({ text, jetzt: false }));
+    }
+    const laufend = Math.max(0, activeLineIndex(synchron, positionMs));
     const start = Math.min(
-      Math.max(0, jetzt - VORLAUF),
+      Math.max(0, laufend - VORLAUF),
       Math.max(0, synchron.length - SICHTBAR),
     );
     return synchron
       .slice(start, start + SICHTBAR)
-      .map((zeile) => zeile.text)
-      .filter(Boolean);
+      .map((zeile, stelle) => ({
+        text: zeile.text,
+        jetzt: start + stelle === laufend,
+      }))
+      .filter((zeile) => zeile.text);
   })();
 
   // Beim Titelwechsel schließt sich der Vollbildtext: Er gehörte zum vorigen.
@@ -475,9 +480,27 @@ export function NowPlaying() {
                     <LyricsIcon size={14} />
                     {t("Songtext")}
                   </span>
+                  {/* Jede Zeile als eigenes Stück, damit die laufende in der
+                      Akzentfarbe stehen kann. Die Umbrüche bleiben eigene
+                      Zeichen: Die Kachel begrenzt ihre Höhe über
+                      `-webkit-line-clamp`, und das zählt Zeilen im Textfluss,
+                      keine Blöcke. */}
                   <span className="mt-2 block text-base leading-snug">
                     {vorschau.length > 0
-                      ? vorschau.join("\n")
+                      ? vorschau.map((zeile, stelle) => (
+                          <span
+                            key={`${stelle}-${zeile.text}`}
+                            className={zeile.jetzt ? "font-semibold" : ""}
+                            style={
+                              zeile.jetzt
+                                ? { color: "var(--accent)" }
+                                : undefined
+                            }
+                          >
+                            {stelle > 0 ? "\n" : ""}
+                            {zeile.text}
+                          </span>
+                        ))
                       : t("Noch keiner hinterlegt.")}
                   </span>
                 </button>
