@@ -9,7 +9,23 @@ import { ArtistAvatar } from "./ArtistEditor";
 import { ChevronLeftIcon, PlaylistIcon, PlayIcon } from "./Icons";
 import type { Album, Artist, Playlist, WeeklyMixSummary } from "../types";
 
-export function AlbumCard({ album }: { album: Album }) {
+/**
+ * Ein Release als Kachel.
+ *
+ * `ohneAbspielen` nimmt das Dreieck vom Cover. Auf einem Berührungsbildschirm
+ * gibt es kein Zeigen, das etwas hervorholen könnte — dort steht das Dreieck
+ * ständig auf dem Bild und verdeckt genau die Ecke, in der bei einem Cover
+ * meist noch etwas zu sehen ist. Auf der Startseite, wo drei Kacheln nur ein
+ * Ausschnitt sind und man ohnehin weitergeht, wiegt das schwerer als der
+ * gesparte Antippen.
+ */
+export function AlbumCard({
+  album,
+  ohneAbspielen = false,
+}: {
+  album: Album;
+  ohneAbspielen?: boolean;
+}) {
   const play = async (event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -34,14 +50,16 @@ export function AlbumCard({ album }: { album: Album }) {
           className="aspect-square w-full"
           rounded="rounded-lg"
         />
-        <button
-          type="button"
-          onClick={play}
-          aria-label={t("{0} abspielen", album.title)}
-          className="accent-bg absolute end-2 bottom-2 grid h-10 w-10 translate-y-2 place-items-center rounded-full opacity-0 shadow-xl transition group-hover:translate-y-0 group-hover:opacity-100"
-        >
-          <PlayIcon size={18} className="ml-0.5" />
-        </button>
+        {!ohneAbspielen && (
+          <button
+            type="button"
+            onClick={play}
+            aria-label={t("{0} abspielen", album.title)}
+            className="accent-bg absolute end-2 bottom-2 grid h-10 w-10 translate-y-2 place-items-center rounded-full opacity-0 shadow-xl transition group-hover:translate-y-0 group-hover:opacity-100"
+          >
+            <PlayIcon size={18} className="ml-0.5" />
+          </button>
+        )}
       </div>
       <p className="mt-3 truncate text-sm font-medium" title={album.title}>
         {album.title}
@@ -61,7 +79,13 @@ export function AlbumCard({ album }: { album: Album }) {
  * Steht in den Karten und nicht auf der Startseite, weil zwei Seiten sie
  * zeigen: die Startseite als Vorschau, die Übersicht als vollständige Liste.
  */
-export function MixKachel({ mix }: { mix: WeeklyMixSummary }) {
+export function MixKachel({
+  mix,
+  ohneAbspielen = false,
+}: {
+  mix: WeeklyMixSummary;
+  ohneAbspielen?: boolean;
+}) {
   return (
     <Link
       to={`/mix/${mix.offset}`}
@@ -73,9 +97,11 @@ export function MixKachel({ mix }: { mix: WeeklyMixSummary }) {
           name={mixName(mix)}
           size="aspect-square w-full"
         />
-        <span className="accent-bg absolute end-2 bottom-2 grid h-10 w-10 translate-y-2 place-items-center rounded-full opacity-0 shadow-xl transition group-hover:translate-y-0 group-hover:opacity-100">
-          <PlayIcon size={18} className="ml-0.5" />
-        </span>
+        {!ohneAbspielen && (
+          <span className="accent-bg absolute end-2 bottom-2 grid h-10 w-10 translate-y-2 place-items-center rounded-full opacity-0 shadow-xl transition group-hover:translate-y-0 group-hover:opacity-100">
+            <PlayIcon size={18} className="ml-0.5" />
+          </span>
+        )}
       </div>
       <p className="mt-3 truncate text-sm font-medium">{mixName(mix)}</p>
       <p className="truncate text-xs text-mute">

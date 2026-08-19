@@ -126,7 +126,7 @@ export function Home() {
           {mixes.length > 0 ? (
             <Grid vorschau>
               {mixes.slice(0, VORSCHAU).map((mix) => (
-                <MixKachel key={mix.weekKey} mix={mix} />
+                <MixKachel key={mix.weekKey} mix={mix} ohneAbspielen />
               ))}
             </Grid>
           ) : (
@@ -153,7 +153,7 @@ export function Home() {
               </SectionTitle>
               <Grid vorschau>
                 {albums.slice(0, VORSCHAU).map((album) => (
-                  <AlbumCard key={album.id} album={album} />
+                  <AlbumCard key={album.id} album={album} ohneAbspielen />
                 ))}
               </Grid>
             </>
