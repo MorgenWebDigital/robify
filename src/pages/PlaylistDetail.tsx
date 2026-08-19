@@ -196,9 +196,9 @@ export function PlaylistDetail() {
               ` · ${formatDuration(playlist.durationMs)}`}
           </p>
 
-          {/* Bearbeiten und Löschen links, Abspielen rechts außen: Was die
-              Playlist verwaltet, steht beieinander, was sie hört, am anderen
-              Ende. `ms-auto` nimmt den freien Platz davor auf.
+          {/* Erst was die Playlist verwaltet, dann was sie hört, alle vier
+              dicht beieinander. Ohne Lücke vor dem Abspielen: Sie schob es
+              zwar an die Kante, riss die Reihe dabei aber auseinander.
 
               Alle klein: Bei Enge fallen sie auf ihr Zeichen zusammen, wie in
               der Bibliothek. Vier beschriftete Knöpfe nebeneinander passen auf
@@ -240,7 +240,7 @@ export function PlaylistDetail() {
               onClick={() => play(false)}
               disabled={!tracks.length}
               title={t("Abspielen")}
-              className="pill-btn is-raised is-accent aktionsknopf aktionsknopf-kurz ms-auto"
+              className="pill-btn is-raised is-accent aktionsknopf aktionsknopf-kurz"
             >
               <PlayIcon size={16} />
               <span className="beschriftung truncate">{t("Abspielen")}</span>
