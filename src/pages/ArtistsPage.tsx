@@ -39,11 +39,13 @@ export function ArtistsPage() {
         subtitle={plural(artists?.length ?? 0, "Künstler in deiner Bibliothek")}
       />
 
-      {/* Die Suche als Knopf am Ende der Reihe, wie in der Bibliothek. Über
-          die ganze Breite gezogen nahm sie auf einem Telefon eine Zeile für
-          sich, bevor der erste Künstler zu sehen war. */}
-      <div className="aktionsreihe mb-5 justify-end gap-3">
-        <div className="suchfeld-kurz relative">
+      {/* Über die ganze Breite, anders als in der Bibliothek.
+          Dort steht die Suche zwischen Knöpfen und muss sich zum Kreis
+          zusammenfalten, damit die Reihe nicht überläuft. Hier steht sie
+          allein: Zusammengefaltet gäbe sie den Platz, den sie spart, an
+          niemanden ab — es bliebe ein Kreis in einer leeren Zeile. */}
+      <div className="aktionsreihe mb-5 gap-3">
+        <div className="aktionsfeld relative flex-1">
           <SearchIcon
             size={16}
             className="pointer-events-none absolute top-1/2 start-3.5 -translate-y-1/2 text-mute"
