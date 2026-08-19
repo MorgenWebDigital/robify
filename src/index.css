@@ -598,6 +598,50 @@ h4 {
  * abzuschneiden. Er läuft in die Seitenfarbe, nicht in eine Fläche: Die
  * Beschreibung steht frei auf der Seite.
  */
+/*
+ * Kachel in der Hauptfarbe, für den Songtext unter der Zeitleiste.
+ *
+ * Nicht ein Farbton, sondern zwei: Der Akzent wird zweimal verschieden stark
+ * in die Fläche gemischt und läuft schräg von der einen in die andere Ecke.
+ * Ein flacher Akzentblock läse sich als Hauptaktion — davon gibt es hier
+ * schon eine, den Abspielknopf. Die Mischung trägt die Farbe, ohne sie zu
+ * behaupten, und nimmt den Akzent des Nutzers an, welcher es auch ist.
+ *
+ * Die Schrift bleibt die gewöhnliche: Auf einer nur angemischten Fläche liest
+ * sie sich besser als eine eigens aufgehellte, und sie folgt dem Erscheinungs-
+ * bild mit.
+ */
+@utility kachel-akzent {
+  border-radius: 1rem;
+  color: var(--text);
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--accent) 34%, var(--surface)),
+    color-mix(in srgb, var(--accent) 10%, var(--surface))
+  );
+  box-shadow:
+    0 2px 0 0 color-mix(in srgb, var(--accent) 30%, #000),
+    0 6px 12px -6px rgba(0, 0, 0, 0.45);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+
+  /* Zwei Zeilen Vorschau, mehr nicht: Die Kachel ist ein Hinweis, keine
+     Textfläche. Der ganze Text steht ein Antippen weiter. */
+  & > span:last-child {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    white-space: pre-line;
+  }
+
+  &:active {
+    transform: translateY(2px);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
 @utility mehr-anzeigen {
   position: absolute;
   inset-inline-end: 0;
@@ -1145,11 +1189,33 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 @utility lyrics-stage {
   perspective: 900px;
   perspective-origin: 50% 40%;
+  /* Die hervorgehobene Zeile steht vor der Fläche und ragt dabei etwas über
+     deren Rand hinaus. Ohne diese Zeile rechnet der Browser daraus einen
+     waagerechten Rollbalken. Senkrecht wird weiter gerollt. */
+  overflow-x: hidden;
 }
 
 @utility lyrics-plane {
-  transform: rotateX(12deg) scale(0.97);
-  transform-origin: 50% 0%;
+  /* Luft für die Zeile, die sich heraushebt: Sie wird dabei gut fünf Prozent
+     breiter und stieße sonst an den Rand. */
+  padding-inline: 4%;
+
+  /* Ohne Neigung.
+   *
+   * Hier stand `rotateX(12deg)`, und es kippte die ganze Liste, nicht den
+   * sichtbaren Ausschnitt. Je weiter eine Zeile vom oberen Rand entfernt ist,
+   * desto näher kommt sie durch die Perspektive — nachgemessen war die Fläche
+   * eines langen Textes 1326 Pixel breit in einem 354 Pixel schmalen Rahmen,
+   * fast das Vierfache. Sichtbar wurde das als angeschnittene Zeilen: „ld you“
+   * statt „Told you“, „pe to God“ statt „Hope to God“.
+   *
+   * Auf dem Rechner war es dasselbe, nur fällt es in der breiten Spalte erst
+   * weiter unten auf. Ein kleinerer Winkel verschöbe das Problem bloß, denn
+   * die Verzerrung wächst mit der Länge des Textes und die ist nicht
+   * begrenzt.
+   *
+   * Der Raum bleibt: Die gerade gesungene Zeile hebt sich weiter heraus, und
+   * das ist begrenzt — 46 Pixel bei 900 Pixel Tiefe, also fünf Prozent. */
   transform-style: preserve-3d;
   /* Nur ein Hauch an den Enden: Der Verlauf soll das Abschneiden mildern,
      nicht ganze Zeilen schlucken. Vorher fraß er oben 14 % und unten 22 % der
@@ -1169,7 +1235,8 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lyrics-plane,
+  /* Nur noch die hervorgehobene Zeile: Die Fläche selbst trägt keine
+     Verwandlung mehr, siehe `lyrics-plane`. */
   .lyrics-active {
     transform: none;
   }
