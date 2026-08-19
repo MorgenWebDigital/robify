@@ -8,6 +8,7 @@ import { Cover } from "./Cover";
 import { CloseIcon, PlayingBars, TrashIcon } from "./Icons";
 import { Button } from "./Modal";
 import { useAusblenden } from "../lib/ausblenden";
+import { useSchliesstBeimSeitenwechsel } from "../lib/seitenwechsel";
 
 /** Muss zur Dauer von `.animate-slide-out` im Stylesheet passen. */
 const AUSFAHREN_MS = 240;
@@ -21,6 +22,7 @@ export function QueuePanel() {
   const orderPos = usePlayer((s) => s.orderPos);
   const { queueOpen, setQueueOpen } = useUi();
   const { sichtbar, schliesst } = useAusblenden(queueOpen, AUSFAHREN_MS);
+  useSchliesstBeimSeitenwechsel(setQueueOpen);
 
   /**
    * Der laufende Titel und alles danach, in der Reihenfolge des Abspielens.

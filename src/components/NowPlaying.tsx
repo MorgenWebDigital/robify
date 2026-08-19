@@ -25,6 +25,7 @@ import {
 import type { Track } from "../types";
 import { LyricsPanel } from "./LyricsPanel";
 import { useAusblenden } from "../lib/ausblenden";
+import { useSchliesstBeimSeitenwechsel } from "../lib/seitenwechsel";
 
 /** Muss zur Dauer von `.animate-stage-out` im Stylesheet passen. */
 const ZU_MS = 280;
@@ -51,6 +52,7 @@ export function NowPlaying() {
   } = useUi();
   const refreshLibrary = useLibrary((s) => s.refresh);
   const { sichtbar, schliesst } = useAusblenden(nowPlayingOpen, ZU_MS);
+  useSchliesstBeimSeitenwechsel(setNowPlayingOpen);
   /* Nur am Telefon: Dort steht der Text nicht daneben, sondern hinter einer
      Kachel. Am Rechner ist er ohnehin die ganze Zeit zu sehen. */
   const [textOffen, setTextOffen] = useState(false);
