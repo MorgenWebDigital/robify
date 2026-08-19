@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { t } from "../lib/i18n";
 import { Link } from "react-router-dom";
 import { api, errorMessage } from "../lib/api";
@@ -92,6 +92,58 @@ export function TrackList({
       );
   };
 
+  /*
+   * Wischen an einer Zeile.
+   *
+   * Nur eine Zeile lässt sich zugleich wischen, darum genügt ein Zustand für
+   * die ganze Liste statt einer je Zeile.
+   *
+   * `gewischt` verhindert, dass der Finger nach dem Wischen noch den Titel
+   * startet: Der Browser schickt nach einer Berührung ohnehin ein Klick-
+   * Ereignis, und das trifft dieselbe Zeile.
+   */
+  const [wisch, setWisch] = useState<{ index: number; dx: number } | null>(
+    null,
+  );
+  const beginn = useRef<{ x: number; y: number; index: number } | null>(null);
+  const gewischt = useRef(false);
+
+  /** Ab hier gilt es als Wisch und nicht mehr als Zittern beim Tippen. */
+  const SCHWELLE = 72;
+
+  const wischStart = (index: number) => (event: React.TouchEvent) => {
+    const finger = event.touches[0];
+    beginn.current = { x: finger.clientX, y: finger.clientY, index };
+    gewischt.current = false;
+  };
+
+  const wischZug = (event: React.TouchEvent) => {
+    const start = beginn.current;
+    if (!start) return;
+    const finger = event.touches[0];
+    const dx = finger.clientX - start.x;
+    const dy = finger.clientY - start.y;
+    // Senkrecht gewinnt: Sonst bliebe die Liste beim Blättern hängen, sobald
+    // der Daumen dabei ein wenig zur Seite wandert.
+    if (Math.abs(dx) <= Math.abs(dy) || Math.abs(dx) < 8) return;
+    gewischt.current = true;
+    setWisch({ index: start.index, dx });
+  };
+
+  const wischEnde = (track: Track) => () => {
+    const stand = wisch;
+    beginn.current = null;
+    setWisch(null);
+    if (!stand || Math.abs(stand.dx) < SCHWELLE) return;
+
+    if (stand.dx > 0) {
+      void api.queueAdd([track.id]);
+      notify(t("„{0}“ ans Ende der Warteschlange", track.title), "success");
+    } else {
+      openAddToPlaylist([track.id]);
+    }
+  };
+
   const toggleFavorite = async (track: Track) => {
     try {
       await api.setFavorite(track.id, !track.favorite);
@@ -173,13 +225,20 @@ export function TrackList({
                * Knöpfe und Links, und die dürfen nicht in einem Knopf stehen.
                * Über die Tastatur führt weiter der Titel hinein.
                */
+              onTouchStart={wischStart(index)}
+              onTouchMove={wischZug}
+              onTouchEnd={wischEnde(track)}
               onClick={(event) => {
                 if ((event.target as HTMLElement).closest("a, button")) return;
+                // Nach einem Wisch kommt trotzdem ein Klick; der darf den
+                // Titel nicht auch noch starten.
+                if (gewischt.current) {
+                  gewischt.current = false;
+                  return;
+                }
                 playAt(index);
               }}
-              className={`group relative hover:z-20 grid cursor-pointer grid-cols-[2.25rem_1fr_auto] items-center gap-3 rounded-lg px-2 py-1.5 transition sm:grid-cols-[2.25rem_minmax(0,3fr)_minmax(0,2fr)_auto] ${
-                isCurrent ? "raised-row" : "hover:bg-ink-800"
-              } ${isHighlighted ? "bg-ink-800 ring-2 ring-[var(--accent)]" : ""} ${
+              className={`group relative hover:z-20 cursor-pointer overflow-hidden rounded-lg ${
                 zieht === index ? "opacity-40" : ""
               }`}
             >
@@ -202,179 +261,212 @@ export function TrackList({
                     style={{ background: "var(--accent)" }}
                   />
                 )}
-              <button
-                type="button"
-                onClick={() => playAt(index)}
-                aria-label={t("{0} abspielen", track.title)}
-                className="grid h-9 w-9 place-items-center rounded-md text-mute"
-              >
-                {isCurrent && playing ? (
-                  <PlayingBars />
-                ) : (
-                  <>
-                    <span className="text-xs tabular-nums group-hover:hidden">
-                      {albumNumbering
-                        ? (track.trackNo ?? index + 1)
-                        : index + 1}
-                    </span>
-                    <PlayIcon
-                      size={16}
-                      className="hidden text-fg group-hover:block"
-                    />
-                  </>
-                )}
-              </button>
 
-              <div className="flex min-w-0 items-center gap-3">
-                {showCover && (
-                  <Cover
-                    src={albumCover(track.albumId)}
-                    alt={track.albumTitle}
-                    seed={track.albumId}
-                    className="h-10 w-10 shrink-0"
-                    rounded="rounded-md"
+              {/* Was das Wischen bewirkt, während der Finger noch liegt.
+                  Außerhalb des wandernden Inhalts, sonst schöbe sie sich mit
+                  ihm aus dem Bild. */}
+              {wisch?.index === index && (
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 flex items-center justify-between px-4 text-mute"
+                >
+                  <QueueIcon
+                    size={18}
+                    className={wisch.dx > 0 ? "" : "opacity-0"}
                   />
-                )}
-                <div className="min-w-0">
-                  {/* Der Titel startet ihn.
+                  <PlaylistIcon
+                    size={18}
+                    className={wisch.dx < 0 ? "" : "opacity-0"}
+                  />
+                </span>
+              )}
+
+              <div
+                className={`grid items-center gap-3 rounded-lg px-2 py-1.5 grid-cols-[2.25rem_1fr_auto] sm:grid-cols-[2.25rem_minmax(0,3fr)_minmax(0,2fr)_auto] ${
+                  isCurrent ? "raised-row" : "group-hover:bg-ink-800"
+                } ${isHighlighted ? "bg-ink-800 ring-2 ring-[var(--accent)]" : ""}`}
+                style={
+                  wisch?.index === index
+                    ? { transform: `translateX(${wisch.dx}px)` }
+                    : // Nur beim Zurückschnellen weich: Während der Finger
+                      // liegt, soll die Zeile ihm ohne Verzögerung folgen.
+                      { transition: "transform 0.18s ease" }
+                }
+              >
+                <button
+                  type="button"
+                  onClick={() => playAt(index)}
+                  aria-label={t("{0} abspielen", track.title)}
+                  className="grid h-9 w-9 place-items-center rounded-md text-mute"
+                >
+                  {isCurrent && playing ? (
+                    <PlayingBars />
+                  ) : (
+                    <>
+                      <span className="text-xs tabular-nums group-hover:hidden">
+                        {albumNumbering
+                          ? (track.trackNo ?? index + 1)
+                          : index + 1}
+                      </span>
+                      <PlayIcon
+                        size={16}
+                        className="hidden text-fg group-hover:block"
+                      />
+                    </>
+                  )}
+                </button>
+
+                <div className="flex min-w-0 items-center gap-3">
+                  {showCover && (
+                    <Cover
+                      src={albumCover(track.albumId)}
+                      alt={track.albumTitle}
+                      seed={track.albumId}
+                      className="h-10 w-10 shrink-0"
+                      rounded="rounded-md"
+                    />
+                  )}
+                  <div className="min-w-0">
+                    {/* Der Titel startet ihn.
                       Der Knopf links tut das auch, zeigt sein Play-Symbol aber
                       erst beim Überfahren — auf einem Telefon also nie: Dort
                       stand nur die Nummer, und dass sie tippbar ist, sah
                       niemand. Den Titel anzutippen ist die Geste, die man
                       ohnehin versucht. Er steht neben den Künstlerlinks, nicht
                       um sie herum, sonst läge ein Knopf über einem Link. */}
-                  <button
-                    type="button"
-                    onClick={() => playAt(index)}
-                    className="block w-full truncate text-start text-sm font-medium"
-                    style={isCurrent ? { color: "var(--accent)" } : undefined}
-                    title={track.title}
-                  >
-                    {track.title}
-                  </button>
-                  {showArtist && <ArtistLinks track={track} />}
-                </div>
-              </div>
-
-              {showAlbum && (
-                <Link
-                  draggable={false}
-                  to={`/album/${track.albumId}`}
-                  className="hidden truncate text-sm text-mute transition hover:text-fg hover:underline sm:block"
-                  title={track.albumTitle}
-                >
-                  {track.albumTitle}
-                </Link>
-              )}
-
-              {/* Laufzeit, dann die Handgriffe: Zu einer Playlist hinzufügen ist
-                der häufigere als das Favorisieren, das bleibt im Menü. Beide
-                Knöpfe stehen erst beim Überfahren der Zeile heraus. */}
-              <div className="flex items-center gap-1.5">
-                <span className="me-1 text-xs tabular-nums text-mute">
-                  {formatTime(track.durationMs)}
-                </span>
-                <span className="hidden sm:block">
-                  <button
-                    type="button"
-                    onClick={() => openAddToPlaylist([track.id])}
-                    aria-label={t(
-                      "{0} zu einer Playlist hinzufügen",
-                      track.title,
-                    )}
-                    className="pill-btn is-lift h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
-                  >
-                    <PlusIcon size={16} />
-                  </button>
-                </span>
-                <Menu
-                  hover
-                  items={[
-                    {
-                      label: t("Als Nächstes spielen"),
-                      icon: <QueueIcon size={16} />,
-                      // Der Hinweis nennt beim Namen, was geschah: Die
-                      // beiden Einträge sehen einander ähnlich, und ohne
-                      // Rückmeldung ist am Fenster nichts zu sehen, wenn die
-                      // Warteschlange gerade nicht ausgefahren ist.
-                      onSelect: () => {
-                        void api.queuePlayNext([track.id]);
-                        notify(
-                          t("„{0}“ läuft als Nächstes", track.title),
-                          "success",
-                        );
-                      },
-                    },
-                    {
-                      label: t("Zur Warteschlange"),
-                      icon: <PlusIcon size={16} />,
-                      onSelect: () => {
-                        void api.queueAdd([track.id]);
-                        notify(
-                          t("„{0}“ ans Ende der Warteschlange", track.title),
-                          "success",
-                        );
-                      },
-                    },
-                    {
-                      label: t("Zu Playlist hinzufügen"),
-                      icon: <PlaylistIcon size={16} />,
-                      onSelect: () => openAddToPlaylist([track.id]),
-                    },
-                    {
-                      label: track.favorite
-                        ? t("Aus Favoriten entfernen")
-                        : t("Zu Favoriten"),
-                      icon: <HeartIcon size={16} filled={track.favorite} />,
-                      onSelect: () => void toggleFavorite(track),
-                    },
-                    {
-                      label: t("Metadaten bearbeiten"),
-                      icon: <PencilIcon size={16} />,
-                      onSelect: () => editTrack(track),
-                    },
-                    ...(onRemove
-                      ? [
-                          {
-                            label: removeLabel,
-                            icon: <TrashIcon size={16} />,
-                            onSelect: () => onRemove(track),
-                          },
-                        ]
-                      : []),
-                    {
-                      label: t("Löschen"),
-                      icon: <TrashIcon size={16} />,
-                      tone: "danger" as const,
-                      onSelect: () => {
-                        // Wer die Rückfrage abgestellt hat, will sie auch nicht
-                        // beim nächsten Mal sehen. Rückgängig geht trotzdem.
-                        if (settings && !settings.confirmDelete)
-                          void deleteTrack(track);
-                        else setPendingDelete(track);
-                      },
-                    },
-                  ]}
-                  trigger={({ open: menuOffen, toggle: toggleMenu }) => (
                     <button
                       type="button"
-                      onClick={toggleMenu}
-                      aria-expanded={menuOffen}
-                      aria-label={t("Weitere Aktionen")}
-                      /* Solange die Liste offen steht, bleibt der Knopf stehen
+                      onClick={() => playAt(index)}
+                      className="block w-full truncate text-start text-sm font-medium"
+                      style={isCurrent ? { color: "var(--accent)" } : undefined}
+                      title={track.title}
+                    >
+                      {track.title}
+                    </button>
+                    {showArtist && <ArtistLinks track={track} />}
+                  </div>
+                </div>
+
+                {showAlbum && (
+                  <Link
+                    draggable={false}
+                    to={`/album/${track.albumId}`}
+                    className="hidden truncate text-sm text-mute transition hover:text-fg hover:underline sm:block"
+                    title={track.albumTitle}
+                  >
+                    {track.albumTitle}
+                  </Link>
+                )}
+
+                {/* Laufzeit, dann die Handgriffe: Zu einer Playlist hinzufügen ist
+                der häufigere als das Favorisieren, das bleibt im Menü. Beide
+                Knöpfe stehen erst beim Überfahren der Zeile heraus. */}
+                <div className="flex items-center gap-1.5">
+                  <span className="me-1 text-xs tabular-nums text-mute">
+                    {formatTime(track.durationMs)}
+                  </span>
+                  <span className="hidden sm:block">
+                    <button
+                      type="button"
+                      onClick={() => openAddToPlaylist([track.id])}
+                      aria-label={t(
+                        "{0} zu einer Playlist hinzufügen",
+                        track.title,
+                      )}
+                      className="pill-btn is-lift h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+                    >
+                      <PlusIcon size={16} />
+                    </button>
+                  </span>
+                  <Menu
+                    hover
+                    items={[
+                      {
+                        label: t("Als Nächstes spielen"),
+                        icon: <QueueIcon size={16} />,
+                        // Der Hinweis nennt beim Namen, was geschah: Die
+                        // beiden Einträge sehen einander ähnlich, und ohne
+                        // Rückmeldung ist am Fenster nichts zu sehen, wenn die
+                        // Warteschlange gerade nicht ausgefahren ist.
+                        onSelect: () => {
+                          void api.queuePlayNext([track.id]);
+                          notify(
+                            t("„{0}“ läuft als Nächstes", track.title),
+                            "success",
+                          );
+                        },
+                      },
+                      {
+                        label: t("Zur Warteschlange"),
+                        icon: <PlusIcon size={16} />,
+                        onSelect: () => {
+                          void api.queueAdd([track.id]);
+                          notify(
+                            t("„{0}“ ans Ende der Warteschlange", track.title),
+                            "success",
+                          );
+                        },
+                      },
+                      {
+                        label: t("Zu Playlist hinzufügen"),
+                        icon: <PlaylistIcon size={16} />,
+                        onSelect: () => openAddToPlaylist([track.id]),
+                      },
+                      {
+                        label: track.favorite
+                          ? t("Aus Favoriten entfernen")
+                          : t("Zu Favoriten"),
+                        icon: <HeartIcon size={16} filled={track.favorite} />,
+                        onSelect: () => void toggleFavorite(track),
+                      },
+                      {
+                        label: t("Metadaten bearbeiten"),
+                        icon: <PencilIcon size={16} />,
+                        onSelect: () => editTrack(track),
+                      },
+                      ...(onRemove
+                        ? [
+                            {
+                              label: removeLabel,
+                              icon: <TrashIcon size={16} />,
+                              onSelect: () => onRemove(track),
+                            },
+                          ]
+                        : []),
+                      {
+                        label: t("Löschen"),
+                        icon: <TrashIcon size={16} />,
+                        tone: "danger" as const,
+                        onSelect: () => {
+                          // Wer die Rückfrage abgestellt hat, will sie auch nicht
+                          // beim nächsten Mal sehen. Rückgängig geht trotzdem.
+                          if (settings && !settings.confirmDelete)
+                            void deleteTrack(track);
+                          else setPendingDelete(track);
+                        },
+                      },
+                    ]}
+                    trigger={({ open: menuOffen, toggle: toggleMenu }) => (
+                      <button
+                        type="button"
+                        onClick={toggleMenu}
+                        aria-expanded={menuOffen}
+                        aria-label={t("Weitere Aktionen")}
+                        /* Solange die Liste offen steht, bleibt der Knopf stehen
                          und leuchtet. Vorher verblasste er, sobald der Zeiger
                          die Zeile verließ, die Liste hing dann ohne sichtbaren
                          Auslöser in der Luft und sah aus wie ein Fehler. */
-                      className={`pill-btn is-lift h-8 w-8 transition-opacity ${
-                        menuOffen
-                          ? "is-on opacity-100"
-                          : "opacity-0 group-hover:opacity-100"
-                      }`}
-                    >
-                      <DotsIcon size={16} />
-                    </button>
-                  )}
-                />
+                        className={`pill-btn is-lift h-8 w-8 transition-opacity ${
+                          menuOffen
+                            ? "is-on opacity-100"
+                            : "opacity-0 group-hover:opacity-100"
+                        }`}
+                      >
+                        <DotsIcon size={16} />
+                      </button>
+                    )}
+                  />
+                </div>
               </div>
             </li>
           );

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { t } from "../lib/i18n";
 import { api, errorMessage, fallback } from "../lib/api";
@@ -126,6 +126,33 @@ export function NowPlaying() {
     }
   };
 
+  /*
+   * Nach unten wischen legt den Titel zu.
+   *
+   * Nur von ganz oben aus: Weiter unten ist derselbe Zug das Blättern durch
+   * Songtext und Künstler, und der darf nicht bei jeder Bewegung die Ansicht
+   * schließen. Deshalb wird beim Aufsetzen des Fingers gemerkt, ob die Spalte
+   * schon oben stand.
+   */
+  const zugBeginn = useRef<{ y: number; oben: boolean } | null>(null);
+  /** Ab hier ist es ein Zuklappen und nicht mehr ein Verrutschen. */
+  const ZUG_SCHWELLE = 90;
+
+  const zugStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    zugBeginn.current = {
+      y: event.touches[0].clientY,
+      oben: event.currentTarget.scrollTop <= 0,
+    };
+  };
+
+  const zugEnde = (event: React.TouchEvent<HTMLDivElement>) => {
+    const start = zugBeginn.current;
+    zugBeginn.current = null;
+    if (!start?.oben) return;
+    const dy = event.changedTouches[0].clientY - start.y;
+    if (dy > ZUG_SCHWELLE) setNowPlayingOpen(false);
+  };
+
   const artistId = currentTrack?.artistId ?? null;
   const [weitere, setWeitere] = useState<Track[]>([]);
 
@@ -196,6 +223,8 @@ export function NowPlaying() {
                 339 und stand als breiter Streifen da, der Text als leerer
                 Kasten darunter. */}
             <div
+              onTouchStart={zugStart}
+              onTouchEnd={zugEnde}
               className={`flex min-h-0 flex-col items-center gap-6 overflow-y-auto lg:justify-center lg:overflow-visible ${
                 schliesst ? "" : "animate-content"
               }`}
