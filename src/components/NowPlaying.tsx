@@ -9,7 +9,6 @@ import { useUi } from "../store/ui";
 import { Cover } from "./Cover";
 import {
   ChevronDownIcon,
-  ChevronRightIcon,
   LyricsIcon,
   NextIcon,
   PauseIcon,
@@ -94,10 +93,12 @@ export function NowPlaying() {
   const [weitere, setWeitere] = useState<Track[]>([]);
 
   /*
-   * Mehr vom selben Künstler, unter der Künstlerkachel.
+   * Mehr vom selben Künstler, unter dem Künstlerbild.
    *
-   * Der laufende Titel fällt heraus — er steht ja oben — und mehr als eine
-   * Handvoll wäre keine Anregung mehr, sondern eine zweite Bibliothek.
+   * Nach Gehörtem sortiert, nicht nach Titel: Was man ohnehin oft hört, ist
+   * die bessere Anregung als das, was zufällig vorn im Alphabet steht. Der
+   * laufende Titel fällt heraus — er steht ja oben — und fünf sind genug;
+   * mehr wäre keine Anregung, sondern eine zweite Bibliothek.
    */
   useEffect(() => {
     if (!artistId) {
@@ -109,7 +110,13 @@ export function NowPlaying() {
       .artistTracks(artistId)
       .catch(fallback([] as Track[], t("Künstler")))
       .then((titel) => {
-        if (gilt) setWeitere(titel.filter((s) => s.id !== trackId).slice(0, 4));
+        if (!gilt) return;
+        setWeitere(
+          titel
+            .filter((s) => s.id !== trackId)
+            .sort((a, b) => b.playCount - a.playCount)
+            .slice(0, 5),
+        );
       });
     return () => {
       gilt = false;
@@ -303,51 +310,40 @@ export function NowPlaying() {
                     <LyricsIcon size={14} />
                     {t("Songtext")}
                   </span>
-                  <span className="mt-2 block text-sm leading-snug">
+                  <span className="mt-2 block text-base leading-snug">
                     {anfang.length > 0
                       ? anfang.join("\n")
                       : t("Noch keiner hinterlegt.")}
                   </span>
                 </button>
 
-                {/* Der Künstler zuletzt, als eigener Abschnitt: Bild und
-                    Name führen zu ihm, darunter steht, was es sonst noch von
-                    ihm gibt. Ein bloßer Verweis ließ die Frage „und was
-                    noch?“ offen, obwohl die Antwort schon in der Bibliothek
-                    liegt. */}
+                {/* Der Künstler zuletzt, als eigener Abschnitt.
+                    Das Bild groß und rund, der Name darunter: Eine Zeile mit
+                    Miniaturbild las sich wie ein Verweis unter vielen, dabei
+                    ist der Künstler das Einzige auf diesem Bildschirm, zu dem
+                    es überhaupt weitergeht. */}
                 <div className="surface w-full overflow-hidden">
                   <Link
                     to={`/artist/${currentTrack.artistId}`}
                     onClick={() => setNowPlayingOpen(false)}
-                    className="flex w-full items-center gap-3 p-3"
+                    className="flex flex-col items-center gap-2 px-4 pt-5 pb-4"
                   >
                     <Cover
                       src={artistImage(currentTrack.artistId)}
                       alt={currentTrack.artistName}
                       seed={currentTrack.artistName}
-                      className="h-12 w-12 shrink-0"
+                      className="h-28 w-28 shrink-0"
                       rounded="rounded-full"
                     />
-                    <span className="min-w-0 flex-1">
-                      <span className="block eyebrow">{t("Künstler")}</span>
-                      <span className="block truncate text-sm font-medium">
-                        {currentTrack.artistName}
-                      </span>
+                    <span className="eyebrow">{t("Künstler")}</span>
+                    <span className="max-w-full truncate text-lg font-semibold">
+                      {currentTrack.artistName}
                     </span>
-                    <ChevronRightIcon
-                      size={18}
-                      className="shrink-0 text-mute"
-                    />
                   </Link>
 
                   {weitere.length > 0 && (
                     <div className="border-t border-ink-700 px-3 pt-2 pb-3">
-                      {/* Mit dem Namen statt „mehr von ihm“: Nicht jeder
-                          Künstler ist ein Er, und der Name sagt ohnehin mehr
-                          als ein Fürwort. */}
-                      <p className="mb-1 truncate eyebrow">
-                        {t("Mehr von {0}", currentTrack.artistName)}
-                      </p>
+                      <p className="mb-1 eyebrow">{t("Mehr davon")}</p>
                       <ul>
                         {weitere.map((titel) => (
                           <li key={titel.id}>

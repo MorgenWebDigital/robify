@@ -523,6 +523,14 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "المزيد من {0}",
     zh: "更多来自 {0}",
   },
+  "Mehr davon": {
+    en: "More like this",
+    es: "Más de esto",
+    fr: "Plus de ça",
+    ru: "Ещё такое",
+    ar: "المزيد من هذا",
+    zh: "更多类似",
+  },
   "Sicherung anlegen": {
     en: "Create backup",
     fr: "Créer une sauvegarde",
