@@ -293,6 +293,26 @@ h4 {
   background: transparent;
 }
 
+/*
+ * Am Finger gibt es nichts zu greifen.
+ *
+ * Die Leiste oben ist als Griff für die Maus gebaut, 18 Pixel breit. Auf
+ * einem Telefon zieht sie niemand — gerollt wird über die Fläche selbst —,
+ * dem Inhalt nimmt sie die Breite aber trotzdem: Im Songtext blieben von
+ * 371 Pixeln 354 übrig, ein leerer Streifen am Rand.
+ *
+ * Chromium legt gestaltete Leisten immer neben den Inhalt, nie darüber. Wer
+ * sie schmal will, bekommt einen schmalen Streifen; wer keinen Streifen will,
+ * muss sie ganz weglassen. Dass es weitergeht, sagen ohnehin die weichen
+ * Übergänge an den Rändern.
+ */
+@media (hover: none) and (pointer: coarse) {
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
 /* Karte: weiße Fläche, Haarlinie, weicher Schatten, das Grundelement des
    MorgenWeb-Designs. */
 @utility surface {
