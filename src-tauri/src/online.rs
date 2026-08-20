@@ -614,6 +614,66 @@ fn passt_zum_kuenstler(gefunden: &str, gesucht: &str) -> bool {
         || contains_word_sequence(&normalize_for_match(gesucht), &normalize_for_match(gefunden))
 }
 
+/// tracks as deezer carries them.
+///
+/// the fourth source, and the one asked last for the kind of a release
+/// already. what it brings here is the album: deezer names one for nearly
+/// every track, where musicbrainz answers with a recording that belongs to no
+/// release and genius knows the song but not where it appeared. the album is
+/// the field that stood empty most often.
+///
+/// their track search gives no year and no track number — those come from the
+/// other answers, which is the whole point of asking all of them.
+async fn search_deezer(query: &str, limit: usize) -> Result<Vec<MetadataCandidate>> {
+    let url = format!(
+        "https://api.deezer.com/search/track?q={}&limit={}",
+        urlencoding::encode(query),
+        limit
+    );
+    let daten: serde_json::Value = client()
+        .get(url)
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+
+    Ok(daten["data"]
+        .as_array()
+        .map(|liste| liste.as_slice())
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|treffer| {
+            let title = treffer["title"].as_str()?.to_string();
+            let artist = treffer["artist"]["name"].as_str().unwrap_or_default().to_string();
+            let album = treffer["album"]["title"].as_str().unwrap_or_default().to_string();
+            Some(MetadataCandidate {
+                source: "Deezer".into(),
+                title,
+                artist,
+                featured_artists: None,
+                album,
+                album_artist: None,
+                release_type: None,
+                year: None,
+                track_no: None,
+                disc_no: None,
+                genre: None,
+                cover_url: treffer["album"]["cover_xl"]
+                    .as_str()
+                    .or_else(|| treffer["album"]["cover_big"].as_str())
+                    .map(str::to_string),
+                mbid: None,
+                // deezer counts in seconds
+                duration_ms: treffer["duration"].as_i64().map(|s| s * 1000),
+                lyrics_url: None,
+                genius_song_id: None,
+                genius_album_id: None,
+            })
+        })
+        .collect())
+}
+
 async fn search_itunes(query: &str, limit: usize) -> Result<Vec<MetadataCandidate>> {
     let url = format!(
         "https://itunes.apple.com/search?term={}&entity=song&limit={}",
@@ -798,15 +858,17 @@ pub async fn search_metadata(query: &str) -> Result<Vec<MetadataCandidate>> {
     if query.is_empty() {
         return Ok(Vec::new());
     }
-    let (genius, itunes, musicbrainz) = tokio::join!(
+    let (genius, itunes, musicbrainz, deezer) = tokio::join!(
         search_genius(query, 5),
         search_itunes(query, 8),
-        search_musicbrainz(query, 8)
+        search_musicbrainz(query, 8),
+        search_deezer(query, 8)
     );
 
     let mut out = genius.unwrap_or_default();
     out.extend(itunes.unwrap_or_default());
     out.extend(musicbrainz.unwrap_or_default());
+    out.extend(deezer.unwrap_or_default());
     if out.is_empty() {
         return Err(anyhow!(fehler!("Keine Metadaten gefunden für „{0}“", query)));
     }
@@ -907,6 +969,77 @@ pub fn looks_like_same(a: &str, b: &str) -> bool {
     long.contains(short.as_str()) && short.len() * 10 >= long.len() * 6
 }
 
+/// whether two answers describe the same track.
+fn gleiches_stueck(a: &MetadataCandidate, b: &MetadataCandidate) -> bool {
+    looks_like_same(&a.title, &b.title) && passt_zum_kuenstler(&a.artist, &b.artist)
+}
+
+/// fills what the chosen hit leaves open out of the other answers.
+///
+/// all four services are asked at the same time, but until now only one of
+/// them counted: whichever fitted first won the track whole, the rest was
+/// dropped. musicbrainz often names no album, itunes no lyrics, deezer no
+/// year — and each time the missing field lay ready in an answer next door.
+///
+/// title and artist stay untouched, they decided the hit. everything else is
+/// only filled where it is empty, and only out of candidates describing the
+/// same track.
+fn luecken_fuellen(bester: &mut MetadataCandidate, andere: &[MetadataCandidate]) {
+    for kandidat in andere {
+        if !gleiches_stueck(kandidat, bester) {
+            continue;
+        }
+
+        if bester.featured_artists.is_none() {
+            bester.featured_artists = kandidat.featured_artists.clone();
+        }
+        if bester.year.is_none() {
+            bester.year = kandidat.year;
+        }
+        if bester.genre.is_none() {
+            bester.genre = kandidat.genre.clone();
+        }
+        if bester.cover_url.is_none() {
+            bester.cover_url = kandidat.cover_url.clone();
+        }
+        if bester.duration_ms.is_none() {
+            bester.duration_ms = kandidat.duration_ms;
+        }
+        if bester.mbid.is_none() {
+            bester.mbid = kandidat.mbid.clone();
+        }
+        // the lyrics lie at genius, and the ids belong to that same page
+        if bester.lyrics_url.is_none() {
+            bester.lyrics_url = kandidat.lyrics_url.clone();
+            bester.genius_song_id = bester.genius_song_id.or(kandidat.genius_song_id);
+            bester.genius_album_id = bester.genius_album_id.or(kandidat.genius_album_id);
+        }
+
+        // track number and kind mean nothing without the album they belong
+        // to: taken from a different record they name a wrong place
+        if bester.album.trim().is_empty() && !kandidat.album.trim().is_empty() {
+            bester.album = kandidat.album.clone();
+            bester.album_artist = bester.album_artist.clone().or(kandidat.album_artist.clone());
+            bester.release_type = bester.release_type.clone().or(kandidat.release_type.clone());
+            bester.track_no = bester.track_no.or(kandidat.track_no);
+            bester.disc_no = bester.disc_no.or(kandidat.disc_no);
+        } else if looks_like_same(&bester.album, &kandidat.album) {
+            if bester.album_artist.is_none() {
+                bester.album_artist = kandidat.album_artist.clone();
+            }
+            if bester.release_type.is_none() {
+                bester.release_type = kandidat.release_type.clone();
+            }
+            if bester.track_no.is_none() {
+                bester.track_no = kandidat.track_no;
+            }
+            if bester.disc_no.is_none() {
+                bester.disc_no = kandidat.disc_no;
+            }
+        }
+    }
+}
+
 /// looks the track up online and takes the details over where the hit fits
 /// unambiguously. returns `None` when nothing could be matched with
 /// confidence, and the data from the file stays untouched then.
@@ -922,9 +1055,9 @@ pub async fn auto_match(
     }
 
     let query = format!("{} {}", metadata.artist, metadata.title);
-    let candidates = search_metadata(&query).await.ok()?;
+    let mut candidates = search_metadata(&query).await.ok()?;
 
-    let best = candidates.into_iter().find(|candidate| {
+    let stelle = candidates.iter().position(|candidate| {
         looks_like_same(&candidate.title, &metadata.title)
             && (looks_like_same(&candidate.artist, &metadata.artist)
                 // with "PA69, Drunken Masters" the artist sits inside the field
@@ -938,6 +1071,8 @@ pub async fn auto_match(
                 ))
     })?;
 
+    let mut best = candidates.remove(stelle);
+    luecken_fuellen(&mut best, &candidates);
     Some(enrich(&best, duration_ms, want_cover, want_lyrics).await)
 }
 
@@ -964,12 +1099,14 @@ pub async fn match_aus_absicht(
         return None;
     }
 
-    let candidates = search_metadata(absicht).await.ok()?;
-    let best = candidates.into_iter().find(|candidate| {
+    let mut candidates = search_metadata(absicht).await.ok()?;
+    let stelle = candidates.iter().position(|candidate| {
         contains_word_sequence(&getippt, &normalize_for_match(&candidate.title))
             && contains_word_sequence(&getippt, &normalize_for_match(&candidate.artist))
     })?;
 
+    let mut best = candidates.remove(stelle);
+    luecken_fuellen(&mut best, &candidates);
     Some(enrich(&best, duration_ms, want_cover, want_lyrics).await)
 }
 
@@ -1314,5 +1451,108 @@ mod tests {
         assert_eq!(text.trim(), "[Intro]\nErste Zeile");
         assert!(!text.contains("Contributors"));
         assert!(!text.contains("Read More"));
+    }
+
+    fn kandidat(quelle: &str, titel: &str, kuenstler: &str) -> MetadataCandidate {
+        MetadataCandidate {
+            source: quelle.into(),
+            title: titel.into(),
+            artist: kuenstler.into(),
+            featured_artists: None,
+            album: String::new(),
+            album_artist: None,
+            release_type: None,
+            year: None,
+            track_no: None,
+            disc_no: None,
+            genre: None,
+            cover_url: None,
+            mbid: None,
+            duration_ms: None,
+            lyrics_url: None,
+            genius_song_id: None,
+            genius_album_id: None,
+        }
+    }
+
+    #[test]
+    fn andere_quellen_fuellen_die_luecken() {
+        // musicbrainz names the recording but no release
+        let mut bester = kandidat("MusicBrainz", "Instant Crush", "Daft Punk");
+
+        let mut itunes = kandidat("iTunes", "Instant Crush (Official Video)", "Daft Punk");
+        itunes.album = "Random Access Memories".into();
+        itunes.release_type = Some("album".into());
+        itunes.track_no = Some(5);
+        itunes.year = Some(2013);
+        itunes.cover_url = Some("https://beispiel/cover.jpg".into());
+
+        let mut genius = kandidat("Genius", "Instant Crush", "Daft Punk");
+        genius.featured_artists = Some("Julian Casablancas".into());
+        genius.lyrics_url = Some("https://genius.com/lied".into());
+        genius.genius_song_id = Some(42);
+        genius.genius_album_id = Some(7);
+
+        luecken_fuellen(&mut bester, &[itunes, genius]);
+
+        assert_eq!(bester.album, "Random Access Memories");
+        assert_eq!(bester.release_type.as_deref(), Some("album"));
+        assert_eq!(bester.track_no, Some(5));
+        assert_eq!(bester.year, Some(2013));
+        assert_eq!(bester.featured_artists.as_deref(), Some("Julian Casablancas"));
+        assert_eq!(bester.genius_album_id, Some(7));
+        assert!(bester.cover_url.is_some());
+        // the hit itself decides title and artist
+        assert_eq!(bester.title, "Instant Crush");
+        assert_eq!(bester.source, "MusicBrainz");
+    }
+
+    #[test]
+    fn fremde_stuecke_fuellen_nichts() {
+        let mut bester = kandidat("Deezer", "Monster", "Kanye West");
+        let mut fremd = kandidat("iTunes", "Monster Mash", "Bobby Pickett");
+        fremd.album = "Spooky Hits".into();
+        fremd.year = Some(1962);
+
+        luecken_fuellen(&mut bester, &[fremd]);
+
+        assert!(bester.album.is_empty(), "fremdes Album übernommen");
+        assert_eq!(bester.year, None);
+    }
+
+    #[test]
+    fn was_der_treffer_kennt_bleibt_stehen() {
+        let mut bester = kandidat("Genius", "Monster", "Kanye West");
+        bester.album = "My Beautiful Dark Twisted Fantasy".into();
+        bester.year = Some(2010);
+        bester.track_no = Some(6);
+
+        let mut anderer = kandidat("iTunes", "Monster", "Kanye West");
+        anderer.album = "Monster - Single".into();
+        anderer.year = Some(2020);
+        anderer.track_no = Some(1);
+
+        luecken_fuellen(&mut bester, &[anderer]);
+
+        assert_eq!(bester.album, "My Beautiful Dark Twisted Fantasy");
+        assert_eq!(bester.year, Some(2010));
+        // a track number out of a different release must not slip in
+        assert_eq!(bester.track_no, Some(6));
+    }
+
+    #[test]
+    fn titelnummer_nur_aus_demselben_album() {
+        let mut bester = kandidat("Deezer", "Monster", "Kanye West");
+        bester.album = "My Beautiful Dark Twisted Fantasy".into();
+
+        let mut single = kandidat("iTunes", "Monster", "Kanye West");
+        single.album = "Monster".into();
+        single.track_no = Some(1);
+        single.release_type = Some("single".into());
+
+        luecken_fuellen(&mut bester, &[single]);
+
+        assert_eq!(bester.track_no, None, "Nummer aus fremdem Album");
+        assert_eq!(bester.release_type, None, "Art aus fremdem Album");
     }
 }
