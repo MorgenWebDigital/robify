@@ -985,11 +985,12 @@ fn gleiches_stueck(a: &MetadataCandidate, b: &MetadataCandidate) -> bool {
 /// only filled where it is empty, and only out of candidates describing the
 /// same track.
 fn luecken_fuellen(bester: &mut MetadataCandidate, andere: &[MetadataCandidate]) {
-    for kandidat in andere {
-        if !gleiches_stueck(kandidat, bester) {
-            continue;
-        }
+    let passend: Vec<&MetadataCandidate> = andere
+        .iter()
+        .filter(|kandidat| gleiches_stueck(kandidat, bester))
+        .collect();
 
+    for kandidat in &passend {
         if bester.featured_artists.is_none() {
             bester.featured_artists = kandidat.featured_artists.clone();
         }
@@ -1014,30 +1015,72 @@ fn luecken_fuellen(bester: &mut MetadataCandidate, andere: &[MetadataCandidate])
             bester.genius_song_id = bester.genius_song_id.or(kandidat.genius_song_id);
             bester.genius_album_id = bester.genius_album_id.or(kandidat.genius_album_id);
         }
+    }
 
-        // track number and kind mean nothing without the album they belong
-        // to: taken from a different record they name a wrong place
-        if bester.album.trim().is_empty() && !kandidat.album.trim().is_empty() {
-            bester.album = kandidat.album.clone();
-            bester.album_artist = bester.album_artist.clone().or(kandidat.album_artist.clone());
-            bester.release_type = bester.release_type.clone().or(kandidat.release_type.clone());
-            bester.track_no = bester.track_no.or(kandidat.track_no);
-            bester.disc_no = bester.disc_no.or(kandidat.disc_no);
-        } else if looks_like_same(&bester.album, &kandidat.album) {
-            if bester.album_artist.is_none() {
-                bester.album_artist = kandidat.album_artist.clone();
-            }
-            if bester.release_type.is_none() {
-                bester.release_type = kandidat.release_type.clone();
-            }
-            if bester.track_no.is_none() {
-                bester.track_no = kandidat.track_no;
-            }
-            if bester.disc_no.is_none() {
-                bester.disc_no = kandidat.disc_no;
-            }
+    if bester.album.trim().is_empty() {
+        if let Some(album) = album_mit_mehrheit(&passend) {
+            bester.album = album;
         }
     }
+
+    // track number, kind and album artist mean nothing without the album they
+    // belong to: taken from a different record they name a wrong place. only
+    // an answer carrying the same album may fill them
+    if bester.album.trim().is_empty() {
+        return;
+    }
+    for kandidat in &passend {
+        if !looks_like_same(&kandidat.album, &bester.album) {
+            continue;
+        }
+        if bester.album_artist.is_none() {
+            bester.album_artist = kandidat.album_artist.clone();
+        }
+        if bester.release_type.is_none() {
+            bester.release_type = kandidat.release_type.clone();
+        }
+        if bester.track_no.is_none() {
+            bester.track_no = kandidat.track_no;
+        }
+        if bester.disc_no.is_none() {
+            bester.disc_no = kandidat.disc_no;
+        }
+    }
+}
+
+/// the album the most answers agree on.
+///
+/// taking the first one that fits is not enough. next to every well-known
+/// track stand bootlegs, cover versions and samplers, and they name an album
+/// too: under "Rammstein - Sonne" a mashup collection called
+/// "PLAY045 - THE MEME CUTS III" once won over "Mutter" that way.
+///
+/// what tells them apart needs no list of suspicious names: the real album is
+/// the one several catalogues name independently, the sampler stands in one.
+/// on a tie the answer that came first wins — the sources stand in the order
+/// of how cleanly they keep their fields.
+fn album_mit_mehrheit(kandidaten: &[&MetadataCandidate]) -> Option<String> {
+    // normalised name, name as written, how often it was named
+    let mut zaehlung: Vec<(String, String, usize)> = Vec::new();
+    for kandidat in kandidaten {
+        let album = kandidat.album.trim();
+        let schluessel = normalize_for_match(album);
+        if schluessel.is_empty() {
+            continue;
+        }
+        match zaehlung.iter_mut().find(|(bekannt, _, _)| *bekannt == schluessel) {
+            Some(eintrag) => eintrag.2 += 1,
+            None => zaehlung.push((schluessel, album.to_string(), 1)),
+        }
+    }
+
+    let mut bestes: Option<(String, usize)> = None;
+    for (_, name, anzahl) in zaehlung {
+        if bestes.as_ref().is_none_or(|(_, bisher)| anzahl > *bisher) {
+            bestes = Some((name, anzahl));
+        }
+    }
+    bestes.map(|(name, _)| name)
 }
 
 /// looks the track up online and takes the details over where the hit fits
@@ -1505,6 +1548,41 @@ mod tests {
         // the hit itself decides title and artist
         assert_eq!(bester.title, "Instant Crush");
         assert_eq!(bester.source, "MusicBrainz");
+    }
+
+    #[test]
+    fn das_album_das_mehrere_quellen_nennen_gewinnt() {
+        // musicbrainz names the recording but no release
+        let mut bester = kandidat("MusicBrainz", "Sonne", "Rammstein");
+
+        // a mashup collection stands first and names an album too
+        let mut sampler = kandidat("Deezer", "Sonne", "Rammstein");
+        sampler.album = "PLAY045 - THE MEME CUTS III".into();
+
+        let mut genius = kandidat("Genius", "Sonne", "Rammstein");
+        genius.album = "Mutter".into();
+        let mut itunes = kandidat("iTunes", "Sonne", "Rammstein");
+        itunes.album = "Mutter".into();
+        itunes.release_type = Some("album".into());
+        itunes.track_no = Some(3);
+
+        luecken_fuellen(&mut bester, &[sampler, genius, itunes]);
+
+        assert_eq!(bester.album, "Mutter");
+        // and what belongs to it comes from an answer naming that same album
+        assert_eq!(bester.release_type.as_deref(), Some("album"));
+        assert_eq!(bester.track_no, Some(3));
+    }
+
+    #[test]
+    fn eine_einzige_antwort_reicht_wenn_sie_allein_steht() {
+        let mut bester = kandidat("MusicBrainz", "Airwaves", "Pashanim");
+        let mut deezer = kandidat("Deezer", "Airwaves", "Pashanim");
+        deezer.album = "Airwaves".into();
+
+        luecken_fuellen(&mut bester, &[deezer]);
+
+        assert_eq!(bester.album, "Airwaves");
     }
 
     #[test]

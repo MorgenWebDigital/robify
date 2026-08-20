@@ -271,3 +271,29 @@ async fn arten_werden_erkannt() {
         println!("{album:24} erwartet {erwartet:8} gefunden {gefunden:?}");
     }
 }
+
+/// shows what every source answers to a query, in the order the search
+/// returns them. the diagnostic for a wrong album or a wrong kind: it makes
+/// visible which answer was chosen and what stood next to it.
+///
+///     cargo test --test metadata_live quellen -- --ignored --nocapture
+#[tokio::test]
+#[ignore]
+async fn quellen_zeigen() {
+    let _reihe = serialize();
+    for frage in ["Rammstein Sonne", "Pashanim Airwaves", "Daft Punk Instant Crush"] {
+        println!("\n=== {frage} ===");
+        let treffer = online::search_metadata(frage).await.unwrap_or_default();
+        for k in &treffer {
+            println!(
+                "{:12} {:34} {:24} Album {:38} Art {:8} Jahr {:?}",
+                k.source,
+                k.title.chars().take(34).collect::<String>(),
+                k.artist.chars().take(24).collect::<String>(),
+                k.album.chars().take(38).collect::<String>(),
+                k.release_type.as_deref().unwrap_or("-"),
+                k.year
+            );
+        }
+    }
+}
