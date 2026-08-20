@@ -234,6 +234,14 @@ export interface DownloadOptions {
   matchQuery?: string | null;
   /** the user's search input, for the check after downloading. */
   intent?: string | null;
+  /**
+   * the name the hit carried in the search.
+   *
+   * needed where the file brings none worth the word: audius hands its
+   * tracks out over a bare stream address, and what comes back is named
+   * after its content address.
+   */
+  planTitle?: string | null;
 }
 
 export interface DownloadPlan {

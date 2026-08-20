@@ -167,6 +167,8 @@ async fn abgleich_mit_den_katalogen() {
                 auto_lyrics: true,
                 expected_duration_ms: None,
                 intent: Some(query.clone()),
+                // as in the app: the name from the search travels along
+                plan_title: Some(plan.title.clone()),
             },
         )
         .await;

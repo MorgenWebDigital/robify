@@ -215,7 +215,13 @@ export function DownloaderPage() {
   const download = async (
     item: Pick<
       DownloadPlan,
-      "url" | "fallbacks" | "matchQuery" | "intent" | "metadata" | "durationMs"
+      | "url"
+      | "fallbacks"
+      | "matchQuery"
+      | "intent"
+      | "metadata"
+      | "durationMs"
+      | "title"
     >,
     label: string,
     autoImport: boolean,
@@ -248,6 +254,8 @@ export function DownloaderPage() {
         matchQuery: item.matchQuery,
         // what was searched for, the backend checks the result against it
         intent: item.intent,
+        // the name from the search, for the case where the file carries none
+        planTitle: item.title,
         expectedDurationMs: item.durationMs,
         format,
         quality: settings?.downloadQuality ?? "0",

@@ -430,6 +430,14 @@ pub struct DownloadOptions {
     /// unlike `match_query` it triggers no new search.
     #[serde(default)]
     pub intent: Option<String>,
+    /// the name the hit carried in the search.
+    ///
+    /// needed where the file brings none worth the word. audius hands its
+    /// tracks out over a bare stream address, and what comes back is named
+    /// after its content address — the search knew "Passionfruit" all along,
+    /// only the download does not see it.
+    #[serde(default)]
+    pub plan_title: Option<String>,
 }
 
 fn default_format() -> String {
@@ -832,6 +840,15 @@ const CONVERT_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 /// minimum distance between two accesses to the same source.
 const MIN_SPACING: Duration = Duration::from_millis(700);
 
+/// the distance while youtube is refusing.
+///
+/// seven hundred milliseconds are enough as long as nothing is amiss. once a
+/// 403 has come, they are not: the block holds for a while and every further
+/// call runs into it. in a run over five and twenty tracks eight of them were
+/// lost that way, all of them to the same cause. backing off after the first
+/// refusal costs a few seconds and saves the rest of the run.
+const ABSAGE_SPACING: Duration = Duration::from_secs(5);
+
 fn ytdlp_slots() -> &'static tokio::sync::Semaphore {
     static SLOTS: OnceLock<tokio::sync::Semaphore> = OnceLock::new();
     SLOTS.get_or_init(|| tokio::sync::Semaphore::new(MAX_PARALLEL_YTDLP))
@@ -978,12 +995,18 @@ async fn acquire_slot(source: &'static str) -> tokio::sync::SemaphorePermit<'sta
 
     // wait for the slot first, otherwise the waiting time would keep the slot
     // free and two callers would stand before the same source at once
+    // a source that has just refused is approached more slowly
+    let abstand = if source == SearchSource::Youtube.label() && youtube_sagt_ab() {
+        ABSAGE_SPACING
+    } else {
+        MIN_SPACING
+    };
     let warten = {
         let mut karte = last_access().lock();
         let jetzt = Instant::now();
         let rest = karte
             .get(source)
-            .map(|zuletzt| MIN_SPACING.saturating_sub(jetzt.duration_since(*zuletzt)))
+            .map(|zuletzt| abstand.saturating_sub(jetzt.duration_since(*zuletzt)))
             .unwrap_or_default();
         // note the moment right away so waiters queue up
         karte.insert(source, jetzt + rest);
@@ -2149,6 +2172,27 @@ async fn download_inner<R: Runtime>(
     let source = SourceMetadata::read(&music_file);
     apply_source_metadata(&mut metadata, &source, uploader.as_deref());
 
+    // where the file names itself after its content address, take the name
+    // the search hit carried. otherwise everything downstream works on a
+    // checksum: the online lookup finds nothing under it, the album stays
+    // empty, and the track lands in the library under a row of characters
+    if unbrauchbarer_titel(&metadata.title) {
+        if let Some(name) = options
+            .plan_title
+            .as_deref()
+            .map(str::trim)
+            .filter(|name| !name.is_empty() && !unbrauchbarer_titel(name))
+        {
+            metadata.title = strip_file_suffix(name);
+            if let Some((kuenstler, titel)) =
+                crate::library::split_video_title(&metadata.title, uploader.as_deref())
+            {
+                metadata.artist = kuenstler;
+                metadata.title = titel;
+            }
+        }
+    }
+
     // details from a video description are often rough. look them up online
     // and correct them where the hit is unambiguous. after a cancellation the
     // search is no longer worth it
@@ -2385,6 +2429,20 @@ impl SourceMetadata {
 /// music fields put the complete video title into the library as the song
 /// title and the channel name as the artist ("xTheLYRICS" instead of "Nina
 /// Chuba").
+/// whether a title is no title but the name of a file on some storage.
+///
+/// a content address is long, holds no space, mixes letters and digits and
+/// means nothing. a real title of that length without a single space does not
+/// occur; the digit is what tells the two apart, for a german compound word
+/// carries none.
+fn unbrauchbarer_titel(titel: &str) -> bool {
+    let text = titel.trim();
+    text.chars().count() >= 24
+        && !text.contains(char::is_whitespace)
+        && text.chars().all(|zeichen| zeichen.is_ascii_alphanumeric())
+        && text.chars().any(|zeichen| zeichen.is_ascii_digit())
+}
+
 fn apply_source_metadata(
     metadata: &mut TrackMetadata,
     source: &SourceMetadata,

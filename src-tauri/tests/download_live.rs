@@ -62,6 +62,7 @@ async fn kanal_wird_hauptkuenstler_und_metadaten_stimmen() {
             expected_duration_ms: None,
             match_query: None,
             intent: None,
+            plan_title: None,
         },
     )
     .await;
@@ -145,6 +146,7 @@ async fn weicht_bei_vorschauen_auf_die_naechste_quelle_aus() {
             expected_duration_ms: None,
             match_query: None,
             intent: None,
+            plan_title: None,
         },
     )
     .await;
@@ -239,6 +241,7 @@ async fn youtube_download_ohne_403() {
             auto_lyrics: false,
             expected_duration_ms: None,
             intent: None,
+            plan_title: None,
         },
     )
     .await;
@@ -306,6 +309,7 @@ async fn drm_quelle_wird_uebersprungen() {
             auto_lyrics: false,
             expected_duration_ms: None,
             intent: None,
+            plan_title: None,
         },
     )
     .await;

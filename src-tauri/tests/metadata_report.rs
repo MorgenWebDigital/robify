@@ -184,6 +184,7 @@ async fn grosser_metadatenlauf() {
                 // the search input, this way the downloader checks its own
                 // result against it, as it does in the app
                 intent: Some(query.clone()),
+                plan_title: None,
             },
         )
         .await;
