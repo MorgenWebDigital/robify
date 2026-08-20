@@ -5,6 +5,7 @@ import { t } from "../lib/i18n";
 import { useUi } from "../store/ui";
 import { Button } from "./Modal";
 import { CheckIcon, SparkIcon } from "./Icons";
+import { Muenze } from "./Muenzen";
 
 // puts text into the clipboard.
 //
@@ -137,14 +138,32 @@ export function Mitmachen({ ytdlp }: { ytdlp?: string | null }) {
               type="button"
               onClick={() => void adresseKopieren(weg.adresse)}
               title={weg.adresse}
-              className="flex w-full items-center gap-3 rounded-xl p-2.5 text-start transition hover:bg-ink-800"
+              className="flex w-full items-start gap-3 rounded-xl p-2.5 text-start transition hover:bg-ink-800"
             >
-              <span className="w-24 shrink-0 text-sm font-medium">
-                {weg.name}
+              <Muenze name={weg.name} className="mt-0.5 shrink-0" />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-3">
+                  <span className="w-24 shrink-0 text-sm font-medium">
+                    {weg.name}
+                  </span>
+                  <code className="min-w-0 flex-1 truncate rounded bg-ink-900 px-2 py-1 text-xs">
+                    {gekuerzt(weg.adresse)}
+                  </code>
+                </span>
+                {weg.dazu && (
+                  <span className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                    {weg.dazu.map((marke) => (
+                      <span
+                        key={marke}
+                        className="flex items-center gap-1 text-xs text-mute"
+                      >
+                        <Muenze name={marke} size={14} />
+                        {marke}
+                      </span>
+                    ))}
+                  </span>
+                )}
               </span>
-              <code className="min-w-0 flex-1 truncate rounded bg-ink-900 px-2 py-1 text-xs">
-                {gekuerzt(weg.adresse)}
-              </code>
             </button>
           ))}
         </div>
