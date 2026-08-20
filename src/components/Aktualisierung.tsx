@@ -97,7 +97,7 @@ export function Aktualisierungsknopf() {
         // surface with the accent on the sign. a whole button in the accent
         // colour would shout louder than the play button, and nothing here is
         // more urgent than that one
-        className="pill-btn is-raised h-9 w-9"
+        className="pill-btn is-raised p-2"
         style={{ color: "var(--accent)" }}
       >
         <DownloadIcon size={18} />

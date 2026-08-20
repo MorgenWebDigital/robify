@@ -113,8 +113,11 @@ export function Sidebar() {
         </div>
       )}
 
-      <div className="flex items-center justify-between border-t border-ink-700 pt-3">
-        <span className="px-2 text-xs text-mute">
+      {/* the three in the middle instead of pushed to both edges: at the
+          bottom of a narrow column the count stood on the left, the buttons
+          on the right, and between them a hole as wide as the column */}
+      <div className="flex items-center justify-center gap-3 border-t border-ink-700 pt-3">
+        <span className="text-xs text-mute">
           {stats ? plural(stats.trackCount, "Titel") : "…"}
         </span>
         <div className="flex items-center gap-2">
