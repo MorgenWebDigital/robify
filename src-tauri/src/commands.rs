@@ -1443,12 +1443,44 @@ pub async fn update_ytdlp(state: State<'_, AppState>) -> CmdResult<YtdlpErneuert
 /// the interface asks this once at the start. it therefore never fails: a
 /// network that is down, a rate limit at github, a repository that does not
 /// exist yet — all of it ends as "nothing new", and the button stays away.
+/// what the updater says, where there is one that can answer.
+///
+/// it is the better source: what it reports is what it would also install,
+/// read out of the same `latest.json`. the way over the release page stays as
+/// a fallback — for a deb, an rpm or the arch package there is no updater,
+/// and there the page is the only answer.
+#[cfg(desktop)]
+async fn updater_fassung(app: &tauri::AppHandle) -> Option<String> {
+    use tauri_plugin_updater::UpdaterExt;
+    let neu = app.updater().ok()?.check().await.ok()??;
+    Some(neu.version.clone())
+}
+
 #[tauri::command]
 pub async fn check_updates(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
 ) -> CmdResult<crate::aktualisierung::Aktualisierungen> {
     let (_, fassung) = ytdlp_lage(&state).await;
-    Ok(crate::aktualisierung::pruefen(fassung).await)
+    #[allow(unused_mut)]
+    let mut stand = crate::aktualisierung::pruefen(fassung).await;
+
+    // asked only where the page knew nothing: a repository without a release
+    // answers with nothing, and the updater reads its own file
+    #[cfg(desktop)]
+    if stand.app.is_none() {
+        if let Some(neu) = updater_fassung(&app).await {
+            stand.app = Some(crate::aktualisierung::Neuerung {
+                jetzt: env!("CARGO_PKG_VERSION").to_string(),
+                neu,
+            });
+        }
+    }
+
+    #[cfg(not(desktop))]
+    let _ = app;
+
+    Ok(stand)
 }
 
 /// the notes of the newest robify release, for "show more".
@@ -1474,37 +1506,60 @@ pub async fn update_notes() -> CmdResult<Option<String>> {
 /// machine.
 #[tauri::command]
 pub async fn install_update(app: tauri::AppHandle) -> CmdResult<bool> {
-    #[cfg(desktop)]
-    {
-        use tauri_plugin_updater::UpdaterExt;
+    einspielen(app).await
+}
 
-        let updater = match app.updater() {
-            Ok(u) => u,
-            // no endpoint, no signature, a package format that cannot be
-            // exchanged: all of it ends here, and none of it is a fault
-            Err(_) => return Ok(false),
-        };
+#[cfg(desktop)]
+async fn einspielen(app: tauri::AppHandle) -> CmdResult<bool> {
+    use tauri_plugin_updater::UpdaterExt;
 
-        let Some(neu) = updater.check().await.map_err(|f| f.to_string())? else {
-            return Ok(false);
-        };
+    let updater = match app.updater() {
+        Ok(u) => u,
+        // no endpoint, no signature, a package format that cannot be
+        // exchanged: all of it ends here, and none of it is a fault
+        Err(_) => return Ok(false),
+    };
 
-        neu.download_and_install(|_, _| {}, || {})
-            .await
-            .map_err(|f| f.to_string())?;
-        return Ok(true);
-    }
+    let Some(neu) = updater.check().await.map_err(|f| f.to_string())? else {
+        return Ok(false);
+    };
 
-    #[cfg(not(desktop))]
-    {
-        let _ = app;
-        Ok(false)
-    }
+    neu.download_and_install(|_, _| {}, || {})
+        .await
+        .map_err(|f| f.to_string())?;
+    Ok(true)
+}
+
+/// android has no updater, and it needs none.
+#[cfg(not(desktop))]
+async fn einspielen(_app: tauri::AppHandle) -> CmdResult<bool> {
+    Ok(false)
 }
 
 /// starts robify anew, after an update has been put in place.
+///
+/// on an appimage by the path of the image and not by the path of the running
+/// program. that one lies in an unpacked copy under `/tmp`, and the copy still
+/// holds the old version after the file has been exchanged: starting from
+/// there would bring the old one back, it would see the update again, exchange
+/// it again, and go round for as long as anybody watches. the path of the
+/// image itself stands in `APPIMAGE`.
 #[tauri::command]
 pub fn restart_app(app: tauri::AppHandle) {
+    #[cfg(target_os = "linux")]
+    if let Ok(abbild) = std::env::var("APPIMAGE") {
+        if !abbild.is_empty() && std::path::Path::new(&abbild).exists() {
+            match std::process::Command::new(&abbild).spawn() {
+                Ok(_) => {
+                    app.exit(0);
+                    return;
+                }
+                // where the new one does not start, the old one keeps
+                // running: that is better than no robify at all
+                Err(fehler) => eprintln!("Neustart über {abbild} scheiterte: {fehler}"),
+            }
+        }
+    }
     app.restart();
 }
 

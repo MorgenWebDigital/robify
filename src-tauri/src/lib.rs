@@ -308,6 +308,7 @@ pub fn run() {
             app.handle()
                 .plugin(tauri_plugin_updater::Builder::new().build())?;
 
+
             let (data_dir, default_library_dir, feste_orte) = speicherorte(&handle)?;
             std::fs::create_dir_all(&data_dir)?;
 
