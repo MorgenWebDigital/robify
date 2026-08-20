@@ -113,11 +113,15 @@ export function Sidebar() {
         </div>
       )}
 
-      <div className="flex items-center justify-between border-t border-ink-700 pt-3">
+      {/* more air above and a little below: both keys stand raised and cast a
+          shadow downwards. at twelve points they sat on the dividing line
+          with their upper edge and on the bottom of the panel with their
+          shadow, and the row read as squeezed in */}
+      <div className="flex items-center justify-between border-t border-ink-700 pt-4 pb-1">
         <span className="px-2 text-xs text-mute">
           {stats ? plural(stats.trackCount, "Titel") : "…"}
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {/* stands next to the settings and only while there is something:
               an empty place is understood at a glance, one that always shows
               something has to be read every time */}
