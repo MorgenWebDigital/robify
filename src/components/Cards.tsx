@@ -81,6 +81,21 @@ export function MixKachel({
   mix: WeeklyMixSummary;
   ohneAbspielen?: boolean;
 }) {
+  // the mix is derived from the plays and is not stored, so the tile does not
+  // carry its tracks. they are fetched on the press, the same call the detail
+  // page makes.
+  //
+  // the triangle used to be a `span` without a handler: it appeared on hover,
+  // looked like every other play button and did nothing but follow the link
+  // underneath.
+  const play = async (event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const daten = await api.weeklyMix(mix.offset);
+    const ids = daten.items.map((item) => item.track.id);
+    if (ids.length > 0) await api.playTracks(ids, 0);
+  };
+
   return (
     <Link
       to={`/mix/${mix.offset}`}
@@ -93,9 +108,14 @@ export function MixKachel({
           size="aspect-square w-full"
         />
         {!ohneAbspielen && (
-          <span className="accent-bg absolute end-2 bottom-2 grid h-10 w-10 translate-y-2 place-items-center rounded-full opacity-0 shadow-xl transition group-hover:translate-y-0 group-hover:opacity-100">
+          <button
+            type="button"
+            onClick={play}
+            aria-label={t("{0} abspielen", mixName(mix))}
+            className="accent-bg absolute end-2 bottom-2 grid h-10 w-10 translate-y-2 place-items-center rounded-full opacity-0 shadow-xl transition group-hover:translate-y-0 group-hover:opacity-100"
+          >
             <PlayIcon size={18} className="ml-0.5" />
-          </span>
+          </button>
         )}
       </div>
       <p className="mt-3 truncate text-sm font-medium">{mixName(mix)}</p>
@@ -370,11 +390,17 @@ export function Grid({
   vorschau?: boolean;
 }) {
   const spalten = vorschau ? VORSCHAU_SPALTEN : GRID_COLUMNS[size];
-  // more air in the preview: five tiles side by side stood almost against
-  // each other at four pixels apart, and the covers looked squeezed. sixteen
-  // give each of them an edge and make them smaller along the way
-  const luft = vorschau ? "gap-4" : "gap-1";
-  return <div className={`grid ${luft} ${spalten}`}>{children}</div>;
+  // sixteen pixels between the tiles, not four.
+  //
+  // every tile carries `p-3` and a hover background of its own. four pixels
+  // apart those rectangles almost touched, so moving across the grid read as
+  // one continuous band with slits in it rather than as one tile lighting up.
+  // the covers looked squeezed on top of that.
+  //
+  // the preview got this value first; the full grids kept the old four and
+  // were the ones the problem was actually visible on, they carry the most
+  // tiles.
+  return <div className={`grid gap-4 ${spalten}`}>{children}</div>;
 }
 
 // a playlist as a row, the same details, only saving space
