@@ -702,7 +702,7 @@ function startsymbolEinlegen() {
     join(RES, "mipmap-anydpi-v26", "ic_launcher.xml"),
     [
       '<?xml version="1.0" encoding="utf-8"?>',
-      "<adaptive-icon xmlns:android=\"http://schemas.android.com/apk/res/android\">",
+      '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">',
       '  <foreground android:drawable="@drawable/ic_launcher_foreground"/>',
       '  <background android:drawable="@color/ic_launcher_background"/>',
       "</adaptive-icon>",
@@ -724,7 +724,9 @@ function startsymbolEinlegen() {
     ].join("\n"),
   );
 
-  console.log(`Startsymbol: ${gelegt} Dateien eingelegt, Vorderseite als Vektor`);
+  console.log(
+    `Startsymbol: ${gelegt} Dateien eingelegt, Vorderseite als Vektor`,
+  );
 }
 
 zurueckKnopfAnschalten();
