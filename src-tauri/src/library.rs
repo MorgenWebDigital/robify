@@ -669,6 +669,41 @@ pub fn refresh_release_type(conn: &Connection, album_id: i64) -> Result<()> {
     Ok(())
 }
 
+/// releases whose kind is still only guessed, with the artist to ask under.
+///
+/// what carries the name of its own track is left out: that is what a track
+/// without an album is called here, and it is a single by construction.
+pub fn releases_needing_kind(conn: &Connection, limit: i64) -> Result<Vec<(i64, String, String)>> {
+    let mut stmt = conn.prepare(
+        "SELECT al.id, ar.name, al.title
+           FROM albums al
+           JOIN artists ar ON ar.id = al.artist_id
+          WHERE al.release_type_locked = 0
+            AND TRIM(al.title) <> ''
+            AND al.id NOT IN (
+                SELECT album_id FROM tracks WHERE title = (
+                    SELECT title FROM albums WHERE id = album_id
+                )
+            )
+          ORDER BY al.created_at DESC
+          LIMIT ?1",
+    )?;
+    let rows = stmt
+        .query_map([limit], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+        .collect::<rusqlite::Result<_>>()?;
+    Ok(rows)
+}
+
+/// writes down what a source said about the kind of a release.
+pub fn set_release_kind(conn: &Connection, album_id: i64, art: ReleaseType) -> Result<()> {
+    conn.execute(
+        "UPDATE albums SET release_type = ?2, release_type_locked = ?3
+         WHERE id = ?1 AND release_type_locked <> ?4",
+        params![album_id, art.as_str(), ART_AUS_QUELLE, ART_VOM_NUTZER],
+    )?;
+    Ok(())
+}
+
 /// classifies every release not set by hand from its track count.
 pub fn refresh_release_types(conn: &Connection) -> Result<()> {
     let mut stmt = conn.prepare(

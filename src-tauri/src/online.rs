@@ -465,6 +465,59 @@ fn itunes_release_type(collection: &str, track_count: Option<i64>) -> (String, S
     (collection.to_string(), kind.into())
 }
 
+/// what kind of release an album is, and how many tracks it holds.
+///
+/// asked by the name of the album, not by the track. that is the whole point:
+/// the match on a track needs title and artist to fit, and a video title
+/// carries "(Official Audio)" and half a channel name along, so it fails
+/// often. the album name comes from the file and is plain.
+///
+/// without it everything with an album name counted as an album, and
+/// counting the tracks that happen to lie here counts nothing: two tracks out
+/// of a record of twenty-two are no single.
+pub async fn release_kind(artist: &str, album: &str) -> Option<(String, i64)> {
+    let album = album.trim();
+    if album.is_empty() {
+        return None;
+    }
+
+    let url = format!(
+        "https://itunes.apple.com/search?term={}&entity=album&limit=5",
+        urlencoding::encode(&format!("{artist} {album}"))
+    );
+    let antwort = client().get(&url).send().await.ok()?.error_for_status().ok()?;
+    let daten: serde_json::Value = antwort.json().await.ok()?;
+
+    daten["results"].as_array()?.iter().find_map(|treffer| {
+        let sammlung = treffer["collectionName"].as_str()?;
+        let kuenstler = treffer["artistName"].as_str().unwrap_or_default();
+        let anzahl = treffer["trackCount"].as_i64();
+
+        // itunes writes the kind into the name ("… - EP"), so compare against
+        // the name without it
+        let (name, art) = itunes_release_type(sammlung, anzahl);
+        if !looks_like_same(&name, album) {
+            return None;
+        }
+        // the same album name exists under several artists: "Love Sick" by
+        // Don Toliver and by Gemini stand next to each other in the answer
+        if !artist.trim().is_empty()
+            && !looks_like_same(kuenstler, artist)
+            && !contains_word_sequence(
+                &normalize_for_match(kuenstler),
+                &normalize_for_match(artist),
+            )
+            && !contains_word_sequence(
+                &normalize_for_match(artist),
+                &normalize_for_match(kuenstler),
+            )
+        {
+            return None;
+        }
+        Some((art, anzahl.unwrap_or(0)))
+    })
+}
+
 async fn search_itunes(query: &str, limit: usize) -> Result<Vec<MetadataCandidate>> {
     let url = format!(
         "https://itunes.apple.com/search?term={}&entity=song&limit={}",

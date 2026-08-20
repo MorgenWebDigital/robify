@@ -354,6 +354,31 @@ pub fn run() {
             // whoever never scans would keep looking at the old, wrong kind
             library::refresh_release_types(&conn)?;
 
+            // and asks outside for the releases still only guessed at.
+            //
+            // counting what lies here cannot settle it: two tracks out of a
+            // record of twenty-two are no single. the name of the album is
+            // enough to ask with, and the answer holds for good.
+            let offene_arten = library::releases_needing_kind(&conn, 40).unwrap_or_default();
+            if !offene_arten.is_empty() {
+                let handle = handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    for (album_id, kuenstler, titel) in offene_arten {
+                        let Some((art, _)) = crate::online::release_kind(&kuenstler, &titel).await
+                        else {
+                            continue;
+                        };
+                        let state = handle.state::<state::AppState>();
+                        let conn = state.db();
+                        let _ = library::set_release_kind(
+                            &conn,
+                            album_id,
+                            models::ReleaseType::parse(&art),
+                        );
+                    }
+                });
+            }
+
             // the write-ahead log grows between checkpoints and was never
             // truncated: next to a 2.8 mb database lay 4.2 mb of log
             let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");

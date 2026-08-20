@@ -2235,16 +2235,26 @@ async fn download_inner<R: Runtime>(
         }
     }
 
-    // without an album name it is a single, and that much is certain.
+    // the kind of release, in three steps.
     //
-    // with one it used to say "album", and that was a guess dressed up as
-    // knowledge: it was written with the same lock a decision of the user
-    // gets, and nothing corrected it afterwards. since almost every
-    // downloaded track carries an album name, almost everything stood as an
-    // album. left open, the library classifies by what is actually there and
-    // revises it as more arrives
-    if metadata.release_type.is_none() && metadata.album.trim().is_empty() {
-        metadata.release_type = Some("single".to_string());
+    // it used to say "album" for everything carrying an album name, and that
+    // was a guess dressed up as knowledge. counting the tracks that happen to
+    // lie in the library is no better: two out of a record of twenty-two are
+    // no single.
+    if metadata.release_type.is_none() {
+        if metadata.album.trim().is_empty() {
+            // no album, no question
+            metadata.release_type = Some("single".to_string());
+        } else if !cancel.load(Ordering::SeqCst) {
+            // ask by the name of the album. the match on the track needs
+            // title and artist to fit and fails at a video title dressed in
+            // "(Official Audio)"; the album name is plain
+            if let Some((art, _)) =
+                crate::online::release_kind(&metadata.artist, &metadata.album).await
+            {
+                metadata.release_type = Some(art);
+            }
+        }
     }
 
     // without a cover the metadata search found nothing either, which was
