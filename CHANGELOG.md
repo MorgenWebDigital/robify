@@ -46,6 +46,8 @@ The first version.
 - timeouts on every outward call, plus an idle bound
 - installers for deb, rpm, appimage, exe, msi, dmg (intel and apple silicon),
   an arch package and an android apk
+- donation addresses in seven cryptocurrencies, copied by a click, shown
+  only where one is entered
 - an openpgp signature on every published file, see the readme
 
 [Unreleased]: https://github.com/MorgenWebDigital/robify/compare/v0.1.0...HEAD
