@@ -78,6 +78,54 @@ function hinweisText(hinweis: PlanHinweis): string {
   return "";
 }
 
+/**
+ * what has become of one entry of a batch, in one word.
+ *
+ * stands in the list itself and not only among the running jobs: with a
+ * playlist of thirty entries the question is which one is at it and what is
+ * already through, and that is answered where the entries stand.
+ */
+function Stand({ stand, prozent }: { stand: Stapelstand; prozent?: number }) {
+  if (stand.zustand === "laeuft") {
+    return (
+      <span
+        className="shrink-0 rounded px-1.5 py-0.5 text-[11px] tabular-nums"
+        style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+      >
+        {prozent !== undefined && prozent > 0
+          ? `${Math.round(prozent)} %`
+          : t("lädt…")}
+      </span>
+    );
+  }
+
+  const [text, farbe] =
+    stand.zustand === "fertig"
+      ? [t("geladen"), "var(--success)"]
+      : stand.zustand === "pruefen"
+        ? [t("prüfen"), "var(--warning)"]
+        : [t("fehlgeschlagen"), "var(--danger)"];
+
+  return (
+    <span
+      className="shrink-0 rounded px-1.5 py-0.5 text-[11px]"
+      style={{
+        background: `color-mix(in srgb, ${farbe} 22%, transparent)`,
+        color: farbe,
+      }}
+    >
+      {text}
+    </span>
+  );
+}
+
+/** what has become of one entry of a batch. */
+type Stapelstand = {
+  zustand: "laeuft" | "fertig" | "pruefen" | "fehler";
+  /** the job it hangs on, for the progress. */
+  jobId?: string;
+};
+
 export function DownloaderPage() {
   const settings = useLibrary((s) => s.settings);
   const refresh = useLibrary((s) => s.refresh);
@@ -87,6 +135,10 @@ export function DownloaderPage() {
   const [status, setStatus] = useState<DownloaderStatus | null>(null);
   const [format, setFormat] = useState("mp3");
   const [importing, setImporting] = useState(false);
+  // what has become of each entry of the open batch. lives with the page and
+  // not with the downloader: it belongs to the list standing here, and with
+  // the next plan it is void anyway
+  const [stapel, setStapel] = useState<Record<number, Stapelstand>>({});
 
   // result list and running downloads survive a tab change because they lie
   // outside this page
@@ -126,6 +178,7 @@ export function DownloaderPage() {
 
     setBusy(true);
     try {
+      setStapel({});
       setPlan(await api.resolveInput(value));
     } catch (error) {
       notify(errorMessage(error), "error");
@@ -142,9 +195,18 @@ export function DownloaderPage() {
     >,
     label: string,
     autoImport: boolean,
+    /// which entry of the open plan this is. only a batch hands it over,
+    /// and only for it is the state shown in the list
+    stelle?: number,
   ) => {
     jobCounter.current += 1;
     const id = `job-${Date.now()}-${jobCounter.current}`;
+    const merken = (stand: Stapelstand) => {
+      if (stelle !== undefined) {
+        setStapel((vorher) => ({ ...vorher, [stelle]: stand }));
+      }
+    };
+    merken({ zustand: "laeuft", jobId: id });
     const job: Job = {
       id,
       label,
@@ -180,8 +242,10 @@ export function DownloaderPage() {
           settings?.moveDownloadsIntoLibrary ?? true,
         );
         removeJob(id);
+        merken({ zustand: "fertig" });
         await refresh();
       } else {
+        merken({ zustand: "pruefen" });
         // where the result does not match the search, a batch asks as well
         setReview({ job: { ...job, outcome }, metadata: outcome.metadata });
         notify(
@@ -194,6 +258,7 @@ export function DownloaderPage() {
     } catch (error) {
       const message = errorMessage(error);
       patchJob(id, { error: message });
+      merken({ zustand: "fehler" });
       notify(`${label}: ${message}`, "error");
     }
   };
@@ -217,13 +282,17 @@ export function DownloaderPage() {
   const playlistName = (plan?.label ?? "").split(" · ").pop()?.trim() ?? "";
 
   const downloadAll = async (items: DownloadPlan[], name = "") => {
-    const offen = items.filter((item) => !item.alreadyInLibrary);
+    // with the position, so the list can show which one is at it
+    const offen = items
+      .map((item, stelle) => ({ item, stelle }))
+      .filter(({ item }) => !item.alreadyInLibrary);
     const uebersprungen = items.length - offen.length;
 
     setBusy(true);
+    setStapel({});
     try {
-      for (const item of offen) {
-        await download(item, item.title, true);
+      for (const { item, stelle } of offen) {
+        await download(item, item.title, true, stelle);
       }
 
       if (offen.length === 0) {
@@ -530,7 +599,11 @@ export function DownloaderPage() {
             {plan.items.map((item, index) => (
               <li
                 key={`${item.url}-${index}`}
-                className="flex items-center gap-3 rounded-xl p-2 transition hover:bg-ink-800"
+                className={`flex items-center gap-3 rounded-xl p-2 transition ${
+                  stapel[index]?.zustand === "laeuft"
+                    ? "bg-ink-800"
+                    : "hover:bg-ink-800"
+                }`}
               >
                 <Cover
                   src={item.thumbnail}
@@ -553,6 +626,18 @@ export function DownloaderPage() {
                       <span className="shrink-0 rounded bg-ink-700 px-1.5 py-0.5 text-[11px]">
                         {t("schon vorhanden")}
                       </span>
+                    )}
+                    {/* what has become of this entry. only during a batch:
+                        outside one the map is empty and nothing stands
+                        here */}
+                    {stapel[index] && (
+                      <Stand
+                        stand={stapel[index]}
+                        prozent={
+                          jobs.find((job) => job.id === stapel[index].jobId)
+                            ?.progress?.percent
+                        }
+                      />
                     )}
                   </p>
                 </div>
