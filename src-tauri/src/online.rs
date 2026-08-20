@@ -928,6 +928,75 @@ pub fn normalize_for_match(value: &str) -> String {
     cleaned.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
+/// words in a bracket that say nothing about which recording it is.
+///
+/// "(Official Video)", "(HD)", "[Free Download]" stand behind the original
+/// just as behind anything else.
+const BEIWERK: [&str; 22] = [
+    "official",
+    "video",
+    "music",
+    "audio",
+    "lyric",
+    "lyrics",
+    "visualizer",
+    "visualiser",
+    "hd",
+    "hq",
+    "4k",
+    "explicit",
+    "clean",
+    "full",
+    "stream",
+    "premiere",
+    "free",
+    "download",
+    "dl",
+    "out",
+    "now",
+    "remastered",
+];
+
+/// words after which only a name follows, never a version.
+const NAMENSWORT: [&str; 6] = ["feat", "ft", "featuring", "with", "prod", "by"];
+
+/// whether a bracketed addition says nothing about the version.
+///
+/// "(Official Video)" and "(feat. Julian Casablancas)" leave the recording
+/// what it is. "(Sunrise Cut)" does not.
+///
+/// needed because no list of markers is ever complete: "remix", "bootleg" and
+/// "edit" are known, "sunrise cut" was not, and a bootleg edit of "Sonne"
+/// went into the library as the original that way. whatever stands in a
+/// bracket and is neither trivia nor a name is a version of its own — that
+/// holds for the words nobody has written down yet.
+pub fn ist_nur_beiwerk(text: &str) -> bool {
+    let worte = normalize_words(text);
+    let mut worte = worte.split(' ').filter(|w| !w.is_empty()).peekable();
+    match worte.peek() {
+        // "feat. Someone" — a name follows, no version
+        Some(erstes) if NAMENSWORT.contains(erstes) => return true,
+        None => return true,
+        _ => {}
+    }
+    worte.all(|wort| BEIWERK.contains(&wort))
+}
+
+/// the bracketed additions of a title, in the order they stand.
+pub fn klammerzusaetze(titel: &str) -> Vec<String> {
+    let mut gefunden = Vec::new();
+    for (auf, zu) in [('(', ')'), ('[', ']'), ('{', '}')] {
+        let mut rest = titel;
+        while let Some(start) = rest.find(auf) {
+            let hinter = &rest[start + auf.len_utf8()..];
+            let Some(ende) = hinter.find(zu) else { break };
+            gefunden.push(hinter[..ende].to_string());
+            rest = &hinter[ende + zu.len_utf8()..];
+        }
+    }
+    gefunden
+}
+
 /// splits a text into comparable words without stripping bracket contents,
 /// unlike `normalize_for_match`.
 ///

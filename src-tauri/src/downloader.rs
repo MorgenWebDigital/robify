@@ -1150,7 +1150,7 @@ async fn search_once(
 // chosen, which drops remixes, live versions and videos with an intro.
 
 /// suffixes hinting at a different version.
-const VERSION_MARKERS: [&str; 44] = [
+const VERSION_MARKERS: [&str; 45] = [
     "remix",
     "rmx",
     "live",
@@ -1204,6 +1204,9 @@ const VERSION_MARKERS: [&str; 44] = [
     "screwed",
     "reprise",
     "medley",
+    // "rammstein - sonne (maukook sunrise cut)" went in as the original:
+    // youtube had blocked, and the bootleg stood ready as the fallback
+    "cut",
 ];
 
 /// the version markers a title carries that the search did not ask for.
@@ -1224,10 +1227,39 @@ fn fremde_fassungen(candidate_title: &str, wanted_title: &str) -> Vec<&'static s
         .collect()
 }
 
+/// whether the candidate carries a bracketed addition the searched title does
+/// not, and one that names something other than trivia or a guest.
+///
+/// the markers above catch what somebody has written down; this catches the
+/// rest. "Sonne (Maukook Sunrise Cut)" names its version in a bracket without
+/// using a single known word, and that is how bootlegs are titled: the name
+/// of whoever cut it, then what they did.
+fn fremde_klammer(candidate_title: &str, wanted_title: &str) -> bool {
+    let gesucht = crate::online::normalize_words(wanted_title);
+    crate::online::klammerzusaetze(candidate_title)
+        .iter()
+        .any(|zusatz| {
+            if crate::online::ist_nur_beiwerk(zusatz) {
+                return false;
+            }
+            // what the searched title carries itself is no foreign addition
+            let worte = crate::online::normalize_words(zusatz);
+            !worte.is_empty() && !crate::online::contains_word_sequence(&gesucht, &worte)
+        })
+}
+
 /// deduction for hints at a different version that do not appear in the
 /// track searched for.
 fn version_penalty(candidate_title: &str, wanted_title: &str) -> f64 {
-    fremde_fassungen(candidate_title, wanted_title).len() as f64 * 25.0
+    let bekannt = fremde_fassungen(candidate_title, wanted_title).len() as f64 * 25.0;
+    // an unnamed version weighs as much as a named one: whether the bracket
+    // says "Remix" or "Sunrise Cut" changes nothing about the recording
+    let ungenannt = if fremde_klammer(candidate_title, wanted_title) {
+        25.0
+    } else {
+        0.0
+    };
+    bekannt + ungenannt
 }
 
 /// how far a hit lies from what was searched for, in text. 0.0 means every
@@ -2664,8 +2696,8 @@ mod tests {
         abzug_bei, apply_source_metadata, blocked_message, consensus_duration_ms,
         coverage_penalty, explain_failure,
         ist_youtube, is_collection_url, plans_with_fallbacks, rank_candidates, score_candidate,
-        fremde_fassungen, sort_by_relevance, version_penalty, SearchResult, TrackMetadata,
-        ABSAGE_ABZUG,
+        fremde_fassungen, fremde_klammer, same_song, sort_by_relevance, version_penalty,
+        SearchResult, TrackMetadata, ABSAGE_ABZUG,
     };
 
     /// a hit with an address the source can be recognised by.
@@ -2679,6 +2711,65 @@ mod tests {
             thumbnail: None,
             source: adresse.into(),
         }
+    }
+
+    /// the reported case: youtube had blocked, and a bootleg edit stood ready
+    /// as the fallback address. it went into the library as the original,
+    /// album "PLAY045 - THE MEME CUTS III" and all
+    #[test]
+    fn ein_bootleg_taugt_nicht_als_ausweichadresse() {
+        let echt = treffer_bei(
+            "Rammstein - Sonne (Official Video)",
+            272,
+            "https://www.youtube.com/watch?v=abc",
+        );
+        let bootleg = treffer_bei(
+            "rammstein - sonne (maukook sunrise cut)",
+            270,
+            "https://soundcloud.com/maukook/sonne",
+        );
+        assert!(
+            !same_song(&bootleg, &echt),
+            "das Bootleg gilt als dieselbe Aufnahme"
+        );
+    }
+
+    #[test]
+    fn beiwerk_in_der_klammer_stoert_nicht() {
+        let echt = treffer_bei("Sonne", 272, "https://www.youtube.com/watch?v=abc");
+
+        // trivia and guest credits leave the recording what it is
+        for titel in [
+            "Rammstein - Sonne (Official Video)",
+            "Rammstein - Sonne [HD]",
+            "Rammstein - Sonne (Official Audio) [Free Download]",
+            "Daft Punk - Instant Crush (feat. Julian Casablancas)",
+        ] {
+            assert!(
+                !fremde_klammer(titel, "Sonne"),
+                "„{titel}“ wurde als fremde Fassung gewertet"
+            );
+        }
+
+        let gleich = treffer_bei(
+            "Rammstein - Sonne (Official Video)",
+            270,
+            "https://soundcloud.com/rammstein/sonne",
+        );
+        assert!(same_song(&gleich, &echt));
+    }
+
+    #[test]
+    fn eine_klammer_die_im_gesuchten_steht_zaehlt_nicht() {
+        // whoever searches for the live version may have it
+        assert!(!fremde_klammer(
+            "Rammstein - Sonne (Live at Rock im Park)",
+            "Sonne (Live at Rock im Park)"
+        ));
+        assert!(fremde_klammer(
+            "Rammstein - Sonne (Live at Rock im Park)",
+            "Sonne"
+        ));
     }
 
     #[test]
@@ -3397,7 +3488,10 @@ ERROR: Postprocessing: module mutagen was not found. Please install using `pytho
 
         // whole words only: "edit" sits inside "Editors" and "Credits" too
         assert_eq!(version_penalty("Editors - Munich", "Munich"), 0.0);
-        assert_eq!(version_penalty("Song (Credits Version)", "Song"), 0.0);
+        assert!(fremde_fassungen("Song (Credits Version)", "Song").is_empty());
+        // it counts all the same, but through the general rule: a bracket
+        // naming neither trivia nor a guest is a version of its own
+        assert!(version_penalty("Song (Credits Version)", "Song") > 0.0);
 
         // whoever searches for the version gets it
         assert_eq!(version_penalty("Song (Remix)", "Song (Remix)"), 0.0);
