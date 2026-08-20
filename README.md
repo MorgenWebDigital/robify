@@ -1,303 +1,230 @@
 # Robify
 
-Plattformübergreifender Musikplayer mit lokaler Bibliothek, Playlists, Hörstatistiken
-und einem Downloader inklusive Metadaten-Bearbeitung.
+A cross-platform music player with a local library, playlists, listening
+statistics and a downloader including metadata editing.
 
-**Frontend:** React 19 + TypeScript + Vite + Tailwind CSS 4
-**Backend:** Rust (Tauri 2), SQLite, `rodio`/`symphonia` für die Wiedergabe, `lofty` für Tags
+Frontend: React 19, TypeScript, Vite, Tailwind CSS 4.
+Backend: Rust (Tauri 2), SQLite, `rodio`/`symphonia` for playback, `lofty` for
+tags.
 
 ---
 
-## Funktionsumfang
+## 1. Features
 
 ### Player
 
-- Songtitel, Cover, Künstlername
-- Vorheriger / nächster Titel, Start-Pause
-- Wiederholen: aus · gesamte Warteschlange · nur dieser Titel
-- Zufallswiedergabe, Warteschlange mit Umsortieren und Entfernen
-- Sleeptimer: feste Dauer (Vorgaben oder eigene Minutenzahl) oder „am Ende des Titels“
-- Lyrics, zeitsynchron (LRC) mitlaufend und anklickbar zum Springen, sonst als Text
-- Vollbildansicht mit großem Cover und Lyrics nebeneinander
+- title, cover and artist name
+- previous and next track, play and pause
+- repeat: off, the whole queue, or this track alone
+- shuffle, and a queue that can be reordered and thinned out
+- sleep timer: a fixed duration, from presets or an own number of minutes, or
+  at the end of the running track
+- lyrics, running along time-synced (LRC) and clickable to jump, otherwise as
+  plain text
+- a full screen view with a large cover and the lyrics next to it
 
-### Bibliothek
+### Library
 
-- Import einzelner Dateien oder ganzer Ordner (mp3, flac, m4a, aac, ogg, opus, wav, aiff, ape, …)
-- **Beim Import werden dürftige Angaben nachgeschlagen.** Steht im Titelfeld nur
-  ein Dateiname oder fehlen Cover und Lyrics, sucht Robify die richtigen Daten
-  online nach. In den Einstellungen abschaltbar, ab Werk an.
-- Künstlerseiten mit Gruppierung nach **Singles**, **EPs** und **Alben**
-  (automatisch anhand Titelanzahl bzw. Online-Daten, jederzeit manuell korrigierbar)
-- **Mehrere Künstler pro Titel**: Haupt- und Gastkünstler werden getrennt geführt.
-  Ein Titel taucht bei jedem Beteiligten auf; die Künstlerseite hat einen eigenen
-  Abschnitt „Als Gast dabei“. Im Editor trennt ein Semikolon mehrere Namen
-  (`A; B`), Kommas und Ampersands bleiben unangetastet, damit Bandnamen wie
-  „Earth, Wind & Fire“ heil bleiben. In der Datei landet alles als
-  `Haupt feat. Gast` im Künstlerfeld und wird beim Einlesen wieder aufgetrennt.
-- **Künstlerseiten mit Profilbild und Beschreibung.** Fehlen die Angaben, holt
-  ein Klick auf „Metadaten holen“ Bild und Text von Genius. Über „Bearbeiten“
-  lässt sich alles jederzeit ändern, Name, Beschreibung, eigenes Bild aus einer
-  Datei, oder ein anderer Vorschlag aus der Online-Suche übernehmen.
-- **Releases nachträglich bearbeiten**: Titel, Jahr, Einordnung und Cover,
-  wahlweise von Hand oder mit „Angaben online suchen“.
-- Playlists anlegen, umbenennen, befüllen, löschen; eigenes Cover aus einer
-  Datei, und die Reihenfolge lässt sich per Ziehen ändern
-- **Favoriten** stehen als eigene Playlist vorn, ohne dass man sie anlegen muss
-- **Kein Titel landet zweimal in der Bibliothek**: Gleicher Künstler, gleicher
-  Name und eine Laufzeit im Abstand von höchstens fünf Sekunden gelten als
-  derselbe Titel, egal aus welcher Quelle er kommt
-- **Löschen ist umkehrbar.** Der Eintrag wird nur ausgeblendet, die Datei wandert
-  in den Papierkorb von Robify; über die Meldung lässt sich beides zurückholen.
-  Wer die Rückfrage nicht mehr braucht, schaltet sie im Dialog ab
-- Sortierung nach zuletzt hinzugefügt, Titel, Künstler, Album oder Jahr. Nach
-  Künstler heißt: alphabetisch, darin die Releases von neu nach alt, darin die
-  Titelnummern
-- **Abgleich mit dem Ordner**: meldet Dateien ohne Eintrag und Einträge ohne
-  Datei, fasst aber nichts ohne Zustimmung an
-- Volltextsuche, Cover direkt aus der Datenbank
+- import of single files or whole folders (mp3, flac, m4a, aac, ogg, opus,
+  wav, aiff, ape and more)
+- poor details are looked up at import. where nothing but a filename stands in
+  the title field, or cover and lyrics are missing, robify searches for the
+  right data online. it can be switched off in the settings and is on out of
+  the box.
+- artist pages grouped into singles, eps and albums, classified automatically
+  from the track count or from online data and correctable by hand at any time
+- several artists per track: lead and guest artists are kept apart. a track
+  shows up under every participant, and the artist page carries a section of
+  its own for guest appearances. in the editor a semicolon separates several
+  names (`A; B`) while commas and ampersands stay untouched, so band names such
+  as "Earth, Wind & Fire" survive intact. in the file everything lands in the
+  artist field as `lead feat. guest` and is split apart again while reading.
+- artist pages with a profile image and a description. where the details are
+  missing, one press fetches image and text from genius. everything can be
+  changed at any time through the edit dialog: name, description, an image of
+  one's own from a file, or a different suggestion from the online search.
+- releases can be edited afterwards: title, year, classification and cover,
+  either by hand or through an online lookup
+- playlists can be created, renamed, filled and deleted, they take a cover of
+  their own from a file, and their order can be changed by dragging
+- the favourites stand at the front as a playlist of their own, without having
+  to be created
+- no track lands in the library twice: the same artist, the same name and a
+  running time within five seconds count as the same track, whatever source it
+  comes from
+- deleting can be undone. the row is only hidden and the file travels into
+  robify's trash, and the message brings both back. whoever no longer needs
+  the confirmation switches it off in the dialog.
+- sorting by recently added, title, artist, album or year. by artist means
+  alphabetically, inside that the releases from new to old, inside that the
+  track numbers.
+- reconciliation with the folder: it reports files without a row and rows
+  without a file, and touches nothing without consent
+- full text search, and covers served straight out of the database
 
-### Statistiken
+### Statistics
 
-- Wöchentlicher Empfehlungsmix, der sich aus dem Hörverhalten speist
-  (meistgehörte Künstler, passende Genres, lange nicht Gehörtes, unentdeckte Titel).
-  Der Mix bleibt eine Kalenderwoche stabil und lässt sich manuell neu berechnen.
-- Wrapped für **Monat**, **Jahr** und **gesamt**: Gesamthörzeit, Wiedergaben,
-  Top 5 Titel mit Anzahl und Einzelzeit **plus Gesamtzeit der Top 5**,
-  Top-Künstler, Top-Releases, Verlaufsdiagramm und stärkster Tag
-- **Gastbeiträge zählen mit.** Wer „Money Trees“ hört, hört Kendrick Lamar und
-  Jay Rock; beide bekommen die Hörzeit gutgeschrieben
-- Gelöschte Titel bleiben im Rückblick stehen und knüpfen wieder an, sobald sie
-  zurückkehren, die Hörgeschichte reißt nicht ab, nur weil eine Datei ging
-- In den Einstellungen wählbar: immer der laufende Zeitraum, immer der letzte
-  abgeschlossene Monat, immer das letzte abgeschlossene Jahr, oder ausgeblendet
+- a weekly mix fed by the listening behaviour: the most played artists,
+  matching genres, what has not been heard for a long time, and undiscovered
+  tracks. the mix stays stable for one calendar week and can be recalculated by
+  hand.
+- a review for the month, the year and for everything: total listening time,
+  plays, the top five tracks with count and individual time plus the total time
+  of the top five, top artists, top releases, a history chart and the strongest
+  day
+- guest contributions count. whoever listens to "Money Trees" listens to
+  kendrick lamar and jay rock, and both are credited the listening time.
+- deleted tracks stay in the review and tie back in as soon as they return, so
+  the listening history does not break off just because a file went away
+- selectable in the settings: always the running period, always the last
+  completed month, always the last completed year, or hidden
 
 ### Downloader
 
-- **Ein einziges Eingabefeld.** Link einfügen oder einfach suchen, Robify
-  erkennt selbst, was gemeint ist. Keine Quelle auswählen.
-- Erkannt werden Links von Spotify, YouTube, SoundCloud, Bandcamp und
-  hunderten weiteren Seiten (alles, was `yt-dlp` kennt)
-- Ganze Alben, Playlists und SoundCloud-Sets werden zur Titelliste
-  aufgeklappt; ein einzelner Titel bleibt einzeln, auch wenn im Link noch
-  eine Playlist mitsteht
-- Bei gleicher Passgenauigkeit entscheidet die Verlässlichkeit der Quelle:
-  **Bandcamp** (von Künstlern selbst hochgeladen) vor **Audius** (offene
-  Plattform, MP3 bis 320 kbit/s) vor **SoundCloud** vor **YouTube**.
-  Bandcamp und Audius brauchen keinen Zugangsschlüssel.
-- **Bei Spotify-Links wird die passendste Aufnahme gesucht.** Statt blind den
-  ersten Treffer zu nehmen, holt Robify mehrere von SoundCloud und YouTube und
-  wählt anhand der von Spotify bekannten Laufzeit aus. Abweichungen über eine
-  halbe Minute fliegen raus, Zusätze wie „Remix“, „Live“, „Sped Up“ oder
-  „Cover“ werden abgestraft, es sei denn, sie stehen im gesuchten Titel.
-- **Vorschauen werden abgewiesen.** SoundCloud gibt für kostenpflichtige Titel
-  nur 30-Sekunden-Ausschnitte heraus; solche Formate werden ausgeschlossen und
-  der Download weicht auf die nächste Quelle aus. Ist die Länge des Titels
-  bekannt (etwa aus einem Spotify-Link), wird das Ergebnis zusätzlich dagegen
-  geprüft.
-- **Spotify**: Track-, Album-, Playlist- und Künstler-Links werden aufgelöst.
-  Spotify gibt seine Aufnahmen ausschließlich verschlüsselt (DRM) heraus, ein
-  direkter Download ist technisch unmöglich. Übernommen werden deshalb die
-  **Metadaten** (Titel, Künstler, Album, Titelnummer, Jahr, Cover); die Audiospur
-  wird passend dazu über die übrigen Quellen geladen. Das ist derselbe Weg, den
-  auch spotdl geht. Kein API-Schlüssel nötig.
-  Spotify unterscheidet keine Gastbeiträge, dort stehen alle Beteiligten
-  gleichberechtigt in einer Liste (getrennt mit Komma + geschütztem
-  Leerzeichen). Robify trennt diese Liste auf und zieht ein „(feat. …)“ aus dem
-  Titel; die eigentliche Rollenverteilung liefert anschließend Genius.
-- **Beste Qualität ist Standard**: die Originalspur wird aus dem Container
-  gelöst, ohne sie neu zu kodieren (bei YouTube meist Opus ~130 kbit/s).
-  Wer feste Dateiformate braucht, stellt MP3, M4A, FLAC oder OGG ein,
-  dann wird umgewandelt.
-- Fortschritt live mit Geschwindigkeit und Restzeit, Abbrechen jederzeit möglich
-- **Nach dem Download werden die Metadaten automatisch nachgeschlagen.** Was aus
-  einer Videobeschreibung kommt, ist meist grob: alle Künstler in einem Feld,
-  kein Album, keine Lyrics. Robify sucht den Titel deshalb online und übernimmt
-  die sauberen Angaben, aber nur bei einem eindeutigen Treffer, sonst bleibt
-  alles wie aus der Datei. Ob Cover und Lyrics dabei geholt werden, steuern die
-  beiden Schalter in den Einstellungen.
-- **Das Konto, von dem geladen wurde, wird zum Hauptkünstler**, alle weiteren
-  Beteiligten werden zu Gastkünstlern. Das greift nur, wenn der Kanal wirklich
-  einem der Beteiligten entspricht, bei Label-, Sampler- oder Repost-Kanälen
-  bleibt die Reihenfolge der Metadatenquelle. Automatisch erzeugte Kanäle
-  („PA69 - Topic“, „RihannaVEVO“) werden dabei erkannt.
-- Danach öffnet sich die Metadatenprüfung: Titel, Künstler, Gastkünstler,
-  Album-Künstler, Album, Art der Veröffentlichung, Genre, Jahr, Titel-/CD-Nummer,
-  Cover und Lyrics. Alles ist vorausgefüllt, übernehmen oder vorher ändern.
-  Bei „Alle laden“ entfällt die Rückfrage, sonst wären es zwölf Dialoge pro Album.
-- Metadatensuche über **Genius** (Hauptquelle), dahinter iTunes und MusicBrainz.
-  Ein Klick auf einen Treffer holt automatisch alles nach:
-  Gastkünstler ins eigene Feld, Albumname und Albumkünstler, Cover in 1000×1000,
-  Jahr und Genre, die **Titelnummer** sowie die **Release-Art**, Single, EP oder
-  Album, abgeleitet aus der Länge der Albumtitelliste. Dazu die **Lyrics**:
-  zeitsynchron von LRCLIB, der Fließtext von Genius. Kein API-Schlüssel nötig.
-- Beim Übernehmen wird die Datei getaggt und nach
-  `Bibliothek/Künstler/Album/01 - Titel.ext` einsortiert.
-- **Bereits vorhandene Titel werden übersprungen.** Wer erst einen Titel und
-  später das Album dazu lädt, wartet nur auf den Rest.
-- **Aus einer geladenen Playlist entsteht eine Playlist.** Beim zweiten Durchlauf
-  kommen nur die neuen Titel hinzu, statt dass eine zweite Liste entsteht. Über
-  die Einstellungen abschaltbar.
-- **Passt das Ergebnis nicht zur Suche, sagt Robify das.** Kommen die Wörter der
-  Eingabe im geladenen Titel nicht vor, steht eine Warnung im Metadatendialog,
-  statt dass eine fremde Aufnahme stillschweigend in der Bibliothek landet.
+- one single input field. paste a link or simply search, robify recognises by
+  itself what is meant. no source has to be picked.
+- links from spotify, youtube, soundcloud, bandcamp and hundreds of further
+  sites are recognised, everything `yt-dlp` knows
+- whole albums, playlists and soundcloud sets are unfolded into a track list,
+  and a single track stays single even where a playlist stands in the link as
+  well
+- at equal fit the reliability of the source decides: bandcamp (uploaded by
+  the artists themselves) before audius (an open platform, mp3 up to
+  320 kbit/s) before soundcloud before youtube. bandcamp and audius need no
+  access key.
+- with spotify links the best matching recording is searched for. instead of
+  taking the first hit blindly, robify fetches several from soundcloud and
+  youtube and picks by the running time known from spotify. deviations of more
+  than half a minute fly out, and suffixes such as remix, live, sped up or
+  cover are penalised unless they stand in the track searched for.
+- previews are turned away. soundcloud hands out 30 second excerpts alone for
+  paid tracks, such formats are excluded and the download falls back to the
+  next source. where the length of the track is known, from a spotify link for
+  instance, the result is checked against it as well.
+- spotify: track, album, playlist and artist links are resolved. spotify hands
+  its recordings out encrypted (drm) only, and a direct download is technically
+  impossible. the metadata is therefore taken over (title, artist, album, track
+  number, year, cover), and the audio is fetched to match through the remaining
+  sources. that is the same route spotdl takes. no api key is needed.
+  spotify draws no line around guest contributions, everyone involved stands
+  there as an equal in one list, separated by a comma and a non-breaking space.
+  robify splits that list apart and pulls a "(feat. …)" out of the title, and
+  genius then delivers the actual distribution of roles.
+- best quality is the default: the original track is lifted out of the
+  container without re-encoding it, at youtube usually opus at around
+  130 kbit/s. whoever needs fixed file formats sets mp3, m4a, flac or ogg, and
+  it is converted then.
+- progress live with speed and time left, and cancelling is possible at any
+  moment
+- the metadata is looked up automatically after the download. what comes out
+  of a video description is usually rough: every artist in one field, no album,
+  no lyrics. robify therefore searches for the track online and takes the clean
+  details over, but only on an unambiguous hit, otherwise everything stays as
+  it came out of the file. whether cover and lyrics come along is steered by
+  the two switches in the settings.
+- the account downloaded from becomes the lead artist and every further
+  participant becomes a guest artist. that takes effect only where the channel
+  really matches one of the participants, and with label, sampler or repost
+  channels the order of the metadata source stays. automatically generated
+  channels ("PA69 - Topic", "RihannaVEVO") are recognised in doing so.
+- afterwards the metadata review opens: title, artist, guest artists, album
+  artist, album, type of release, genre, year, track and disc number, cover and
+  lyrics. everything is pre-filled, to be taken over or changed first. with a
+  batch download the confirmation is dropped, otherwise it would be twelve
+  dialogs per album.
+- the metadata search runs over genius as the main source, with itunes and
+  musicbrainz behind it. one press on a hit fetches everything: guest artists
+  into their own field, album name and album artist, the cover at 1000 by 1000,
+  year and genre, the track number and the release type (single, ep or album,
+  derived from the length of the album track list). the lyrics come along too:
+  time-synced from lrclib, the running text from genius. no api key is needed.
+- on taking it over, the file is tagged and filed into
+  `library/artist/album/01 - title.ext`
+- tracks already present are skipped. whoever downloads one track first and the
+  album to it later waits for the rest alone.
+- a downloaded playlist becomes a playlist. on a second run only the new tracks
+  are added instead of a second list coming into being. it can be switched off
+  in the settings.
+- where the result does not match the search, robify says so. do the words of
+  the input not appear in the downloaded track, a warning stands in the
+  metadata dialog instead of a foreign recording landing in the library
+  quietly.
 
-> Der Downloader ist ein Werkzeug ohne eigene Inhalte. Ob du eine bestimmte Quelle
-> herunterladen darfst, richtet sich nach deren Nutzungsbedingungen und dem
-> Urheberrecht, das liegt in deiner Verantwortung.
+> The downloader is a tool without content of its own. Whether a particular
+> source may be downloaded follows from its terms of use and from copyright
+> law, and that responsibility lies with whoever uses it.
 
 ---
 
-## Voraussetzungen
+## 2. Installation
 
-| Werkzeug      | Zweck                                            |
-| ------------- | ------------------------------------------------ |
-| Node.js ≥ 20  | Frontend                                         |
-| Rust (stable) | Backend                                          |
-| `ffmpeg`      | Formatumwandlung und Cover-Einbettung (optional) |
+### Requirements
 
-`yt-dlp` muss nicht installiert werden: Robify lädt es beim ersten Download
-selbst herunter und legt es ins App-Datenverzeichnis. Ein bereits vorhandenes
-`yt-dlp` im Suchpfad wird bevorzugt.
+| Tool          | Purpose                                         |
+| ------------- | ----------------------------------------------- |
+| Node.js ≥ 20  | frontend                                        |
+| Rust (stable) | backend                                         |
+| `ffmpeg`      | format conversion and cover embedding, optional |
 
-### Systempakete
+`yt-dlp` does not have to be installed: robify downloads it itself at the
+first download and puts it into the app data directory. A `yt-dlp` already in
+the search path is preferred.
 
-**Fedora / RHEL**
+### System packages
 
 ```bash
+# fedora / rhel
 sudo dnf install webkit2gtk4.1-devel gtk3-devel alsa-lib-devel \
                  openssl-devel curl wget file libappstream-glib rpm-build
-```
 
-**Debian / Ubuntu**
-
-```bash
+# debian / ubuntu
 sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libasound2-dev \
                  librsvg2-dev patchelf build-essential curl wget file libssl-dev
-```
 
-**Arch**
-
-```bash
+# arch
 sudo pacman -S webkit2gtk-4.1 gtk3 alsa-lib openssl base-devel
 ```
 
-**Windows**: Visual Studio Build Tools (C++) und WebView2 (ab Windows 10 vorinstalliert)
-**macOS**: Xcode Command Line Tools
+On Windows the Visual Studio Build Tools (C++) and WebView2 are needed, the
+latter pre-installed from Windows 10 on. On macOS the Xcode command line tools
+are needed.
 
----
-
-## Entwicklung
-
-```bash
-npm install
-npm run app:dev      # Tauri-Fenster mit Hot Reload
-```
-
-Nur das Frontend im Browser (ohne Backend-Funktionen):
+### Building the installers
 
 ```bash
-npm run dev
-```
-
----
-
-## Tests
-
-```bash
-npm test                       # Oberfläche
-cd src-tauri && cargo test     # Backend
-node scripts/deutsch-finden.mjs   # deutscher Text ohne t()
-```
-
-Die Prüfungen der Oberfläche zerfallen in drei Gruppen:
-
-- **Rechnung** (`lib/`): Formatierung, Sortierung, Farben, LRC. Kein Dokument
-  nötig.
-- **Übersetzung** (`lib/deckung.test.ts`): Jeder Begriff der Oberfläche und
-  jede Fehlermeldung des Rust-Teils muss in allen sieben Sprachen vorliegen,
-  jedes gezählte Wort in allen Beugungen. Zusätzlich darf kein `t()` auf
-  Modulebene stehen, sonst friert die Beschriftung beim Sprachwechsel ein.
-- **Bauteile** (`components/*.test.tsx`): laufen in einem nachgebauten
-  Dokument (`jsdom`). Sie decken die Klasse Fehler ab, die sich nur dort
-  zeigt: ein Fokus, der beim Tippen aus dem Feld springt, oder ein Menü, das
-  die Bildlauffläche verlängert.
-
-`scripts/deutsch-finden.mjs` geht die andere Richtung als die Deckungswache:
-Diese prüft, ob jeder übersetzte Begriff eine Fassung hat, jener sucht Text,
-den niemand in `t()` gehüllt hat. Er läuft bei jedem Testlauf mit.
-
-Beide Läufe kommen ohne Netz aus. Was eine Verbindung braucht, ist mit
-`#[ignore]` versehen und wird gesondert gestartet:
-
-```bash
-cd src-tauri
-cargo test --test metadata_live -- --ignored --test-threads=1
-cargo test --test download_live -- --ignored --test-threads=1
-```
-
-Daneben liegen Berichte statt Prüfungen (`metadata_report`, `match_report`,
-`audio_report`): Sie behaupten nichts, sondern messen die Trefferquote über
-viele echte Titel und schreiben sie auf.
-
-Bei jedem Push läuft `.github/workflows/ci.yml`: Typen, Formatierung, beide
-Testläufe und Clippy. Die Installer entstehen erst beim Release, siehe
-[CHANGELOG.md](CHANGELOG.md) für die Fassungen.
-
----
-
-## Installer bauen
-
-### Alles, was auf dem aktuellen System möglich ist
-
-```bash
+# everything possible on the current system.
+# the results end up under src-tauri/target/release/bundle/
 npm run app:build
 ```
 
-Ergebnisse liegen unter `src-tauri/target/release/bundle/`.
+Operating systems cannot sensibly cross-compile for each other. For every
+installer at once there is the workflow
+[`.github/workflows/release.yml`](.github/workflows/release.yml). It builds
+deb, rpm, appimage, exe, msi, dmg for intel and apple silicon, the arch package
+and the android apk, and uploads all of it as artifacts.
 
-### Version hochziehen
+| Target        | Command                                                   | Build on |
+| ------------- | --------------------------------------------------------- | -------- |
+| `.deb`        | `npm run tauri build -- --bundles deb`                    | Linux    |
+| `.rpm`        | `npm run tauri build -- --bundles rpm`                    | Linux    |
+| `.AppImage`   | `NO_STRIP=true npm run tauri build -- --bundles appimage` | Linux    |
+| `.exe` (NSIS) | `npm run tauri build -- --bundles nsis`                   | Windows  |
+| `.msi`        | `npm run tauri build -- --bundles msi`                    | Windows  |
+| `.dmg`        | `npm run tauri build -- --bundles dmg`                    | macOS    |
 
-Die Nummer steht an vier Stellen, jede wird von einem anderen Werkzeug
-gelesen. Ein Befehl setzt sie überall:
+> `NO_STRIP=true` for the appimage. The tool `linuxdeploy`, which tauri fetches
+> for it, brings a `strip` of its own that is several years old. It does not
+> know the compressed relocations (`.relr.dyn`) current distributions ship
+> their libraries with and breaks off on every single one. The environment
+> variable skips that step, which makes the appimage larger, around 100 MB
+> instead of about 60, but it runs faultlessly. On the older base of the release
+> workflow (Ubuntu 22.04) the problem does not occur and the variable is
+> unnecessary.
 
-```bash
-npm run version -- 0.2.0
-```
+### Arch Linux
 
-Ohne Argument prüft derselbe Befehl nur. Er läuft bei jedem `npm run build`
-mit und bricht ab, sobald die Stellen auseinandergehen, sonst nennt sich das
-Arch-Paket irgendwann anders als der Rest, und auffallen würde es erst nach
-der Veröffentlichung.
-
-### Gezielt einzelne Formate
-
-| Ziel          | Befehl                                                    | Bauen auf |
-| ------------- | --------------------------------------------------------- | --------- |
-| `.deb`        | `npm run tauri build -- --bundles deb`                    | Linux     |
-| `.rpm`        | `npm run tauri build -- --bundles rpm`                    | Linux     |
-| `.AppImage`   | `NO_STRIP=true npm run tauri build -- --bundles appimage` | Linux     |
-| `.exe` (NSIS) | `npm run tauri build -- --bundles nsis`                   | Windows   |
-| `.msi`        | `npm run tauri build -- --bundles msi`                    | Windows   |
-| `.dmg`        | `npm run tauri build -- --bundles dmg`                    | macOS     |
-
-> **`NO_STRIP=true` beim AppImage.** Das Werkzeug `linuxdeploy`, das Tauri
-> dafür nachlädt, bringt ein eigenes, mehrere Jahre altes `strip` mit. Es kennt
-> die komprimierten Relokationen (`.relr.dyn`) nicht, mit denen aktuelle
-> Distributionen ihre Bibliotheken ausliefern, und bricht bei jeder einzelnen
-> ab. Die Umgebungsvariable überspringt diesen Schritt; das AppImage wird
-> dadurch größer (rund 100 MB statt etwa 60), läuft aber einwandfrei. Auf der
-> älteren Basis des Release-Ablaufs (Ubuntu 22.04) tritt das Problem nicht auf,
-> dort ist die Variable unnötig.
-
-Betriebssysteme lassen sich nicht sinnvoll gegenseitig cross-kompilieren,
-für alle Installer auf einmal gibt es den Workflow
-[`.github/workflows/release.yml`](.github/workflows/release.yml).
-Er baut deb, rpm, AppImage, exe, msi, dmg (Intel und Apple Silicon),
-das Arch-Paket und die Android-APK und lädt alles als Artefakte hoch.
-
-### Arch Linux (`.pkg.tar.zst`)
-
-Tauri kennt kein pacman-Ziel, deshalb liegt ein PKGBUILD bei:
+Tauri knows no pacman target, so a PKGBUILD ships along. Arch packages are
+called `.pkg.tar.zst`, an extension `.pacman` does not exist.
 
 ```bash
 cd packaging/arch
@@ -305,39 +232,210 @@ makepkg -f
 sudo pacman -U robify-*.pkg.tar.zst
 ```
 
-> Arch-Pakete heißen `.pkg.tar.zst`, eine Endung `.pacman` gibt es nicht.
+### Android
 
-### Android (`.apk`)
-
-Vorbereitung: Android SDK + NDK, `JAVA_HOME`, `ANDROID_HOME` und `NDK_HOME` setzen.
+The android sdk and ndk are needed, with `JAVA_HOME`, `ANDROID_HOME` and
+`NDK_HOME` set. The minimum version stands at api 26 and not at the default 24:
+`cpal` binds aaudio for the audio output, and that library exists only from 26
+on. With 24 the linking already breaks off with `unable to find library
+-laaudio`.
 
 ```bash
+# the rust targets, once
 rustup target add aarch64-linux-android armv7-linux-androideabi \
                   i686-linux-android x86_64-linux-android
+
+# sdk including ndk, around 2.4 gb
+export ANDROID_HOME="$HOME/Android/Sdk"
+sdkmanager --install "platform-tools" "platforms;android-34" \
+           "build-tools;34.0.0" "ndk;27.0.12077973"
+
 npm run android:init
-npm run android:dev      # auf Gerät/Emulator testen
-npm run android:build    # APK erzeugen
+npm run android:dev      # test on a device or emulator
+npm run android:build    # build the apk
 ```
 
-Die APK landet unter
-`src-tauri/gen/android/app/build/outputs/apk/`.
-Für die Veröffentlichung im Play Store muss sie noch signiert werden.
+The apk ends up under `src-tauri/gen/android/app/build/outputs/apk/`. For a
+release in the play store it still has to be signed.
+
+Fedora ships a java runtime alone while gradle needs a compiler, so a jdk of
+its own lies next to the sdk instead of in the system:
+
+```bash
+# into ~/.bashrc
+export JAVA_HOME="$HOME/Android/jdk"
+export ANDROID_HOME="$HOME/Android/Sdk"
+export NDK_HOME="$ANDROID_HOME/ndk/27.0.12077973"
+export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+```
+
+### Checking the installers
+
+Every published file carries a detached openpgp signature (`.asc`) next to it,
+and a signed `SHA256SUMS` ships along. The signing key:
+
+```
+MorgenWebDigital (Robify release signing) <info@morgenwebdigital.de>
+51C7 35F6 20DF 2108 2405  210D 3049 3374 8411 E706
+```
+
+The public key ships as
+[`packaging/robify-signing-key.asc`](packaging/robify-signing-key.asc).
+
+```bash
+gpg --import packaging/robify-signing-key.asc
+
+# check a single file
+gpg --verify Robify_0.1.0_amd64.deb.asc Robify_0.1.0_amd64.deb
+
+# or all of them at once through the checksums
+gpg --verify SHA256SUMS.asc SHA256SUMS
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+`Good signature` together with the fingerprint above means the file comes from
+this project unchanged. The warning that the key is not certified is to be
+expected, it only says that nobody in the local web of trust has vouched for
+it. The fingerprint is what counts.
 
 ---
 
-## Testgerät
+## 3. Usage
 
-Jeder Push auf `main` baut eine Android-APK und hängt sie an die Vorabversion
-`testgeraet`. Ein Aktualisierungsprogramm auf dem Gerät fragt immer dieselbe
-Adresse ab und holt sich den neuen Stand.
-
-### Einmalig: Schlüssel anlegen
-
-Android lässt ein Update nur zu, wenn die Unterschrift dieselbe ist wie bei
-der installierten Fassung. Deshalb gleich der eigene Schlüssel und nicht die
-Debug-Signatur: Sie trägt vom ersten Testbau bis zum Play Store.
+### Development
 
 ```bash
+npm install
+
+# the tauri window with hot reload
+npm run app:dev
+
+# the frontend alone in a browser, without the backend features
+npm run dev
+```
+
+### Tests
+
+```bash
+npm test                          # the ui
+cd src-tauri && cargo test        # the backend
+node scripts/deutsch-finden.mjs   # german text without t()
+```
+
+The checks of the ui fall into three groups:
+
+- calculation (`lib/`): formatting, sorting, colours, lrc. no document needed.
+- translation (`lib/deckung.test.ts`): every term of the ui and every error
+  message of the rust side has to exist in all seven languages, and every
+  counted word in all of its inflections. on top of that no `t()` may stand at
+  module level, otherwise the label freezes at a language switch.
+- components (`components/*.test.tsx`): these run in a rebuilt document
+  (`jsdom`). they cover the class of bug that shows only there: a focus jumping
+  out of a field while typing, or a menu extending the scrolling area.
+
+`scripts/deutsch-finden.mjs` goes the other direction than the coverage guard:
+that one checks whether every translated term has a version, this one looks for
+text nobody wrapped in `t()`. It runs along with every test run.
+
+Both runs get by without a network. What needs a connection carries `#[ignore]`
+and is started separately:
+
+```bash
+cd src-tauri
+cargo test --test metadata_live -- --ignored --test-threads=1
+cargo test --test download_live -- --ignored --test-threads=1
+```
+
+Next to them lie reports rather than checks (`metadata_report`,
+`match_report`, `audio_report`): they claim nothing but measure the hit rate
+over many real tracks and write it down.
+
+At every push `.github/workflows/ci.yml` runs: types, formatting, both test
+runs and clippy. The installers come into being at release, see
+[CHANGELOG.md](CHANGELOG.md) for the versions.
+
+### Keyboard shortcuts
+
+| Key          | Effect         |
+| ------------ | -------------- |
+| `Space`      | play and pause |
+| `Ctrl` + `→` | next track     |
+| `Ctrl` + `←` | previous track |
+| `Esc`        | close a dialog |
+
+### The test device
+
+Every push to `main` builds an android apk and attaches it to the pre-release
+`testgeraet`. An updater on the device polls the same address every time and
+fetches the new state. [Obtainium](https://github.com/ImranR98/Obtainium) is
+suited to it: it watches the releases of the repository and installs new
+versions. Installing from unknown sources has to be allowed for the source on
+the device.
+
+With a private repository obtainium needs a github token in its settings, as
+the assets of private repositories are not handed out without authentication.
+
+For the work itself the detour through github is too slow. With a device
+attached and usb debugging switched on, `npm run android:dev` puts changes to
+the ui onto the device within seconds.
+
+---
+
+## 4. Configuration
+
+The settings page holds the appearance (accent colour, light and dark, ui
+language), the storage locations, the scope of the review, the switches for the
+automatic lookups, and a button for a backup of the database.
+
+### Storage locations
+
+The data lies in a sqlite database in the app data directory, and its path
+stands in the settings. The trash and the backups lie there too. A backup can be
+made in the settings at any time, and the last five are kept.
+
+On a phone the locations are fixed: the tracks lie in `Robify` and everything
+else in `.robify`, both directly in the device storage. They are visible in the
+file manager there and survive the removal of the app, unlike everything under
+`Android/data`. The folder choice is therefore hidden there. `Robify/Eigene
+Songs` is the way in for music that does not come through the downloader, and
+what is dropped in is read at the next start.
+
+### Version numbers
+
+The number stands in four places, and each one is read by a different tool. One
+command sets it everywhere:
+
+```bash
+# without an argument the same command only checks
+npm run version -- 0.2.0
+```
+
+The check runs along with every `npm run build` and stops as soon as the places
+drift apart, otherwise the arch package calls itself differently from the rest
+at some point, and it would show only after the release.
+
+### Repository secrets
+
+The release workflow signs at the end of a release run and the test device
+workflow signs the apk. Both need secrets in the repository:
+
+| Secret                      | Content                                                    |
+| --------------------------- | ---------------------------------------------------------- |
+| `PGP_PRIVATE_KEY`           | output of `gpg --armor --export-secret-keys <fingerprint>` |
+| `PGP_PASSPHRASE`            | password of the key, where one is set                      |
+| `ANDROID_KEYSTORE`          | `base64 -w0 robify-release.keystore`                       |
+| `ANDROID_KEYSTORE_PASSWORD` | the password set for the keystore                          |
+| `ANDROID_KEY_ALIAS`         | `robify`                                                   |
+
+Android allows an update only where the signature is the same as on the
+installed version, hence a key of one's own from the first test build rather
+than the debug signature. It carries all the way to the play store, and without
+it the way there is shut for this app, as an app can never be continued there
+with a different key.
+
+```bash
+# create the key once, keep it outside the project and the password in a
+# password manager
 keytool -genkeypair -v \
   -keystore robify-release.keystore \
   -alias robify \
@@ -345,206 +443,83 @@ keytool -genkeypair -v \
   -dname "CN=Robify, O=MorgenWebDigital, C=DE"
 ```
 
-Der Befehl fragt nach einem Kennwort. Es gehört in den Passwortspeicher, und
-die Datei an einen Ort außerhalb des Projekts: **Ohne sie ist der Weg zum Play
-Store für diese App zu**, denn eine App lässt sich dort nie mit einem anderen
-Schlüssel fortsetzen.
-
-Danach drei Geheimnisse im Repository hinterlegen:
-
-| Geheimnis                   | Inhalt                               |
-| --------------------------- | ------------------------------------ |
-| `ANDROID_KEYSTORE`          | `base64 -w0 robify-release.keystore` |
-| `ANDROID_KEYSTORE_PASSWORD` | das eben gesetzte Kennwort           |
-| `ANDROID_KEY_ALIAS`         | `robify`                             |
-
-### Auf dem Gerät
-
-„Unbekannte Apps installieren" für die Quelle erlauben, dann die APK von der
-Seite der Vorabversion laden. Für das selbsttätige Aktualisieren eignet sich
-[Obtainium](https://github.com/ImranR98/Obtainium): Es beobachtet die
-Veröffentlichungen des Repositories und installiert neue Fassungen.
-
-Bei einem **privaten** Repository braucht es dafür einen GitHub-Token in den
-Einstellungen von Obtainium, denn Anhänge privater Repositories geben sich
-nicht ohne Anmeldung heraus. Klappt das nicht, bleibt der Weg über den
-Browser: Auf dem Handy bei GitHub angemeldet lässt sich die APK von Hand
-laden.
-
-### Einmalig: Werkzeuge lokal
-
-Für das Bauen auf dem eigenen Rechner braucht es SDK, NDK, ein JDK und die
-Rust-Ziele. Fedora liefert nur eine Java-Laufzeit, Gradle braucht aber einen
-Übersetzer; deshalb liegt hier ein eigenes JDK neben dem SDK statt im System.
-
-```bash
-rustup target add aarch64-linux-android armv7-linux-androideabi \
-                  i686-linux-android x86_64-linux-android
-
-# SDK samt NDK, rund 2,4 GB
-export ANDROID_HOME="$HOME/Android/Sdk"
-sdkmanager --install "platform-tools" "platforms;android-34" \
-           "build-tools;34.0.0" "ndk;27.0.12077973"
-```
-
-In die `~/.bashrc`:
-
-```bash
-export JAVA_HOME="$HOME/Android/jdk"
-export ANDROID_HOME="$HOME/Android/Sdk"
-export NDK_HOME="$ANDROID_HOME/ndk/27.0.12077973"
-export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
-```
-
-Die Mindestfassung steht auf **API 26** (`bundle.android.minSdkVersion`), nicht
-auf der Vorgabe 24: `cpal` bindet AAudio für die Tonausgabe, und die Bibliothek
-gibt es erst ab 26. Mit 24 bricht schon das Binden mit
-`unable to find library -laaudio` ab.
-
-### Der schnelle Weg daneben
-
-Für das Arbeiten selbst ist der Umweg über GitHub zu langsam. Mit
-angeschlossenem Gerät und eingeschalteter USB-Fehlersuche:
-
-```bash
-npm run android:dev
-```
-
-Änderungen an der Oberfläche erscheinen dann in Sekunden auf dem Gerät. Nötig
-sind dafür lokal das Android-SDK, das NDK und die Rust-Ziele; siehe
-[Voraussetzungen](#voraussetzungen).
-
 ---
 
-## Installer prüfen
-
-Jede veröffentlichte Datei trägt eine abgetrennte OpenPGP-Unterschrift
-(`.asc`) daneben, dazu liegt eine unterschriebene `SHA256SUMS` bei.
-
-Signaturschlüssel:
+## 5. Project structure
 
 ```
-MorgenWebDigital (Robify release signing) <info@morgenwebdigital.de>
-51C7 35F6 20DF 2108 2405  210D 3049 3374 8411 E706
-```
-
-Der öffentliche Schlüssel liegt als
-[`packaging/robify-signing-key.asc`](packaging/robify-signing-key.asc) bei.
-
-```bash
-gpg --import packaging/robify-signing-key.asc
-
-# Eine einzelne Datei prüfen
-gpg --verify Robify_0.1.0_amd64.deb.asc Robify_0.1.0_amd64.deb
-
-# Oder alle auf einmal über die Prüfsummen
-gpg --verify SHA256SUMS.asc SHA256SUMS
-sha256sum --check --ignore-missing SHA256SUMS
-```
-
-`Good signature` zusammen mit dem oben genannten Fingerabdruck heißt: Die
-Datei stammt unverändert aus diesem Projekt. Die Warnung, der Schlüssel sei
-nicht beglaubigt, ist dabei zu erwarten; sie besagt nur, dass niemand aus
-deinem Netz für ihn gebürgt hat. Maßgeblich ist der Fingerabdruck.
-
-Der Ablauf in `.github/workflows/release.yml` unterschreibt am Ende eines
-Release-Laufs. Er braucht zwei Geheimnisse im Repository:
-
-| Geheimnis         | Inhalt                                                         |
-| ----------------- | -------------------------------------------------------------- |
-| `PGP_PRIVATE_KEY` | Ausgabe von `gpg --armor --export-secret-keys <Fingerabdruck>` |
-| `PGP_PASSPHRASE`  | Kennwort des Schlüssels, falls eines gesetzt ist               |
-
----
-
-## Aufbau
-
-```
-src/                     React-Oberfläche
-  components/            Player, Listen, Dialoge, Metadateneditor
-  pages/                 Start, Bibliothek, Künstler, Playlists, Wrapped, Downloader, Einstellungen
-  store/                 Zustand für Player, Bibliothek und UI (zustand)
-  lib/                   API-Brücke, LRC-Parser, Formatierung, Sortierung, Cover-URLs
+src/                     the react ui
+  components/            player, lists, dialogs, metadata editor
+  pages/                 home, library, artists, playlists, review, downloader, settings
+  store/                 state for player, library and ui (zustand)
+  lib/                   api bridge, lrc parser, formatting, sorting, cover urls
 src-tauri/src/
-  player.rs              Wiedergabe-Thread: Warteschlange, Repeat, Shuffle, Sleeptimer
-  library.rs             Alle Datenbankabfragen
-  db.rs                  Schema und Migration
-  scanner.rs             Datei-/Ordnerimport
-  tags.rs                Tags lesen und schreiben
-  online.rs              Genius, iTunes, MusicBrainz, Cover Art Archive, LRCLIB
-  spotify.rs             Spotify-Links auflösen (nur Metadaten, ohne API-Schlüssel)
-  downloader.rs          yt-dlp-Anbindung, Linkerkennung, Mehrquellen-Suche
-  stats.rs               Wochenmix und Wrapped
-  commands.rs            Schnittstelle zum Frontend
-packaging/               Desktop-Datei und Arch-PKGBUILD
+  player.rs              the playback thread: queue, repeat, shuffle, sleep timer
+  library.rs             every database query
+  db.rs                  schema and migrations
+  scanner.rs             file and folder import
+  tags.rs                reading and writing tags
+  online.rs              genius, itunes, musicbrainz, cover art archive, lrclib
+  spotify.rs             resolving spotify links, metadata only, no api key
+  downloader.rs          the yt-dlp binding, link detection, multi-source search
+  stats.rs               the weekly mix and the review
+  commands.rs            the interface to the frontend
+packaging/               the desktop file and the arch pkgbuild
+scripts/                 version check, licence collection, android retrofit
 ```
 
-Daten liegen in einer SQLite-Datenbank im App-Datenverzeichnis
-(Pfad steht in den Einstellungen unter „Speicherorte“). Dort liegen auch der
-Papierkorb und die Sicherungen; eine Sicherung lässt sich in den Einstellungen
-jederzeit anlegen, die letzten fünf bleiben erhalten.
-Cover werden als BLOB gespeichert und über ein eigenes `robify:`-Protokoll
-an die Oberfläche ausgeliefert, statt sie als Base64 durch die IPC-Brücke zu schicken.
+Covers are stored as blobs and served to the ui over a custom `robify:` scheme
+instead of being pushed through the ipc bridge as base64.
 
 ---
 
-## Tastenkürzel
+## 6. License
 
-| Taste        | Wirkung           |
-| ------------ | ----------------- |
-| `Leertaste`  | Abspielen / Pause |
-| `Strg` + `→` | Nächster Titel    |
-| `Strg` + `←` | Vorheriger Titel  |
-| `Esc`        | Dialog schließen  |
+Robify is licensed under the PolyForm Noncommercial 1.0.0, see
+[LICENSE](LICENSE). In one sentence: using, changing and passing it on is
+allowed to everybody as long as the purpose is not commercial, so privately, in
+research and teaching, at non-profit bodies and public authorities. Nobody may
+sell robify, and using it in a business is not allowed either.
 
----
+Whoever wants to all the same turns to MorgenWebDigital. The commercial rights
+lie there entirely, and a separate licence or a sale is possible at any time
+without anybody else having to be asked.
 
-## Lizenz
+Robify is therefore source-available but not open source in the sense of the
+OSI, whose definition demands that commercial use be allowed as well. In
+practice that means f-droid does not take the app in and some distributions do
+not take it into their package sources. Releases of our own, the arch package
+and the apk are untouched by it.
 
-Robify steht unter der **PolyForm Noncommercial 1.0.0**, siehe
-[LICENSE](LICENSE). In einem Satz: Benutzen, verändern und weitergeben ist
-jedem erlaubt, solange der Zweck nicht kommerziell ist — privat, in
-Forschung und Lehre, bei gemeinnützigen Trägern und Behörden. Verkaufen darf
-Robify niemand, und betrieblich einsetzen ebenfalls nicht.
+### Third-party libraries
 
-Wer es doch will, wendet sich an MorgenWebDigital. Die kommerziellen Rechte
-liegen vollständig dort; eine gesonderte Lizenz oder ein Verkauf ist jederzeit
-möglich, ohne dass jemand anderes gefragt werden müsste.
+Robify ships with around 400 third-party packages (rust and npm, without build
+tools). Overwhelmingly mit and apache-2.0, plus mpl-2.0 for symphonia and a few
+smaller ones. There is no gpl, agpl, lgpl or sspl in the tree, so nothing
+forces the disclosure of source code of our own.
 
-Damit ist Robify quelloffen, aber nicht „Open Source“ im Sinne der OSI: Deren
-Definition verlangt, dass auch kommerzielle Nutzung erlaubt ist. Praktisch
-heißt das, dass F-Droid die App nicht aufnimmt und einige Distributionen sie
-nicht in ihre Paketquellen übernehmen. Eigene Veröffentlichungen, das
-Arch-Paket und die APK sind davon nicht berührt.
+All three expressly allow the whole to be passed on under different terms, so
+the licence of robify may be stricter than theirs. Mpl-2.0 acts on the files of
+symphonia itself alone: are those changed, exactly those files stay under mpl
+and their source has to stay open.
 
-### Fremdbibliotheken
-
-Robify wird mit rund 400 Fremdpaketen ausgeliefert (Rust und npm, ohne
-Bauwerkzeuge). Ganz überwiegend MIT und Apache-2.0; dazu MPL-2.0 für Symphonia
-und einige kleinere. **Kein GPL, AGPL, LGPL oder SSPL im Baum**, nichts zwingt
-also zur Offenlegung eigenen Quelltextes.
-
-Alle drei erlauben ausdrücklich, dass das Ganze unter anderen Bedingungen
-weitergegeben wird; die Lizenz von Robify darf also strenger sein als ihre.
-MPL-2.0 wirkt nur auf die Dateien von Symphonia selbst: Werden die geändert,
-bleiben genau diese Dateien unter MPL und ihr Quelltext muss offen bleiben.
-
-MIT und Apache-2.0 verlangen beide, dass Urheberrechtsvermerk und Lizenztext
-mitgeliefert werden. Das übernimmt `scripts/lizenzen.mjs`: Es sammelt die
-Angaben aus `cargo tree -e normal` und dem npm-Produktivbaum nach
-`public/lizenzen.json`, das die App unter _Einstellungen → Rechtliches_ anzeigt.
+Mit and apache-2.0 both demand that copyright notice and licence text ship
+along. `scripts/lizenzen.mjs` takes care of that: it collects the details from
+`cargo tree -e normal` and from the npm production tree into
+`public/lizenzen.json`, which the app displays under settings, legal.
 
 ```bash
-npm run lizenzen     # läuft ohnehin bei jedem `npm run build`
+# runs with every `npm run build` anyway
+npm run lizenzen
 ```
 
-Bei knapp 30 Paketen liegt dem veröffentlichten Archiv kein Lizenztext bei; dort
-zeigt die Liste die SPDX-Angabe und den Verweis auf die Quelle.
+With close to 30 packages no licence text ships in the published archive, and
+the list shows the spdx value and the pointer to the source there.
 
-### Fremde Inhalte
+### Third-party content
 
-Robify liefert keine Musik mit. Ob eine bestimmte Aufnahme heruntergeladen
-werden darf, richtet sich nach dem Urheberrecht und den Bedingungen der
-Plattform. Die Metadatensuche liest öffentlich erreichbare Seiten von Spotify,
-Genius und anderen aus; deren Nutzungsbedingungen erlauben das in der Regel
-nicht. Beides liegt in der Verantwortung dessen, der das Werkzeug benutzt.
+Robify ships no music. Whether a particular recording may be downloaded follows
+from copyright law and from the terms of the platform. The metadata search
+reads publicly reachable pages of spotify, genius and others, and their terms of
+use generally do not allow that. Both lie in the responsibility of whoever uses
+the tool.
