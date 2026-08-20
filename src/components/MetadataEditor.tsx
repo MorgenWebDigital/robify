@@ -6,7 +6,7 @@ import { useUi } from "../store/ui";
 import { Cover } from "./Cover";
 import { DownloadIcon, SearchIcon } from "./Icons";
 import { Auswahl } from "./Auswahl";
-import { Button, Field, inputClass, Modal } from "./Modal";
+import { Button, Field, inputClass, Modal, textareaClass } from "./Modal";
 import type { MetadataCandidate, Track, TrackMetadata } from "../types";
 
 export const emptyMetadata: TrackMetadata = {
@@ -460,7 +460,7 @@ export function MetadataForm({
                 }
                 rows={7}
                 spellCheck={false}
-                className={`${inputClass} font-mono text-xs`}
+                className={`${textareaClass} font-mono text-xs`}
               />
             </Field>
             <Field label={t("Einfacher Text")}>
@@ -470,7 +470,7 @@ export function MetadataForm({
                   patch({ lyricsPlain: event.target.value || null })
                 }
                 rows={5}
-                className={inputClass}
+                className={textareaClass}
               />
             </Field>
           </div>

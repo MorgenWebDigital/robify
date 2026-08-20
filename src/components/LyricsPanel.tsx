@@ -4,7 +4,7 @@ import { api, errorMessage, fallback } from "../lib/api";
 import { activeLineIndex, parseLrc } from "../lib/lrc";
 import { usePlayer } from "../store/player";
 import { useUi } from "../store/ui";
-import { Button, Field, inputClass, Modal } from "./Modal";
+import { Button, Field, Modal, textareaClass } from "./Modal";
 import { DownloadIcon, LyricsIcon, PencilIcon } from "./Icons";
 import { LyricsSync } from "./LyricsSync";
 import type { Lyrics, Track } from "../types";
@@ -362,7 +362,7 @@ function LyricsEditor({
               onChange={(event) => setSynced(event.target.value)}
               rows={10}
               spellCheck={false}
-              className={`${inputClass} font-mono text-xs`}
+              className={`${textareaClass} font-mono text-xs`}
               placeholder={t("[00:12.30] Erste Zeile")}
             />
           </Field>
@@ -374,7 +374,7 @@ function LyricsEditor({
               value={plain}
               onChange={(event) => setPlain(event.target.value)}
               rows={7}
-              className={inputClass}
+              className={textareaClass}
             />
           </Field>
 

@@ -17,7 +17,13 @@ import {
   ShuffleIcon,
   TrashIcon,
 } from "../components/Icons";
-import { Button, Field, inputClass, Modal } from "../components/Modal";
+import {
+  Button,
+  Field,
+  inputClass,
+  Modal,
+  textareaClass,
+} from "../components/Modal";
 import { TrackList } from "../components/TrackList";
 import { api, errorMessage, fallback } from "../lib/api";
 import { formatDuration, plural } from "../lib/format";
@@ -326,7 +332,7 @@ export function PlaylistDetail() {
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               rows={3}
-              className={inputClass}
+              className={textareaClass}
             />
           </Field>
         </div>

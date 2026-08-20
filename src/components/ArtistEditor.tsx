@@ -5,7 +5,7 @@ import { artistImage, dataUrl } from "../lib/cover";
 import { useUi } from "../store/ui";
 import { useBildFertig } from "./Cover";
 import { ArtistIcon, DownloadIcon, SearchIcon } from "./Icons";
-import { Button, Field, inputClass, Modal } from "./Modal";
+import { Button, Field, inputClass, Modal, textareaClass } from "./Modal";
 import type { Artist, ArtistCandidate } from "../types";
 
 /** a round artist image falling back to an icon. */
@@ -316,7 +316,7 @@ export function ArtistEditor({
                 value={bio}
                 onChange={(event) => setBio(event.target.value)}
                 rows={8}
-                className={inputClass}
+                className={textareaClass}
               />
             </Field>
             {artist.sourceUrl && (

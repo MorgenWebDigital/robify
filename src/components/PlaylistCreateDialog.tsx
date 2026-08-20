@@ -5,7 +5,7 @@ import { dataUrl } from "../lib/cover";
 import { useLibrary } from "../store/library";
 import { useUi } from "../store/ui";
 import { CoverPicker, type CoverChoice } from "./CoverPicker";
-import { Button, Field, inputClass, Modal } from "./Modal";
+import { Button, Field, inputClass, Modal, textareaClass } from "./Modal";
 import type { Playlist } from "../types";
 
 // the one dialog for creating a playlist, with cover, name and description.
@@ -106,7 +106,7 @@ export function PlaylistCreateDialog({
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             rows={3}
-            className={inputClass}
+            className={textareaClass}
           />
         </Field>
       </div>

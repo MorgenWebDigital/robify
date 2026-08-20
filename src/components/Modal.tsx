@@ -73,7 +73,10 @@ export function Modal({
     // the first control that is not the close cross: the dialog is to offer
     // its actual action, not the exit
     const erstes = felder.length > 1 ? felder[1] : felder[0];
-    erstes?.focus();
+    // `preventScroll`: focusing scrolls the element into view, and in a dialog
+    // whose body overflows that pushed the top of the form up under the
+    // header. the release editor opened with its first button half hidden.
+    erstes?.focus({ preventScroll: true });
 
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -219,5 +222,15 @@ export function Field({
   );
 }
 
-export const inputClass =
-  "w-full rounded-lg border border-ink-600 bg-ink-900 px-3 py-2 text-sm text-fg placeholder:text-mute/60 transition focus:border-transparent";
+/**
+ * a single-line field in a dialog.
+ *
+ * the same groove the search bars are built from, not a flat bordered box of
+ * its own. a dialog stood next to a select of the app's own make, and the two
+ * did not look like one family: the field flat and squared, the select a
+ * raised pill.
+ */
+export const inputClass = "search-field";
+
+/** the same for several lines: same groove, a rounded rectangle instead of a pill. */
+export const textareaClass = "text-field";
