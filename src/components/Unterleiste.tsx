@@ -4,6 +4,12 @@ import { t } from "../lib/i18n";
 import { UNTEN, UNTER_MEHR, istHier } from "../lib/navigation";
 import { useAusblenden } from "../lib/ausblenden";
 import { DotsIcon } from "./Icons";
+import {
+  Aktualisierungsfenster,
+  Aktualisierungszeile,
+  etwasNeues,
+  useAktualisierungen,
+} from "./Aktualisierung";
 
 /** has to match the duration of `.animate-out` in the stylesheet. */
 const AUSBLENDEN_MS = 160;
@@ -21,9 +27,11 @@ const AUSBLENDEN_MS = 160;
 export function Unterleiste() {
   const { pathname: pfad } = useLocation();
   const [mehrOffen, setMehrOffen] = useState(false);
+  const [neuesOffen, setNeuesOffen] = useState(false);
   const { sichtbar, schliesst } = useAusblenden(mehrOffen, AUSBLENDEN_MS);
 
   const mehrAktiv = UNTER_MEHR.some((eintrag) => istHier(pfad, eintrag));
+  const neues = etwasNeues(useAktualisierungen());
 
   return (
     <>
@@ -42,6 +50,15 @@ export function Unterleiste() {
             className={`unterleiste-blatt ${schliesst ? "animate-out" : "animate-rise"}`}
           >
             <ul className="flex flex-col gap-0.5 p-2">
+              {/* above the sections, not among them: it is not a place one
+                  goes to but something that wants doing, and it is gone again
+                  once it is done */}
+              <Aktualisierungszeile
+                oeffnen={() => {
+                  setMehrOffen(false);
+                  setNeuesOffen(true);
+                }}
+              />
               {UNTER_MEHR.map((eintrag) => {
                 const { to, schluessel, icon: Glyph } = eintrag;
                 const hier = istHier(pfad, eintrag);
@@ -88,10 +105,29 @@ export function Unterleiste() {
           aria-expanded={mehrOffen}
           className={`unterleiste-ziel ${mehrAktiv || mehrOffen ? "is-active" : ""}`}
         >
-          <DotsIcon size={22} />
+          {/* the dot says that something lies behind it. without it an update
+              on a phone would be hidden behind a sheet nobody opens without a
+              reason, and the whole point of the check would be lost */}
+          <span className="relative">
+            <DotsIcon size={22} />
+            {neues && (
+              <span
+                aria-hidden="true"
+                className="absolute -end-0.5 -top-0.5 h-2 w-2 rounded-full"
+                style={{ background: "var(--accent)" }}
+              />
+            )}
+          </span>
           <span className="truncate">{t("Mehr")}</span>
         </button>
       </nav>
+
+      {/* outside the sheet: tapping the row closes the sheet, and a window
+          standing inside it would be taken along */}
+      <Aktualisierungsfenster
+        offen={neuesOffen}
+        schliessen={() => setNeuesOffen(false)}
+      />
     </>
   );
 }

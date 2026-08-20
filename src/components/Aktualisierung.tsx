@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { api, errorMessage } from "../lib/api";
 import { t } from "../lib/i18n";
 import { useUi } from "../store/ui";
@@ -8,83 +8,80 @@ import { DownloadIcon } from "./Icons";
 
 // tells that there is something newer, and nothing else.
 //
-// the button is not there while everything is up to date. that is the whole
-// point of it: a place that always shows something has to be read every time,
-// one that is empty most of the time is understood at a glance.
+// nothing is visible while everything is up to date. that is the whole point:
+// a place that always shows something has to be read every time, one that is
+// empty most of the time is understood at a glance.
 //
 // two things are watched over, and they are renewed in different ways. yt-dlp
 // renews itself, robify does not: an installed app cannot exchange its own
-// files without a package manager, and the honest way is therefore the page
-// the new version lies on.
-// what the last check found, for as long as the app is running.
-//
-// the effect below runs again at every fresh mount, and there are more of
-// those than one thinks: switching the language rebuilds the whole app, and
-// during development every saved file does. github does not mind being asked,
-// but asking the same question three times in a minute is answered three
-// times with the same thing.
-let gemerkt: Promise<Aktualisierungen> | null = null;
+// files without going behind the back of a package manager, and the honest
+// way is therefore the page the new version lies on.
 
-function einmalPruefen(): Promise<Aktualisierungen> {
-  gemerkt ??= api.aktualisierungenPruefen();
-  return gemerkt;
+// --- the one answer for the whole app ---
+//
+// the sidebar and the sheet of the bottom bar both want it, and both exist at
+// the same time: the one is hidden on a phone, the other on a desktop, but
+// hidden means invisible and not absent. without a shared place each of them
+// would ask on its own, and a renewal in the one would not be noticed by the
+// other.
+let stand: Aktualisierungen | null = null;
+let gefragt = false;
+const horcher = new Set<() => void>();
+
+function setzen(neu: Aktualisierungen | null) {
+  stand = neu;
+  for (const melden of horcher) melden();
 }
 
-export function Aktualisierungsknopf() {
-  const notify = useUi((s) => s.notify);
-  const [stand, setStand] = useState<Aktualisierungen | null>(null);
-  const [offen, setOffen] = useState(false);
-  const [holt, setHolt] = useState(false);
+function abonnieren(melden: () => void) {
+  horcher.add(melden);
+  return () => {
+    horcher.delete(melden);
+  };
+}
 
-  // asked once at the start and never again.
-  //
-  // a failure stays silent here, unlike everywhere else in the app: nobody
-  // asked for this check, and a network that is down would otherwise complain
-  // at every start about something the user cannot do anything about anyway.
+function lesen(): Aktualisierungen | null {
+  return stand;
+}
+
+/**
+ * what is to be had, asked once for the whole run.
+ *
+ * a failure stays silent, unlike everywhere else in the app: nobody asked for
+ * this check, and a network that is down would otherwise complain at every
+ * start about something no one can do anything about. it is asked again at
+ * the next start.
+ */
+export function useAktualisierungen(): Aktualisierungen | null {
+  const wert = useSyncExternalStore(abonnieren, lesen, lesen);
+
   useEffect(() => {
-    let gilt = true;
-    einmalPruefen()
-      .then((was) => {
-        if (gilt) setStand(was);
-      })
+    if (gefragt) return;
+    gefragt = true;
+    api
+      .aktualisierungenPruefen()
+      .then(setzen)
       .catch(() => {
-        // asked once more at the next start: a failure is not to stick to the
-        // running app
-        gemerkt = null;
+        gefragt = false;
       });
-    return () => {
-      gilt = false;
-    };
   }, []);
 
-  const ytdlpHolen = async () => {
-    setHolt(true);
-    try {
-      const fassung = await api.ytdlpAktualisieren();
-      notify(t("yt-dlp steht jetzt auf {0}.", fassung), "success");
-      // gone from the list, and with it possibly the button: what has been
-      // fetched is not to keep offering itself
-      setStand((vorher) => {
-        const neuer = vorher ? { ...vorher, ytdlp: null } : vorher;
-        if (neuer) gemerkt = Promise.resolve(neuer);
-        return neuer;
-      });
-    } catch (error) {
-      notify(errorMessage(error), "error");
-    } finally {
-      setHolt(false);
-    }
-  };
+  return wert;
+}
 
-  const seiteOeffnen = async () => {
-    try {
-      await api.releaseSeiteOeffnen();
-    } catch (error) {
-      notify(errorMessage(error), "error");
-    }
-  };
+/** whether anything at all is to be had. */
+export function etwasNeues(was: Aktualisierungen | null): boolean {
+  return Boolean(was?.app || was?.ytdlp);
+}
 
-  if (!stand?.app && !stand?.ytdlp) return null;
+// --- the two ways in ---
+
+/** the key in the foot of the sidebar, on a desktop. */
+export function Aktualisierungsknopf() {
+  const was = useAktualisierungen();
+  const [offen, setOffen] = useState(false);
+
+  if (!etwasNeues(was)) return null;
 
   return (
     <>
@@ -103,56 +100,131 @@ export function Aktualisierungsknopf() {
       >
         <DownloadIcon size={18} />
       </button>
-
-      <Modal
-        open={offen}
-        title={t("Aktualisierung verfügbar")}
-        onClose={() => setOffen(false)}
-        width="max-w-md"
-        footer={
-          <Button onClick={() => setOffen(false)} variant="ghost">
-            {t("Schließen")}
-          </Button>
-        }
-      >
-        <div className="space-y-4">
-          {stand.app && (
-            <Zeile
-              name={t("Robify")}
-              jetzt={stand.app.jetzt}
-              neu={stand.app.neu}
-              hinweis={t(
-                "Robify kann sich nicht selbst austauschen. Die neue Fassung liegt zum Herunterladen bereit.",
-              )}
-              knopf={
-                <Button onClick={() => void seiteOeffnen()} variant="primary">
-                  {t("Zur Veröffentlichung")}
-                </Button>
-              }
-            />
-          )}
-          {stand.ytdlp && (
-            <Zeile
-              name={t("yt-dlp")}
-              jetzt={stand.ytdlp.jetzt}
-              neu={stand.ytdlp.neu}
-              hinweis={t(
-                "YouTube weist alte Fassungen mit „403“ ab. Hilft eine Aktualisierung nicht, liegt es an der Quelle.",
-              )}
-              knopf={
-                <Button
-                  onClick={() => void ytdlpHolen()}
-                  variant="primary"
-                  disabled={holt}
-                >
-                  {holt ? t("Holt…") : t("Jetzt erneuern")}
-                </Button>
-              }
-            />
-          )}
-        </div>
-      </Modal>
+      <Aktualisierungsfenster
+        offen={offen}
+        schliessen={() => setOffen(false)}
+      />
     </>
+  );
+}
+
+/**
+ * the row in the sheet behind "more", on a phone.
+ *
+ * there is no sidebar there, and the settings sit in that sheet. the row
+ * stands above them, in the same build as every entry of the sheet, only with
+ * the accent on the sign.
+ *
+ * the window is not built here but by the bottom bar. tapping the row closes
+ * the sheet, the sheet unmounts, and a window standing inside it would be
+ * taken along before it could be seen.
+ */
+export function Aktualisierungszeile({ oeffnen }: { oeffnen: () => void }) {
+  const was = useAktualisierungen();
+
+  if (!etwasNeues(was)) return null;
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={oeffnen}
+        className="nav-item w-full gap-3 px-3 py-3 text-sm font-medium"
+        style={{ color: "var(--accent)" }}
+      >
+        <DownloadIcon size={20} />
+        {t("Aktualisierung verfügbar")}
+      </button>
+    </li>
+  );
+}
+
+// --- what stands in the window ---
+
+/** what is to be had, and what is to be done about it. */
+export function Aktualisierungsfenster({
+  offen,
+  schliessen,
+}: {
+  offen: boolean;
+  schliessen: () => void;
+}) {
+  const notify = useUi((s) => s.notify);
+  const was = useAktualisierungen();
+  const [holt, setHolt] = useState(false);
+
+  const ytdlpHolen = async () => {
+    setHolt(true);
+    try {
+      const fassung = await api.ytdlpAktualisieren();
+      notify(t("yt-dlp steht jetzt auf {0}.", fassung), "success");
+      // gone from the list, and with it possibly the way in: what has been
+      // fetched is not to keep offering itself
+      if (stand) setzen({ ...stand, ytdlp: null });
+    } catch (error) {
+      notify(errorMessage(error), "error");
+    } finally {
+      setHolt(false);
+    }
+  };
+
+  const seiteOeffnen = async () => {
+    try {
+      await api.releaseSeiteOeffnen();
+    } catch (error) {
+      notify(errorMessage(error), "error");
+    }
+  };
+
+  return (
+    <Modal
+      open={offen}
+      title={t("Aktualisierung verfügbar")}
+      onClose={schliessen}
+      width="max-w-md"
+      footer={
+        <Button onClick={schliessen} variant="ghost">
+          {t("Schließen")}
+        </Button>
+      }
+    >
+      <div className="space-y-4">
+        {was?.app && (
+          <Zeile
+            name={t("Robify")}
+            jetzt={was.app.jetzt}
+            neu={was.app.neu}
+            hinweis={t(
+              "Robify kann sich nicht selbst austauschen. Die neue Fassung liegt zum Herunterladen bereit.",
+            )}
+            knopf={
+              <Button onClick={() => void seiteOeffnen()} variant="primary">
+                {t("Zur Veröffentlichung")}
+              </Button>
+            }
+          />
+        )}
+        {was?.ytdlp && (
+          <Zeile
+            name={t("yt-dlp")}
+            jetzt={was.ytdlp.jetzt}
+            neu={was.ytdlp.neu}
+            hinweis={t(
+              "YouTube weist alte Fassungen mit „403“ ab. Hilft eine Aktualisierung nicht, liegt es an der Quelle.",
+            )}
+            knopf={
+              <Button
+                onClick={() => void ytdlpHolen()}
+                variant="primary"
+                disabled={holt}
+              >
+                {holt ? t("Holt…") : t("Jetzt erneuern")}
+              </Button>
+            }
+          />
+        )}
+      </div>
+    </Modal>
   );
 }
 
