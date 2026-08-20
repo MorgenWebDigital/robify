@@ -133,43 +133,49 @@ export function Mitmachen({ ytdlp }: { ytdlp?: string | null }) {
             )}
           </p>
           {SPENDEN.map((weg) => (
-            <div key={weg.name} className="flex items-start gap-3 p-1">
-              <Muenze name={weg.name} className="mt-0.5 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium">{weg.name}</div>
-                {/* `break-all`: an address is one word to the browser, and
-                    monero brings ninety-five characters. without it the line
-                    would stand out of the panel */}
-                <code className="mt-1 block rounded bg-ink-900 px-2 py-1 font-mono text-xs break-all select-all">
-                  {weg.adresse}
-                </code>
-                {weg.dazu && (
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                    {weg.dazu.map((marke) => (
-                      <span
-                        key={marke}
-                        className="flex items-center gap-1 text-xs text-mute"
-                      >
-                        <Muenze name={marke} size={14} />
-                        {marke}
-                      </span>
-                    ))}
-                  </div>
-                )}
+            // the address below the name and not beside it: on a telephone
+            // the panel is barely three hundred points wide, and indented
+            // behind coin and button barely two hundred would remain for it.
+            // monero would run over four lines there
+            <div key={weg.name} className="p-1">
+              <div className="flex items-center gap-3">
+                <Muenze name={weg.name} className="shrink-0" />
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                  {weg.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void adresseKopieren(weg.name, weg.adresse)}
+                  title={t("Adresse kopieren")}
+                  aria-label={t("Adresse kopieren")}
+                  className="shrink-0 rounded-lg p-1.5 text-mute transition hover:bg-ink-800 hover:text-fg"
+                >
+                  {kopiert === weg.name ? (
+                    <CheckIcon size={16} />
+                  ) : (
+                    <CopyIcon size={16} />
+                  )}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => void adresseKopieren(weg.name, weg.adresse)}
-                title={t("Adresse kopieren")}
-                aria-label={t("Adresse kopieren")}
-                className="mt-0.5 shrink-0 rounded-lg p-1.5 text-mute transition hover:bg-ink-800 hover:text-fg"
-              >
-                {kopiert === weg.name ? (
-                  <CheckIcon size={16} />
-                ) : (
-                  <CopyIcon size={16} />
-                )}
-              </button>
+              {/* `break-all`: an address is one word to the browser, and
+                  monero brings ninety-five characters. without it the line
+                  would stand out of the panel */}
+              <code className="mt-1.5 block rounded bg-ink-900 px-2 py-1 font-mono text-xs break-all select-all">
+                {weg.adresse}
+              </code>
+              {weg.dazu && (
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                  {weg.dazu.map((marke) => (
+                    <span
+                      key={marke}
+                      className="flex items-center gap-1 text-xs text-mute"
+                    >
+                      <Muenze name={marke} size={14} />
+                      {marke}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
