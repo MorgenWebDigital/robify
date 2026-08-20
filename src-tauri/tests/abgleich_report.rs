@@ -61,34 +61,95 @@ struct Wahrheit {
     jahr: Option<i64>,
 }
 
+/// what the catalogues say about the recording.
+///
+/// two of them, and they are asked different questions — each what it
+/// actually knows.
+///
+/// **deezer** for title and artist: one query, cleanly separated fields, and
+/// its answer agreed with the reality of every hand-checked case.
+///
+/// **itunes** for the year: it stamps the original release date onto a track
+/// even where the track sits on a later record, and the earliest of its hits
+/// is the first appearance. deezer cannot do this — its `release_date` is the
+/// date of the catalogue entry, and "A Night at the Opera" reads 2005 there.
+///
+/// **for album and kind neither of them is enough.** deezer names the version
+/// played most — "Dancing Queen" out of "ABBA Gold", "Feeling Good" as a
+/// remix from 2022 —, and itunes hangs the original date onto a greatest-hits
+/// record. so both are asked, and the field only counts where they agree.
+/// where they do not, it stays empty and the report leaves it out of the
+/// score rather than measuring its own yardstick.
 async fn wahrheit_holen(artist: &str, titel: &str) -> Wahrheit {
+    let (bei_deezer, bei_itunes) = tokio::join!(
+        deezer_wahrheit(artist, titel),
+        itunes_wahrheit(artist, titel)
+    );
+
+    let (titel_echt, kuenstler_echt, album_deezer, art_deezer) = bei_deezer;
+    let (jahr_echt, album_itunes) = bei_itunes;
+
+    // album and kind only where both catalogues name the same record
+    let einig = match (album_deezer.as_deref(), album_itunes.as_deref()) {
+        (Some(a), Some(b)) => gleiche_sache(a, b),
+        _ => false,
+    };
+
+    Wahrheit {
+        titel: titel_echt,
+        kuenstler: kuenstler_echt,
+        album: if einig { album_deezer.clone() } else { None },
+        art: if einig { art_deezer } else { None },
+        jahr: jahr_echt,
+    }
+}
+
+/// whether a hit means this recording and not a version of it.
+fn meint_die_aufnahme(name: &str, wer: &str, titel: &str, artist: &str) -> bool {
+    gleiche_sache(name, titel)
+        && gleiche_sache(wer, artist)
+        // "(Don Diablo Extended Remix)" is a different recording
+        && online::klammerzusaetze(name)
+            .iter()
+            .all(|zusatz| online::ist_nur_beiwerk(zusatz))
+}
+
+/// title, artist, album and kind as deezer carries them.
+async fn deezer_wahrheit(
+    artist: &str,
+    titel: &str,
+) -> (Option<String>, Option<String>, Option<String>, Option<String>) {
+    let leer = (None, None, None, None);
     let url = format!(
-        "https://api.deezer.com/search?q={}&limit=1",
+        "https://api.deezer.com/search/track?q={}&limit=25",
         urlencoding::encode(&format!("{artist} {titel}"))
     );
     let Ok(antwort) = online::client().get(&url).send().await else {
-        return Wahrheit::default();
+        return leer;
     };
     let Ok(daten) = antwort.json::<serde_json::Value>().await else {
-        return Wahrheit::default();
+        return leer;
     };
-    let Some(treffer) = daten["data"].as_array().and_then(|l| l.first()) else {
-        return Wahrheit::default();
+    let Some(treffer) = daten["data"].as_array().and_then(|liste| {
+        liste.iter().find(|treffer| {
+            meint_die_aufnahme(
+                treffer["title"].as_str().unwrap_or_default(),
+                treffer["artist"]["name"].as_str().unwrap_or_default(),
+                titel,
+                artist,
+            )
+        })
+    }) else {
+        return leer;
     };
 
-    let mut w = Wahrheit {
-        titel: treffer["title"].as_str().map(str::to_string),
-        kuenstler: treffer["artist"]["name"].as_str().map(str::to_string),
-        album: treffer["album"]["title"].as_str().map(str::to_string),
-        ..Wahrheit::default()
-    };
-
+    let mut art = None;
     // the kind of the release stands on the album, not on the track
     if let Some(album_id) = treffer["album"]["id"].as_i64() {
         let url = format!("https://api.deezer.com/album/{album_id}");
         if let Ok(antwort) = online::client().get(&url).send().await {
             if let Ok(album) = antwort.json::<serde_json::Value>().await {
-                w.art = album["record_type"].as_str().map(|art| {
+                art = album["record_type"].as_str().map(|art| {
                     match art {
                         "single" => "single",
                         "ep" => "ep",
@@ -96,14 +157,66 @@ async fn wahrheit_holen(artist: &str, titel: &str) -> Wahrheit {
                     }
                     .to_string()
                 });
-                w.jahr = album["release_date"]
-                    .as_str()
-                    .and_then(|d| d.get(0..4))
-                    .and_then(|j| j.parse().ok());
             }
         }
     }
-    w
+
+    (
+        treffer["title"].as_str().map(str::to_string),
+        treffer["artist"]["name"].as_str().map(str::to_string),
+        treffer["album"]["title"].as_str().map(str::to_string),
+        art,
+    )
+}
+
+/// the year of the first appearance, and the record itunes hangs it on.
+async fn itunes_wahrheit(artist: &str, titel: &str) -> (Option<i64>, Option<String>) {
+    let url = format!(
+        "https://itunes.apple.com/search?term={}&entity=song&limit=50",
+        urlencoding::encode(&format!("{artist} {titel}"))
+    );
+    let Ok(antwort) = online::client().get(&url).send().await else {
+        return (None, None);
+    };
+    let Ok(daten) = antwort.json::<serde_json::Value>().await else {
+        return (None, None);
+    };
+
+    let mut frueheste: Option<(String, Option<String>)> = None;
+    for treffer in daten["results"].as_array().map(|l| l.as_slice()).unwrap_or_default() {
+        if !meint_die_aufnahme(
+            treffer["trackName"].as_str().unwrap_or_default(),
+            treffer["artistName"].as_str().unwrap_or_default(),
+            titel,
+            artist,
+        ) {
+            continue;
+        }
+        let Some(datum) = treffer["releaseDate"].as_str().filter(|d| d.len() >= 4) else {
+            continue;
+        };
+        // dates compare as text: they all read yyyy-mm-dd
+        if frueheste.as_ref().is_none_or(|(bisher, _)| datum < bisher.as_str()) {
+            frueheste = Some((
+                datum.to_string(),
+                treffer["collectionName"].as_str().map(str::to_string),
+            ));
+        }
+    }
+
+    match frueheste {
+        Some((datum, sammlung)) => (
+            datum.get(0..4).and_then(|jahr| jahr.parse().ok()),
+            // itunes writes the kind into the name ("… - EP"), and that is
+            // not part of the album name
+            sammlung.map(|name| {
+                name.trim_end_matches(" - EP")
+                    .trim_end_matches(" - Single")
+                    .to_string()
+            }),
+        ),
+        None => (None, None),
+    }
 }
 
 /// whether two texts name the same thing.
@@ -260,7 +373,16 @@ async fn abgleich_mit_den_katalogen() {
     println!("{geprueft} von {} Titeln geladen", SONGS.len());
     for (feld, (gut, gesamt)) in &treffer {
         let anteil = if *gesamt > 0 { gut * 100 / gesamt } else { 0 };
-        println!("  {feld:<10} {gut:>3} von {gesamt:>3}   {anteil:>3} %");
+        let offen = geprueft.saturating_sub(*gesamt);
+        // a field counted on fewer titles than were loaded is no gap in
+        // robify: there the two catalogues named different records, and a
+        // yardstick that contradicts itself measures nothing
+        let dazu = if offen > 0 {
+            format!("   ({offen} ohne verlässlichen Vergleich)")
+        } else {
+            String::new()
+        };
+        println!("  {feld:<10} {gut:>3} von {gesamt:>3}   {anteil:>3} %{dazu}");
     }
     if !ausgefallen.is_empty() {
         println!("\nnicht geladen:");
