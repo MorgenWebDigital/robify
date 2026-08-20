@@ -26,15 +26,31 @@ export interface Job {
  * would be gone. this store listens for the progress events as well, not the
  * page.
  */
+/** what has become of one entry of a batch. */
+export type Stapelstand = {
+  zustand: "laeuft" | "fertig" | "pruefen" | "fehler";
+  /** the job it hangs on, for the progress. */
+  jobId?: string;
+};
+
 interface DownloaderStore {
   input: string;
   plan: LinkPlan | null;
   jobs: Job[];
   busy: boolean;
   review: { job: Job; metadata: TrackMetadata } | null;
+  /**
+   * what has become of each entry of the open batch, by its position.
+   *
+   * lies here and not with the page: a change of tab tears the page down, and
+   * with it went the marks — while the download carried on. `setPlan` clears
+   * it, because with a new plan the positions mean something else.
+   */
+  stapel: Record<number, Stapelstand>;
 
   setInput: (value: string) => void;
   setPlan: (plan: LinkPlan | null) => void;
+  setStand: (stelle: number, stand: Stapelstand) => void;
   setBusy: (busy: boolean) => void;
   setReview: (review: { job: Job; metadata: TrackMetadata } | null) => void;
   addJob: (job: Job) => void;
@@ -52,9 +68,12 @@ export const useDownloader = create<DownloaderStore>((set) => ({
   jobs: [],
   busy: false,
   review: null,
+  stapel: {},
 
   setInput: (input) => set({ input }),
-  setPlan: (plan) => set({ plan }),
+  setPlan: (plan) => set({ plan, stapel: {} }),
+  setStand: (stelle, stand) =>
+    set((state) => ({ stapel: { ...state.stapel, [stelle]: stand } })),
   setBusy: (busy) => set({ busy }),
   setReview: (review) => set({ review }),
 

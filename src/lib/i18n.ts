@@ -3199,6 +3199,14 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "يتبقى {0}",
     zh: "剩余 {0}",
   },
+  erneut: {
+    en: "again",
+    es: "de nuevo",
+    fr: "réessayer",
+    ru: "ещё раз",
+    ar: "مرة أخرى",
+    zh: "重试",
+  },
   "lädt…": {
     en: "loading…",
     es: "cargando…",

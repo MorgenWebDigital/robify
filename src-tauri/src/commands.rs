@@ -2061,16 +2061,17 @@ pub fn import_download(
         |r| r.get(0),
     )?;
     if let Some(rt) = metadata.release_type.as_deref() {
-        conn.execute(
-            "UPDATE albums SET release_type = ?2, release_type_locked = 1 WHERE id = ?1",
-            rusqlite::params![album_id, ReleaseType::parse(rt).as_str()],
-        )?;
+        // over the library and not into the table by hand: what a source says
+        // is not a decision of the user, and writing it as one was the fault.
+        // it stood locked from then on, and nothing corrected it — not the
+        // classification by track count, not a later lookup
+        library::set_release_kind(&conn, album_id, ReleaseType::parse(rt))?;
     } else {
         // without a detail from the net the track count decides, exactly as
         // when reading a folder. that used to run only there, and a
         // downloaded track without a recognised type stayed an album forever,
         // even standing on its own
-        library::refresh_release_types(&conn)?;
+        library::refresh_release_type(&conn, album_id)?;
     }
     if let Some(cover) = metadata.cover_base64.as_deref().filter(|c| !c.is_empty()) {
         let data = base64::engine::general_purpose::STANDARD.decode(cover)?;

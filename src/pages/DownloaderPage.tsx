@@ -14,7 +14,7 @@ import { Button, Field, inputClass, Modal } from "../components/Modal";
 import { DownloadHinweis } from "../components/Rechtliches";
 import { api, errorMessage, fallback, meldungText } from "../lib/api";
 import { formatBytes, formatTime, plural } from "../lib/format";
-import { useDownloader, type Job } from "../store/downloader";
+import { useDownloader, type Job, type Stapelstand } from "../store/downloader";
 import { useLibrary } from "../store/library";
 import { useUi } from "../store/ui";
 import type {
@@ -79,52 +79,79 @@ function hinweisText(hinweis: PlanHinweis): string {
 }
 
 /**
- * what has become of one entry of a batch, in one word.
+ * the key of one entry, and at the same time what has become of it.
  *
- * stands in the list itself and not only among the running jobs: with a
+ * on the key itself and not beside it: that is where one looks, and with a
  * playlist of thirty entries the question is which one is at it and what is
- * already through, and that is answered where the entries stand.
+ * already through. what is done says so and can no longer be pressed.
  */
-function Stand({ stand, prozent }: { stand: Stapelstand; prozent?: number }) {
-  if (stand.zustand === "laeuft") {
+function Ladeknopf({
+  stand,
+  prozent,
+  vorhanden,
+  onClick,
+}: {
+  stand?: Stapelstand;
+  prozent?: number;
+  vorhanden: boolean;
+  onClick: () => void;
+}) {
+  if (stand?.zustand === "laeuft") {
     return (
-      <span
-        className="shrink-0 rounded px-1.5 py-0.5 text-[11px] tabular-nums"
-        style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
-      >
+      <Button variant="primary" className="shrink-0 tabular-nums" disabled>
+        <DownloadIcon size={16} />
         {prozent !== undefined && prozent > 0
           ? `${Math.round(prozent)} %`
           : t("lädt…")}
-      </span>
+      </Button>
     );
   }
 
-  const [text, farbe] =
-    stand.zustand === "fertig"
-      ? [t("geladen"), "var(--success)"]
-      : stand.zustand === "pruefen"
-        ? [t("prüfen"), "var(--warning)"]
-        : [t("fehlgeschlagen"), "var(--danger)"];
+  if (stand?.zustand === "fertig") {
+    return (
+      <Button
+        variant="ghost"
+        className="shrink-0"
+        style={{ color: "var(--success)" }}
+        disabled
+      >
+        <CheckIcon size={16} />
+        {t("geladen")}
+      </Button>
+    );
+  }
+
+  if (stand?.zustand === "pruefen") {
+    return (
+      <Button
+        variant="ghost"
+        className="shrink-0"
+        style={{ color: "var(--warning)" }}
+        disabled
+      >
+        {t("prüfen")}
+      </Button>
+    );
+  }
 
   return (
-    <span
-      className="shrink-0 rounded px-1.5 py-0.5 text-[11px]"
-      style={{
-        background: `color-mix(in srgb, ${farbe} 22%, transparent)`,
-        color: farbe,
-      }}
+    <Button
+      onClick={onClick}
+      variant={vorhanden ? "ghost" : "outline"}
+      className="shrink-0"
+      style={
+        stand?.zustand === "fehler" ? { color: "var(--danger)" } : undefined
+      }
     >
-      {text}
-    </span>
+      <DownloadIcon size={16} />
+      {stand?.zustand === "fehler"
+        ? t("erneut")
+        : vorhanden
+          ? t("Trotzdem")
+          : t("Laden")}
+    </Button>
   );
 }
-
-/** what has become of one entry of a batch. */
-type Stapelstand = {
-  zustand: "laeuft" | "fertig" | "pruefen" | "fehler";
-  /** the job it hangs on, for the progress. */
-  jobId?: string;
-};
 
 export function DownloaderPage() {
   const settings = useLibrary((s) => s.settings);
@@ -135,10 +162,6 @@ export function DownloaderPage() {
   const [status, setStatus] = useState<DownloaderStatus | null>(null);
   const [format, setFormat] = useState("mp3");
   const [importing, setImporting] = useState(false);
-  // what has become of each entry of the open batch. lives with the page and
-  // not with the downloader: it belongs to the list standing here, and with
-  // the next plan it is void anyway
-  const [stapel, setStapel] = useState<Record<number, Stapelstand>>({});
 
   // result list and running downloads survive a tab change because they lie
   // outside this page
@@ -148,8 +171,10 @@ export function DownloaderPage() {
     jobs,
     busy,
     review,
+    stapel,
     setInput,
     setPlan,
+    setStand,
     setBusy,
     setReview,
     addJob,
@@ -178,7 +203,6 @@ export function DownloaderPage() {
 
     setBusy(true);
     try {
-      setStapel({});
       setPlan(await api.resolveInput(value));
     } catch (error) {
       notify(errorMessage(error), "error");
@@ -202,9 +226,7 @@ export function DownloaderPage() {
     jobCounter.current += 1;
     const id = `job-${Date.now()}-${jobCounter.current}`;
     const merken = (stand: Stapelstand) => {
-      if (stelle !== undefined) {
-        setStapel((vorher) => ({ ...vorher, [stelle]: stand }));
-      }
+      if (stelle !== undefined) setStand(stelle, stand);
     };
     merken({ zustand: "laeuft", jobId: id });
     const job: Job = {
@@ -289,7 +311,6 @@ export function DownloaderPage() {
     const uebersprungen = items.length - offen.length;
 
     setBusy(true);
-    setStapel({});
     try {
       for (const { item, stelle } of offen) {
         await download(item, item.title, true, stelle);
@@ -627,18 +648,6 @@ export function DownloaderPage() {
                         {t("schon vorhanden")}
                       </span>
                     )}
-                    {/* what has become of this entry. only during a batch:
-                        outside one the map is empty and nothing stands
-                        here */}
-                    {stapel[index] && (
-                      <Stand
-                        stand={stapel[index]}
-                        prozent={
-                          jobs.find((job) => job.id === stapel[index].jobId)
-                            ?.progress?.percent
-                        }
-                      />
-                    )}
                   </p>
                 </div>
                 <span className="shrink-0 text-xs text-mute tabular-nums">
@@ -648,17 +657,18 @@ export function DownloaderPage() {
                     downloaded. it has served its purpose, and the job used to
                     stand below it where one had to look for it through ten
                     hits. the list comes back with the same search. */}
-                <Button
+                <Ladeknopf
+                  stand={stapel[index]}
+                  prozent={
+                    jobs.find((job) => job.id === stapel[index]?.jobId)
+                      ?.progress?.percent
+                  }
+                  vorhanden={item.alreadyInLibrary}
                   onClick={() => {
                     setPlan(null);
                     void download(item, item.title, false);
                   }}
-                  variant={item.alreadyInLibrary ? "ghost" : "outline"}
-                  className="shrink-0"
-                >
-                  <DownloadIcon size={16} />
-                  {item.alreadyInLibrary ? t("Trotzdem") : t("Laden")}
-                </Button>
+                />
               </li>
             ))}
           </ul>

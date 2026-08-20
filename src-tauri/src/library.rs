@@ -1240,8 +1240,10 @@ pub fn update_album(
         return Err(anyhow!(fehler!("Der Titel darf nicht leer sein.")));
     }
     conn.execute(
+        // the decision of the user, and it stands above everything a source
+        // says or a count suggests
         "UPDATE albums SET title = ?2, title_key = ?3, year = ?4,
-                release_type = ?5, release_type_locked = 1
+                release_type = ?5, release_type_locked = 1 -- ART_VOM_NUTZER
          WHERE id = ?1",
         params![
             album_id,
