@@ -48,6 +48,15 @@ The first version.
   an arch package and an android apk
 - donation addresses in seven cryptocurrencies, copied by a click, shown
   only where one is entered
+- a mark beside the settings as soon as a newer robify or a newer yt-dlp
+  exists, and nothing at all while everything is up to date
+- renewal in place where the app is a self-contained thing: windows, macos and
+  the appimage. a deb, an rpm, the arch package and android belong to whatever
+  installed them, and there the way leads to the release page
+- the notes of a release are read out of the changelog, so what changed can be
+  read in the app
+- a copy of yt-dlp of its own where the one that was found belongs to pip or
+  to a package manager and will not renew itself
 - an openpgp signature on every published file, see the readme
 
 [Unreleased]: https://github.com/MorgenWebDigital/robify/compare/v0.1.0...HEAD

@@ -31,6 +31,16 @@ export function abschnitt(inhalt, fassung) {
   const ende = rest.findIndex((zeile) => zeile.startsWith("## "));
   const teil = ende === -1 ? rest : rest.slice(0, ende);
 
+  // the link definitions at the foot of the file belong to no version.
+  // behind the newest one stands no further heading, so without this they
+  // would be taken along and end up in the release as three loose lines
+  while (
+    teil.length > 0 &&
+    /^(\[[^\]]+\]:\s|\s*$)/.test(teil[teil.length - 1])
+  ) {
+    teil.pop();
+  }
+
   return teil.join("\n").trim();
 }
 
