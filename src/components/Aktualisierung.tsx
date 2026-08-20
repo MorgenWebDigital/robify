@@ -93,11 +93,12 @@ export function Aktualisierungsknopf() {
         onClick={() => setOffen(true)}
         title={t("Aktualisierung verfügbar")}
         aria-label={t("Aktualisierung verfügbar")}
-        // the same build as every other button in the app: a neutral raised
-        // surface with the accent on the sign. a whole button in the accent
+        // the same build as the gear beside it: the rounded square of the
+        // navigation, and `raised-row` holds it in the raised state the gear
+        // only takes on the page it belongs to. a whole surface in the accent
         // colour would shout louder than the play button, and nothing here is
-        // more urgent than that one
-        className="pill-btn is-raised p-2"
+        // more urgent than that one — the accent therefore sits on the sign
+        className="nav-item raised-row justify-center p-2"
         style={{ color: "var(--accent)" }}
       >
         <DownloadIcon size={18} />

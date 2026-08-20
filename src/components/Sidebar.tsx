@@ -113,11 +113,8 @@ export function Sidebar() {
         </div>
       )}
 
-      {/* the three in the middle instead of pushed to both edges: at the
-          bottom of a narrow column the count stood on the left, the buttons
-          on the right, and between them a hole as wide as the column */}
-      <div className="flex items-center justify-center gap-3 border-t border-ink-700 pt-3">
-        <span className="text-xs text-mute">
+      <div className="flex items-center justify-between border-t border-ink-700 pt-3">
+        <span className="px-2 text-xs text-mute">
           {stats ? plural(stats.trackCount, "Titel") : "…"}
         </span>
         <div className="flex items-center gap-2">
@@ -125,10 +122,14 @@ export function Sidebar() {
               an empty place is understood at a glance, one that always shows
               something has to be read every time */}
           <Aktualisierungsknopf />
+          {/* raised permanently and not only on its own page: it stands next
+              to the update button, and one raised key beside a flat one reads
+              as if the flat one were switched off. `is-active` still marks
+              the open page, by the accent on the sign */}
           <NavLink
             to="/settings"
             className={({ isActive }) =>
-              `nav-item justify-center p-2 ${isActive ? "is-active" : "hover:bg-ink-800"}`
+              `nav-item raised-row justify-center p-2 ${isActive ? "is-active" : ""}`
             }
             aria-label={t("Einstellungen")}
           >
