@@ -941,6 +941,38 @@ pub async fn auto_match(
     Some(enrich(&best, duration_ms, want_cover, want_lyrics).await)
 }
 
+/// looks the track up by what the user typed.
+///
+/// the way out where the file names a channel as its artist. "7clouds",
+/// "maukook", "trashpixels" — reuploaders, and `auto_match` needs the artist
+/// to fit, so it finds nothing and the channel stays in the library as the
+/// artist. with it fall the album and the kind of the release, for under a
+/// wrong artist no catalogue answers.
+///
+/// what confirms the hit here is the input itself: it counts only where both
+/// its title and its artist stand in what the user typed. whoever searches
+/// for "Daft Punk Instant Crush" has named the artist, and a hit calling
+/// itself that is no guess.
+pub async fn match_aus_absicht(
+    absicht: &str,
+    duration_ms: Option<i64>,
+    want_cover: bool,
+    want_lyrics: bool,
+) -> Option<crate::models::TrackMetadata> {
+    let getippt = normalize_for_match(absicht);
+    if getippt.trim().is_empty() {
+        return None;
+    }
+
+    let candidates = search_metadata(absicht).await.ok()?;
+    let best = candidates.into_iter().find(|candidate| {
+        contains_word_sequence(&getippt, &normalize_for_match(&candidate.title))
+            && contains_word_sequence(&getippt, &normalize_for_match(&candidate.artist))
+    })?;
+
+    Some(enrich(&best, duration_ms, want_cover, want_lyrics).await)
+}
+
 /// merges the details found with those from the file.
 ///
 /// artist and title win from the online source because they are cleanly

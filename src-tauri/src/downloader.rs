@@ -2201,14 +2201,38 @@ async fn download_inner<R: Runtime>(
             app,
             status(job_id, "processing", 99.0, Some("Metadaten werden gesucht…".into())),
         );
-        if let Some(found) = crate::online::auto_match(
+        let mut gefunden = crate::online::auto_match(
             &metadata,
             Some(file_tags.duration_ms),
             options.auto_cover,
             options.auto_lyrics,
         )
-        .await
-        {
+        .await;
+
+        // second attempt over what the user typed.
+        //
+        // the first needs title and artist of the file to fit a catalogue,
+        // and where the artist is the name of a reupload channel it fits
+        // nothing. then the input is the better clue — it named the artist,
+        // which is exactly what the file does not know
+        if gefunden.is_none() {
+            if let Some(absicht) = options
+                .intent
+                .as_deref()
+                .map(str::trim)
+                .filter(|text| !text.is_empty())
+            {
+                gefunden = crate::online::match_aus_absicht(
+                    absicht,
+                    Some(file_tags.duration_ms),
+                    options.auto_cover,
+                    options.auto_lyrics,
+                )
+                .await;
+            }
+        }
+
+        if let Some(found) = gefunden {
             metadata = crate::online::merge_match(metadata, found);
         }
     }
