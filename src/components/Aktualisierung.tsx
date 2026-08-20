@@ -77,12 +77,11 @@ export function useAktualisierungen(): Aktualisierungen | null {
  * be invisible for exactly those who never touched the setting. a signal has
  * to be a signal whatever else is set.
  *
- * `--danger` and not a red of its own: it is already tuned for light and
- * dark, and a second red beside it would drift apart from it at the next
- * change. the name says "danger" and an update is none, but the app has one
- * signal colour and this is it.
+ * it stands in the stylesheet with the other colours and not as a number
+ * here: whoever wants to change it looks there, where every colour of the
+ * app is.
  */
-export const SIGNAL = "var(--danger)";
+export const SIGNAL = "var(--hinweis)";
 
 /** whether anything at all is to be had. */
 export function etwasNeues(was: Aktualisierungen | null): boolean {

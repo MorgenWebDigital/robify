@@ -55,6 +55,16 @@
   --warning: #b8710a;
   --warning-soft: #fdf1e0;
 
+  /* the marking that an update is waiting.
+     
+     the only colour of the app that is fixed. the accent is freely chosen,
+     and its default is a grey that vanishes on a dark ground — the marking
+     would then be invisible for exactly those who never touched the setting.
+     
+     stated once and not again for the dark appearance: a signal is to look
+     the same everywhere, and the dark red carries on both grounds. */
+  --hinweis: #8b0000;
+
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.1);
 
