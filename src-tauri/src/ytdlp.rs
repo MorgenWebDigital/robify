@@ -237,26 +237,41 @@ const PIP_BEFEHL: &str = "python3 -m pip install --upgrade yt-dlp";
 /// the refusal is right, its wording is not: it stands in english, names no
 /// command, and reads in the interface like a defect of robify.
 #[cfg(not(target_os = "android"))]
-fn verweigerung_deuten(stderr: &str) -> String {
-    let text = stderr.trim();
-    let klein = text.to_ascii_lowercase();
+fn verweigerung_deuten(stderr: &str) -> Option<String> {
+    let klein = stderr.to_ascii_lowercase();
 
     if klein.contains("pip") || klein.contains("pypi") {
-        return crate::fehler!(
+        return Some(crate::fehler!(
             "yt-dlp wurde mit pip eingerichtet und erneuert sich deshalb nicht selbst. Führe im Terminal aus: {0}",
             PIP_BEFEHL
-        );
+        ));
     }
 
     // a package manager or a build of one's own. which one it is, only the
     // system knows, and a wrong command is worse than none
     if klein.contains("package manager") || klein.contains("manual build") {
-        return crate::fehler!(
+        return Some(crate::fehler!(
             "yt-dlp stammt aus der Paketverwaltung deines Systems und erneuert sich deshalb nicht selbst. Erneuere es dort, wo du es eingerichtet hast."
-        );
+        ));
     }
 
-    text.to_string()
+    None
+}
+
+/// what came of an attempt to renew yt-dlp.
+pub enum Erneuert {
+    /// renewed, with the version now in place.
+    Fassung(String),
+    /// yt-dlp refuses because the file is not its own. the text says what can
+    /// be done about it by hand; the caller decides whether to take another
+    /// way first.
+    ///
+    /// there is no such case on android: yt-dlp is no file there but part of
+    /// a library, and it fetches its new version itself. the variant is left
+    /// out there so that a match over it stays complete without an arm for
+    /// something that cannot happen.
+    #[cfg(not(target_os = "android"))]
+    Verweigert(String),
 }
 
 /// brings yt-dlp up to date and names the version afterwards.
@@ -265,13 +280,18 @@ fn verweigerung_deuten(stderr: &str) -> String {
 /// it over its own. whoever installed it otherwise gets a refusal, and that is
 /// translated into an instruction rather than passed on verbatim.
 #[cfg(not(target_os = "android"))]
-pub async fn aktualisieren(werkzeug: &Path) -> Result<String> {
+pub async fn aktualisieren(werkzeug: &Path) -> Result<Erneuert> {
     let lauf = einmal(werkzeug, &["-U".to_string()]).await?;
     if !lauf.erfolg {
-        anyhow::bail!("{}", verweigerung_deuten(&lauf.stderr));
+        return match verweigerung_deuten(&lauf.stderr) {
+            Some(text) => Ok(Erneuert::Verweigert(text)),
+            // anything else is a real fault and stays verbatim: an invented
+            // explanation would cover the actual cause
+            None => anyhow::bail!("{}", lauf.stderr.trim()),
+        };
     }
     let fassung = einmal(werkzeug, &["--version".to_string()]).await?;
-    Ok(fassung.stdout.trim().to_string())
+    Ok(Erneuert::Fassung(fassung.stdout.trim().to_string()))
 }
 
 /// the same over the java bridge.
@@ -280,13 +300,14 @@ pub async fn aktualisieren(werkzeug: &Path) -> Result<String> {
 /// when that library was released. `-U` therefore does not exist, the library
 /// fetches the new version from github itself.
 #[cfg(target_os = "android")]
-pub async fn aktualisieren(_werkzeug: &Path) -> Result<String> {
+pub async fn aktualisieren(_werkzeug: &Path) -> Result<Erneuert> {
     let ausgabe = tokio::task::spawn_blocking(aktualisieren_rufen).await??;
     if !ausgabe.erfolg {
         anyhow::bail!("{}", ausgabe.stderr.trim());
     }
-    Ok(ausgabe.stdout.trim().to_string())
+    Ok(Erneuert::Fassung(ausgabe.stdout.trim().to_string()))
 }
+
 
 // calls `de.robify.player.Ytdlp.aktualisieren` over jni
 #[cfg(target_os = "android")]
@@ -342,7 +363,7 @@ mod tests {
 
     #[test]
     fn pip_wird_zur_anweisung() {
-        let text = verweigerung_deuten(AUS_PIP);
+        let text = verweigerung_deuten(AUS_PIP).expect("als Absage erkannt");
         assert!(text.starts_with("yt-dlp wurde mit pip"));
         assert!(text.ends_with(PIP_BEFEHL));
         assert!(text.contains(crate::meldung::TRENNER));
@@ -350,17 +371,16 @@ mod tests {
 
     #[test]
     fn paketverwaltung_wird_zur_anweisung() {
-        let text = verweigerung_deuten(AUS_PAKET);
+        let text = verweigerung_deuten(AUS_PAKET).expect("als Absage erkannt");
         assert!(text.starts_with("yt-dlp stammt aus der Paketverwaltung"));
         // no value belongs in it, so no separator either
         assert!(!text.contains(crate::meldung::TRENNER));
     }
 
-    // whatever is not one of the two refusals stays as it is: an invented
-    // explanation would cover the real cause
+    // whatever is not one of the two refusals is no refusal: the caller is
+    // not to fetch a copy of its own over a network fault
     #[test]
-    fn alles_andere_bleibt_woertlich() {
-        let text = verweigerung_deuten("  ERROR: unable to download\n");
-        assert_eq!(text, "ERROR: unable to download");
+    fn alles_andere_ist_keine_absage() {
+        assert!(verweigerung_deuten("ERROR: unable to download").is_none());
     }
 }

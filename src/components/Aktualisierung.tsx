@@ -170,8 +170,19 @@ export function Aktualisierungsfenster({
   const ytdlpHolen = async () => {
     setHolt(true);
     try {
-      const fassung = await api.ytdlpAktualisieren();
-      notify(t("yt-dlp steht jetzt auf {0}.", fassung), "success");
+      const erneuert = await api.ytdlpAktualisieren();
+      notify(
+        erneuert.eigeneKopie
+          ? // the found yt-dlp belonged to pip or to a package manager and
+            // would not renew itself. saying so matters: from now on robify
+            // works with a different file than before
+            t(
+              "yt-dlp gehörte einer fremden Verwaltung und erneuerte sich nicht selbst. Robify benutzt ab jetzt eine eigene Kopie, Fassung {0}.",
+              erneuert.fassung,
+            )
+          : t("yt-dlp steht jetzt auf {0}.", erneuert.fassung),
+        "success",
+      );
       // gone from the list, and with it possibly the way in: what has been
       // fetched is not to keep offering itself
       if (stand) setzen({ ...stand, ytdlp: null });

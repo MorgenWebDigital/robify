@@ -1382,14 +1382,60 @@ pub async fn downloader_status(state: State<'_, AppState>) -> CmdResult<Download
 /// on a desktop yt-dlp helps itself with `-U`, on android it sits in the
 /// library in the state that library had when it was released, and there is
 /// no other way there than this one.
+/// what came of renewing yt-dlp.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct YtdlpErneuert {
+    pub fassung: String,
+    /// whether robify had to fetch a copy of its own for it.
+    pub eigene_kopie: bool,
+}
+
 #[tauri::command]
-pub async fn update_ytdlp(state: State<'_, AppState>) -> CmdResult<String> {
+pub async fn update_ytdlp(state: State<'_, AppState>) -> CmdResult<YtdlpErneuert> {
     let configured = {
         let conn = state.db();
         db::get_setting(&conn, "ytdlp_path").ok().flatten()
     };
-    let ytdlp = downloader::ensure_ytdlp(configured.as_deref(), &state.tools_dir()).await?;
-    Ok(crate::ytdlp::aktualisieren(&ytdlp).await?)
+    let werkzeuge = state.tools_dir();
+    let ytdlp = downloader::ensure_ytdlp(configured.as_deref(), &werkzeuge).await?;
+
+    match crate::ytdlp::aktualisieren(&ytdlp).await? {
+        crate::ytdlp::Erneuert::Fassung(fassung) => Ok(YtdlpErneuert {
+            fassung,
+            eigene_kopie: false,
+        }),
+
+        // the yt-dlp that was found belongs to pip or to a package manager and
+        // refuses to overwrite itself, rightly so. rather than sending the
+        // user to a terminal, robify fetches a copy of its own into its tools
+        // folder. `find_ytdlp` puts that one before the search path, so from
+        // the next call on it is the one in use, and it renews itself with
+        // `-U` from then on. the yt-dlp of the system stays untouched.
+        //
+        // one exception: whoever entered a path by hand meant that path.
+        // there the refusal is passed on and nothing is exchanged behind
+        // their back.
+        #[cfg(not(target_os = "android"))]
+        crate::ytdlp::Erneuert::Verweigert(text) => {
+            if configured.is_some_and(|pfad| !pfad.trim().is_empty()) {
+                return Err(text.into());
+            }
+            let eigenes = downloader::eigenes_holen(&werkzeuge).await?;
+            let fassung = tokio::process::Command::new(&eigenes)
+                .arg("--version")
+                .output()
+                .await
+                .ok()
+                .filter(|o| o.status.success())
+                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+                .unwrap_or_default();
+            Ok(YtdlpErneuert {
+                fassung,
+                eigene_kopie: true,
+            })
+        }
+    }
 }
 
 /// looks whether a newer robify or a newer yt-dlp exists.

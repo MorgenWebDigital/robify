@@ -522,6 +522,15 @@ const TEXTE: Record<string, Fassungen> = {
       ar: "جاء yt-dlp من مدير الحزم في نظامك ولذلك لا يحدّث نفسه. حدّثه من حيث ثبّتّه.",
       zh: "yt-dlp 来自系统的包管理器，因此无法自行更新。请在你安装它的地方更新。",
     },
+  "yt-dlp gehörte einer fremden Verwaltung und erneuerte sich nicht selbst. Robify benutzt ab jetzt eine eigene Kopie, Fassung {0}.":
+    {
+      en: "yt-dlp belonged to a foreign manager and would not renew itself. Robify uses a copy of its own from now on, version {0}.",
+      es: "yt-dlp pertenecía a otro gestor y no se actualizaba solo. Robify usa a partir de ahora una copia propia, versión {0}.",
+      fr: "yt-dlp appartenait à un autre gestionnaire et ne se mettait pas à jour lui-même. Robify utilise désormais sa propre copie, version {0}.",
+      ru: "yt-dlp принадлежал чужому менеджеру и не обновлял себя сам. Robify отныне использует собственную копию, версия {0}.",
+      ar: "كان yt-dlp تابعًا لمدير آخر ولم يحدّث نفسه. يستخدم Robify من الآن نسخة خاصة به، الإصدار {0}.",
+      zh: "yt-dlp 属于其他管理器，无法自行更新。Robify 从现在起使用自己的副本，版本 {0}。",
+    },
   "yt-dlp steht jetzt auf {0}.": {
     en: "yt-dlp is now at {0}.",
     es: "yt-dlp está ahora en {0}.",

@@ -293,6 +293,13 @@ export interface DownloadOutcome {
   warning: string | null;
 }
 
+/** what came of renewing yt-dlp. */
+export interface YtdlpErneuert {
+  fassung: string;
+  /** whether robify had to fetch a copy of its own for it. */
+  eigeneKopie: boolean;
+}
+
 /** a version that stands above the one installed. */
 export interface Neuerung {
   /** what is installed. */

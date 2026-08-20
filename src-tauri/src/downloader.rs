@@ -599,6 +599,19 @@ pub async fn ensure_ytdlp(configured: Option<&str>, tools_dir: &Path) -> Result<
         return Ok(path);
     }
 
+    eigenes_holen(tools_dir).await
+}
+
+/// fetches the standalone build into the tools folder, come what may.
+///
+/// `ensure_ytdlp` stops as soon as any yt-dlp is found. this one does not: it
+/// is called where one was found but refuses to renew itself, because it
+/// belongs to pip or to a package manager. from then on `find_ytdlp` takes
+/// this copy — it stands before the search path — and it can renew itself
+/// with `-U` for good.
+///
+/// an existing copy is replaced. that is the point of the call.
+pub async fn eigenes_holen(tools_dir: &Path) -> Result<PathBuf> {
     let ziel = managed_ytdlp(tools_dir);
     let url = format!(
         "https://github.com/yt-dlp/yt-dlp/releases/latest/download/{}",

@@ -10,16 +10,16 @@ import type {
   DownloaderStatus,
   DownloadOptions,
   DownloadOutcome,
+  LibraryCheck,
   LibraryStats,
   LinkPlan,
   Lyrics,
   LyricsCandidate,
   MetadataCandidate,
+  PlayerState,
   Playlist,
   PlaylistFill,
-  PlayerState,
   RepeatMode,
-  LibraryCheck,
   ScanResult,
   Settings,
   SleepTimerMode,
@@ -28,6 +28,7 @@ import type {
   WeeklyMix,
   WeeklyMixSummary,
   Wrapped,
+  YtdlpErneuert,
 } from "../types";
 
 export const api = {
@@ -227,7 +228,7 @@ export const api = {
   // --- downloader ---
   downloaderStatus: () => invoke<DownloaderStatus>("downloader_status"),
   /** fetches the newest version of yt-dlp and returns its number. */
-  ytdlpAktualisieren: () => invoke<string>("update_ytdlp"),
+  ytdlpAktualisieren: () => invoke<YtdlpErneuert>("update_ytdlp"),
   aktualisierungenPruefen: () => invoke<Aktualisierungen>("check_updates"),
   releaseSeiteOeffnen: () => invoke<void>("open_release_page"),
   /** recognises by itself whether a link was pasted or a search typed. */
