@@ -123,7 +123,18 @@ fn gleiche_sache(unser: &str, echt: &str) -> bool {
 #[tokio::test]
 #[ignore = "benötigt Internet, yt-dlp und ffmpeg; dauert 15 bis 25 Minuten"]
 async fn abgleich_mit_den_katalogen() {
-    let ytdlp = downloader::find_ytdlp(None, std::path::Path::new(".")).expect("yt-dlp gefunden");
+    // the same yt-dlp the app works with, not whatever lies in the path.
+    //
+    // that mattered: the system copy came from pip and was two months old,
+    // and youtube answered eight of the twenty-five with 403. the same
+    // addresses load without a complaint through a current one. robify
+    // fetches a standalone build of its own for exactly this reason, and the
+    // report has to measure that one
+    let werkzeuge = std::env::temp_dir().join("robify-werkzeuge");
+    let ytdlp = downloader::ensure_ytdlp(None, &werkzeuge)
+        .await
+        .expect("yt-dlp bereitgestellt");
+    println!("yt-dlp: {}", ytdlp.display());
     let work = std::env::temp_dir().join("robify-abgleich");
     let _ = std::fs::remove_dir_all(&work);
     let app = tauri::test::mock_app();
