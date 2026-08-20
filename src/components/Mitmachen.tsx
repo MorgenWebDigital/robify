@@ -4,7 +4,7 @@ import { MELDESTELLE, SPENDEN } from "../lib/kontakt";
 import { t } from "../lib/i18n";
 import { useUi } from "../store/ui";
 import { Button } from "./Modal";
-import { CheckIcon, SparkIcon } from "./Icons";
+import { CheckIcon, CopyIcon, SparkIcon } from "./Icons";
 import { Muenze } from "./Muenzen";
 
 // puts text into the clipboard.
@@ -58,12 +58,6 @@ function systemZeile(): string {
   return klammer ? klammer[1] : kennung;
 }
 
-/** an address shortened to fit one line: start, ellipsis, end. */
-function gekuerzt(adresse: string): string {
-  if (adresse.length <= 24) return adresse;
-  return `${adresse.slice(0, 10)}…${adresse.slice(-8)}`;
-}
-
 // a call to take part: report bugs, make suggestions, donate.
 //
 // the report is assembled here and put into the clipboard, not sent. that is
@@ -73,6 +67,7 @@ function gekuerzt(adresse: string): string {
 export function Mitmachen({ ytdlp }: { ytdlp?: string | null }) {
   const notify = useUi((s) => s.notify);
   const [bericht, setBericht] = useState(false);
+  const [kopiert, setKopiert] = useState<string | null>(null);
 
   const berichtKopieren = async () => {
     const text = t(
@@ -92,8 +87,13 @@ export function Mitmachen({ ytdlp }: { ytdlp?: string | null }) {
     }
   };
 
-  const adresseKopieren = async (adresse: string) => {
+  // the tick sits on the button that was pressed, and therefore by the name
+  // and not by a flag: with seven addresses under one another a bare `true`
+  // would set every one of them to done
+  const adresseKopieren = async (name: string, adresse: string) => {
     if (await inDieAblage(adresse)) {
+      setKopiert(name);
+      window.setTimeout(() => setKopiert(null), 2000);
       notify(t("In die Zwischenablage kopiert"), "success");
     } else {
       notify(t("Die Zwischenablage ließ sich nicht beschreiben."), "error");
@@ -133,25 +133,18 @@ export function Mitmachen({ ytdlp }: { ytdlp?: string | null }) {
             )}
           </p>
           {SPENDEN.map((weg) => (
-            <button
-              key={weg.name}
-              type="button"
-              onClick={() => void adresseKopieren(weg.adresse)}
-              title={weg.adresse}
-              className="flex w-full items-start gap-3 rounded-xl p-2.5 text-start transition hover:bg-ink-800"
-            >
+            <div key={weg.name} className="flex items-start gap-3 p-1">
               <Muenze name={weg.name} className="mt-0.5 shrink-0" />
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-3">
-                  <span className="w-24 shrink-0 text-sm font-medium">
-                    {weg.name}
-                  </span>
-                  <code className="min-w-0 flex-1 truncate rounded bg-ink-900 px-2 py-1 text-xs">
-                    {gekuerzt(weg.adresse)}
-                  </code>
-                </span>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium">{weg.name}</div>
+                {/* `break-all`: an address is one word to the browser, and
+                    monero brings ninety-five characters. without it the line
+                    would stand out of the panel */}
+                <code className="mt-1 block rounded bg-ink-900 px-2 py-1 font-mono text-xs break-all select-all">
+                  {weg.adresse}
+                </code>
                 {weg.dazu && (
-                  <span className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
                     {weg.dazu.map((marke) => (
                       <span
                         key={marke}
@@ -161,10 +154,23 @@ export function Mitmachen({ ytdlp }: { ytdlp?: string | null }) {
                         {marke}
                       </span>
                     ))}
-                  </span>
+                  </div>
                 )}
-              </span>
-            </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => void adresseKopieren(weg.name, weg.adresse)}
+                title={t("Adresse kopieren")}
+                aria-label={t("Adresse kopieren")}
+                className="mt-0.5 shrink-0 rounded-lg p-1.5 text-mute transition hover:bg-ink-800 hover:text-fg"
+              >
+                {kopiert === weg.name ? (
+                  <CheckIcon size={16} />
+                ) : (
+                  <CopyIcon size={16} />
+                )}
+              </button>
+            </div>
           ))}
         </div>
       )}

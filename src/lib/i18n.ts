@@ -3340,6 +3340,14 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "إلى صفحة الإبلاغ",
     zh: "前往问题追踪",
   },
+  "Adresse kopieren": {
+    en: "Copy the address",
+    es: "Copiar la dirección",
+    fr: "Copier l'adresse",
+    ru: "Скопировать адрес",
+    ar: "نسخ العنوان",
+    zh: "复制地址",
+  },
   "In die Zwischenablage kopiert": {
     en: "Copied to the clipboard",
     es: "Copiado al portapapeles",
