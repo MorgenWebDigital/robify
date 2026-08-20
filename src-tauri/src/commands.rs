@@ -1460,6 +1460,54 @@ pub async fn update_notes() -> CmdResult<Option<String>> {
     Ok(crate::aktualisierung::notizen().await)
 }
 
+/// fetches the new version and puts it in place of the running one.
+///
+/// works where the app is a self-contained thing: windows, macos, and the
+/// appimage on linux. a deb, an rpm or an arch package belongs to the manager
+/// that installed it, and exchanging its files behind that manager's back
+/// would leave it with a bookkeeping that no longer matches the disk. the
+/// same holds for android. `Ok(false)` says so — nothing was exchanged, and
+/// the caller takes the way over the release page.
+///
+/// the signature is checked before anything is written. without it a file
+/// under the right address would be enough to replace robify on a stranger's
+/// machine.
+#[tauri::command]
+pub async fn install_update(app: tauri::AppHandle) -> CmdResult<bool> {
+    #[cfg(desktop)]
+    {
+        use tauri_plugin_updater::UpdaterExt;
+
+        let updater = match app.updater() {
+            Ok(u) => u,
+            // no endpoint, no signature, a package format that cannot be
+            // exchanged: all of it ends here, and none of it is a fault
+            Err(_) => return Ok(false),
+        };
+
+        let Some(neu) = updater.check().await.map_err(|f| f.to_string())? else {
+            return Ok(false);
+        };
+
+        neu.download_and_install(|_, _| {}, || {})
+            .await
+            .map_err(|f| f.to_string())?;
+        return Ok(true);
+    }
+
+    #[cfg(not(desktop))]
+    {
+        let _ = app;
+        Ok(false)
+    }
+}
+
+/// starts robify anew, after an update has been put in place.
+#[tauri::command]
+pub fn restart_app(app: tauri::AppHandle) {
+    app.restart();
+}
+
 /// opens the release page of robify in the browser.
 ///
 /// deliberately without an address as an argument: it is the one fixed page,

@@ -301,6 +301,13 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
 
+            // the updater exists on the desktop alone. android has no such
+            // thing, and it needs none: the apk is fetched from outside by
+            // whatever installed it
+            #[cfg(desktop)]
+            app.handle()
+                .plugin(tauri_plugin_updater::Builder::new().build())?;
+
             let (data_dir, default_library_dir, feste_orte) = speicherorte(&handle)?;
             std::fs::create_dir_all(&data_dir)?;
 
@@ -478,6 +485,8 @@ pub fn run() {
             commands::check_updates,
             commands::open_release_page,
             commands::update_notes,
+            commands::install_update,
+            commands::restart_app,
             commands::resolve_input,
             commands::start_download,
             commands::cancel_download,

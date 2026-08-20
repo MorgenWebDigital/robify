@@ -205,9 +205,17 @@ export function Aktualisierungsfenster({
       }
 
       if (was?.app) {
-        // robify cannot exchange its own files without going behind the back
-        // of the manager that put them there. the honest step is the page the
-        // new version lies on
+        // exchanged in place where the app is a self-contained thing: on
+        // windows, on macos, and in the appimage. a deb, an rpm or an arch
+        // package belongs to the manager that installed it, and there the
+        // honest step is the page the new version lies on
+        if (await api.aktualisierungEinspielen()) {
+          notify(t("Robify wurde erneuert und startet neu."), "success");
+          // the running app is the old one: what lies on the disk only
+          // arrives with the next start
+          await api.neustarten();
+          return;
+        }
         await api.releaseSeiteOeffnen();
       }
 

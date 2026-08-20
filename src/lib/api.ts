@@ -232,6 +232,8 @@ export const api = {
   aktualisierungenPruefen: () => invoke<Aktualisierungen>("check_updates"),
   releaseSeiteOeffnen: () => invoke<void>("open_release_page"),
   aktualisierungsnotizen: () => invoke<string | null>("update_notes"),
+  aktualisierungEinspielen: () => invoke<boolean>("install_update"),
+  neustarten: () => invoke<void>("restart_app"),
   /** recognises by itself whether a link was pasted or a search typed. */
   resolveInput: (input: string, limit?: number) =>
     invoke<LinkPlan>("resolve_input", { input, limit: limit ?? null }),

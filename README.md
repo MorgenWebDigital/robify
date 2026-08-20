@@ -363,6 +363,31 @@ runs and clippy. The installers come into being at release, see
 | `Ctrl` + `←` | previous track |
 | `Esc`        | close a dialog |
 
+### Updating in place
+
+Robify carries the updater of tauri. Where the app is a self-contained thing
+it fetches the new version itself, checks its signature, puts it in place of
+the running one and starts anew: on windows, on macos, and in the appimage on
+linux.
+
+A deb, an rpm and the arch package are left out, and rightly so. Their files
+belong to the manager that installed them, and exchanging those behind its
+back would leave it with a bookkeeping that no longer matches the disk. There
+the button leads to the page the new version lies on. Android is left out as
+well; whatever installed the apk fetches the new one.
+
+The key that signs the updates is generated once and kept:
+
+```bash
+npx tauri signer generate -w ~/.tauri/robify.key
+```
+
+The public half goes into `src-tauri/tauri.conf.json` under
+`plugins.updater.pubkey`, the private half into the repository secrets. Losing
+it means no further update reaches anyone who installed the app: the signature
+of a new key does not match the old one, and robify refuses it. Whoever holds
+it can replace robify on every machine that runs it.
+
 ### The test device
 
 Every push to `main` builds an android apk and attaches it to the pre-release
@@ -428,15 +453,17 @@ at some point, and it would show only after the release.
 The release workflow signs at the end of a release run and the test device
 workflow signs the apk. Both need secrets in the repository:
 
-| Secret                      | Content                                                    |
-| --------------------------- | ---------------------------------------------------------- |
-| `PGP_PRIVATE_KEY`           | output of `gpg --armor --export-secret-keys <fingerprint>` |
-| `PGP_PASSPHRASE`            | password of the key, where one is set                      |
-| `ANDROID_KEYSTORE`          | `base64 -w0 robify-release.keystore`                       |
-| `ANDROID_KEYSTORE_PASSWORD` | the password set for the keystore                          |
-| `ANDROID_KEY_ALIAS`         | `robify`                                                   |
-| `TESTGERAET_REPO`           | the private repository for the test builds, `owner/name`   |
-| `TESTGERAET_TOKEN`          | a token with write access to that repository               |
+| Secret                               | Content                                                    |
+| ------------------------------------ | ---------------------------------------------------------- |
+| `PGP_PRIVATE_KEY`                    | output of `gpg --armor --export-secret-keys <fingerprint>` |
+| `PGP_PASSPHRASE`                     | password of the key, where one is set                      |
+| `ANDROID_KEYSTORE`                   | `base64 -w0 robify-release.keystore`                       |
+| `ANDROID_KEYSTORE_PASSWORD`          | the password set for the keystore                          |
+| `ANDROID_KEY_ALIAS`                  | `robify`                                                   |
+| `TESTGERAET_REPO`                    | the private repository for the test builds, `owner/name`   |
+| `TAURI_SIGNING_PRIVATE_KEY`          | output of `npx tauri signer generate`, the private half    |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | the password set for that key                              |
+| `TESTGERAET_TOKEN`                   | a token with write access to that repository               |
 
 The last two belong to the test device alone, see the section on it. Kept as a
 secret rather than as a variable, the name of the private repository does not

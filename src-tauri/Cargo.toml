@@ -20,6 +20,9 @@ jni = "0.21"
 ndk-context = "0.1"
 rustls-platform-verifier = "0.6"
 
+[target.'cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))'.dependencies]
+tauri-plugin-updater = "2.10.1"
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 

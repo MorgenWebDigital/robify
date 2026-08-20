@@ -463,6 +463,14 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "حدّث الآن",
     zh: "立即更新",
   },
+  "Robify wurde erneuert und startet neu.": {
+    en: "Robify has been renewed and is restarting.",
+    es: "Robify se ha actualizado y se está reiniciando.",
+    fr: "Robify a été mis à jour et redémarre.",
+    ru: "Robify обновлён и перезапускается.",
+    ar: "جرى تحديث Robify وهو يعيد التشغيل.",
+    zh: "Robify 已更新，正在重新启动。",
+  },
   "Zu dieser Fassung liegen keine Angaben vor.": {
     en: "No details are given for this version.",
     es: "No hay detalles para esta versión.",
