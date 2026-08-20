@@ -281,13 +281,6 @@ export const RefreshIcon = (p: IconProps) => (
   </Icon>
 );
 
-export const UpdateIcon = (p: IconProps) => (
-  <Icon {...p}>
-    <path d="M12 20V6.6" />
-    <path d="m6.6 12 5.4-5.4 5.4 5.4" />
-  </Icon>
-);
-
 export const CopyIcon = (p: IconProps) => (
   <Icon {...p}>
     <rect x="9" y="9" width="11" height="11" rx="2.5" />

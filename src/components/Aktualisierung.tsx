@@ -4,7 +4,7 @@ import { t } from "../lib/i18n";
 import { useUi } from "../store/ui";
 import type { Aktualisierungen } from "../types";
 import { Button, Modal } from "./Modal";
-import { UpdateIcon } from "./Icons";
+import { DownloadIcon } from "./Icons";
 
 // tells that there is something newer, and nothing else.
 //
@@ -72,10 +72,14 @@ export function Aktualisierungsknopf() {
         onClick={() => setOffen(true)}
         title={t("Aktualisierung verfügbar")}
         aria-label={t("Aktualisierung verfügbar")}
-        className="nav-item justify-center p-2 font-semibold"
-        style={{ background: "var(--accent)", color: "var(--accent-ink)" }}
+        // the same build as every other button in the app: a neutral raised
+        // surface with the accent on the sign. a whole button in the accent
+        // colour would shout louder than the play button, and nothing here is
+        // more urgent than that one
+        className="pill-btn is-raised h-9 w-9"
+        style={{ color: "var(--accent)" }}
       >
-        <UpdateIcon size={18} />
+        <DownloadIcon size={18} />
       </button>
 
       <Modal

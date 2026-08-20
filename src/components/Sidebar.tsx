@@ -117,7 +117,7 @@ export function Sidebar() {
         <span className="px-2 text-xs text-mute">
           {stats ? plural(stats.trackCount, "Titel") : "…"}
         </span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {/* stands next to the settings and only while there is something:
               an empty place is understood at a glance, one that always shows
               something has to be read every time */}
