@@ -43,7 +43,7 @@ export function AlbumCard({
       // window, and there it stayed inline: the padding did not take hold and
       // the hover background fell apart into line boxes, a grey strip beside
       // the cover instead of a surface behind it
-      className="group block rounded-xl p-3 transition hover:bg-ink-800"
+      className="group block rounded-xl p-2 transition hover:bg-ink-800"
     >
       <div className="relative">
         <Cover
@@ -111,7 +111,7 @@ export function MixKachel({
       // window, and there it stayed inline: the padding did not take hold and
       // the hover background fell apart into line boxes, a grey strip beside
       // the cover instead of a surface behind it
-      className="group block rounded-xl p-3 transition hover:bg-ink-800"
+      className="group block rounded-xl p-2 transition hover:bg-ink-800"
     >
       <div className="relative">
         <PlaylistMosaic
@@ -213,7 +213,7 @@ export function PlaylistCard({
       // of the grid it became a block automatically, and since it sits in a
       // wrapper for dragging it no longer does. inline, the padding did not
       // take hold and the hover area fell apart into line boxes
-      className="group block rounded-xl p-3 transition hover:bg-ink-800"
+      className="group block rounded-xl p-2 transition hover:bg-ink-800"
     >
       <div className="relative">
         <PlaylistMosaic
@@ -248,7 +248,7 @@ export function ArtistCard({ artist }: { artist: Artist }) {
   return (
     <Link
       to={`/artist/${artist.id}`}
-      className="group block rounded-xl p-3 text-center transition hover:bg-ink-800"
+      className="group block rounded-xl p-2 text-center transition hover:bg-ink-800"
     >
       <ArtistAvatar artist={artist} className="mx-auto aspect-square w-full" />
       <p className="mt-3 truncate text-sm font-medium" title={artist.name}>
@@ -386,8 +386,11 @@ const GRID_COLUMNS = {
 //
 // six on a desktop, not five. the row fills the width either way, so the
 // number of columns is what sets the size of a cover: at five they came to
-// 184 points and stood as large as on a page of their own. six bring them to
-// 147, which reads as an excerpt again.
+// 184 points and stood as large as on a page of their own, at six they come
+// to 155, which reads as an excerpt again.
+//
+// there is nothing between the two. what is left is the padding of a tile,
+// and that is why it stands at 8 points rather than 12.
 //
 // a value of its own and not a fourth size: `GridSize` also stands in the
 // settings for the tile size of the playlists, and there are only three
