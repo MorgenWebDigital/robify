@@ -62,9 +62,17 @@ export function Sidebar() {
         })}
       </ul>
 
-      <div className="min-h-0 flex-1 border-t border-ink-700 pt-3">
+      {/* a column of its own, and the list takes what is left over.
+      
+          it used to carry `max-h-full`, a hundred percent of the height of
+          this block — but the heading stands in that block too and wants its
+          share. the list was therefore allowed to grow exactly as much too
+          tall as the heading is high, and it ran out at the bottom, over the
+          two keys of the footer. `flex-1` with `min-h-0` gives it what is
+          actually left instead, and it scrolls inside that. */}
+      <div className="flex min-h-0 flex-1 flex-col border-t border-ink-700 pt-3">
         <p className="px-3 pb-2 eyebrow">{t("Deine Playlists")}</p>
-        <ul className="max-h-full space-y-0.5 overflow-y-auto">
+        <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
           {playlists.length === 0 && (
             <li className="px-3 py-2 text-xs text-mute">
               {t("Noch keine Playlists.")}
