@@ -1326,37 +1326,45 @@ pub struct DownloaderStatus {
     pub active_jobs: Vec<String>,
 }
 
-#[tauri::command]
-pub async fn downloader_status(state: State<'_, AppState>) -> CmdResult<DownloaderStatus> {
-    let configured = {
-        let conn = state.db();
-        db::get_setting(&conn, "ytdlp_path").ok().flatten()
-    };
-
-    // on android there is no file to find, yt-dlp ships as a library. the
-    // version is asked for over the same bridge the search uses, so the
-    // display does not claim something is missing
-    let (path, version) = if cfg!(target_os = "android") {
+/// where yt-dlp lies and which version it carries.
+///
+/// on android there is no file to find, yt-dlp ships as a library. the
+/// version is asked for over the same bridge the search uses, so the display
+/// does not claim something is missing.
+///
+/// its own function because two callers need it: the downloader shows both
+/// values, the update check compares the version.
+async fn ytdlp_lage(state: &AppState) -> (Option<String>, Option<String>) {
+    if cfg!(target_os = "android") {
         let fassung = crate::ytdlp::einmal(Path::new(""), &["--version".to_string()])
             .await
             .ok()
             .filter(|a| a.erfolg)
             .map(|a| a.stdout.trim().to_string());
-        (Some("eingebaut".to_string()), fassung)
-    } else {
-        let gefunden = downloader::find_ytdlp(configured.as_deref(), &state.tools_dir());
-        let fassung = match &gefunden {
-            Some(p) => tokio::process::Command::new(p)
-                .arg("--version")
-                .output()
-                .await
-                .ok()
-                .filter(|o| o.status.success())
-                .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string()),
-            None => None,
-        };
-        (gefunden.map(|p| p.to_string_lossy().to_string()), fassung)
+        return (Some("eingebaut".to_string()), fassung);
+    }
+
+    let configured = {
+        let conn = state.db();
+        db::get_setting(&conn, "ytdlp_path").ok().flatten()
     };
+    let gefunden = downloader::find_ytdlp(configured.as_deref(), &state.tools_dir());
+    let fassung = match &gefunden {
+        Some(p) => tokio::process::Command::new(p)
+            .arg("--version")
+            .output()
+            .await
+            .ok()
+            .filter(|o| o.status.success())
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string()),
+        None => None,
+    };
+    (gefunden.map(|p| p.to_string_lossy().to_string()), fassung)
+}
+
+#[tauri::command]
+pub async fn downloader_status(state: State<'_, AppState>) -> CmdResult<DownloaderStatus> {
+    let (path, version) = ytdlp_lage(&state).await;
 
     Ok(DownloaderStatus {
         ytdlp_path: path,
@@ -1382,6 +1390,33 @@ pub async fn update_ytdlp(state: State<'_, AppState>) -> CmdResult<String> {
     };
     let ytdlp = downloader::ensure_ytdlp(configured.as_deref(), &state.tools_dir()).await?;
     Ok(crate::ytdlp::aktualisieren(&ytdlp).await?)
+}
+
+/// looks whether a newer robify or a newer yt-dlp exists.
+///
+/// the interface asks this once at the start. it therefore never fails: a
+/// network that is down, a rate limit at github, a repository that does not
+/// exist yet — all of it ends as "nothing new", and the button stays away.
+#[tauri::command]
+pub async fn check_updates(
+    state: State<'_, AppState>,
+) -> CmdResult<crate::aktualisierung::Aktualisierungen> {
+    let (_, fassung) = ytdlp_lage(&state).await;
+    Ok(crate::aktualisierung::pruefen(fassung).await)
+}
+
+/// opens the release page of robify in the browser.
+///
+/// deliberately without an address as an argument: it is the one fixed page,
+/// and a command that opens whatever it is handed would be a door out of the
+/// web view into the system.
+#[tauri::command]
+pub fn open_release_page(app: tauri::AppHandle) -> CmdResult<()> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener()
+        .open_url(crate::aktualisierung::APP_SEITE, None::<&str>)
+        .map_err(|fehler| fehler.to_string())?;
+    Ok(())
 }
 
 // lowercases the scheme of an entered address.

@@ -293,6 +293,19 @@ export interface DownloadOutcome {
   warning: string | null;
 }
 
+/** a version that stands above the one installed. */
+export interface Neuerung {
+  /** what is installed. */
+  jetzt: string;
+  neu: string;
+}
+
+/** what is to be had, both parts independent of one another. */
+export interface Aktualisierungen {
+  app: Neuerung | null;
+  ytdlp: Neuerung | null;
+}
+
 export interface DownloaderStatus {
   ytdlpPath: string | null;
   ytdlpVersion: string | null;

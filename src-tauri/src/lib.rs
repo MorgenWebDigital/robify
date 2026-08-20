@@ -3,6 +3,7 @@
 
 #[cfg(target_os = "android")]
 mod android;
+pub mod aktualisierung;
 pub mod commands;
 pub mod db;
 pub mod downloader;
@@ -474,6 +475,8 @@ pub fn run() {
             // --- downloader ---
             commands::downloader_status,
             commands::update_ytdlp,
+            commands::check_updates,
+            commands::open_release_page,
             commands::resolve_input,
             commands::start_download,
             commands::cancel_download,

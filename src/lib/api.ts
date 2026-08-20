@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useUi } from "../store/ui";
 import { t } from "./i18n";
 import type {
+  Aktualisierungen,
   Album,
   AppPaths,
   Artist,
@@ -227,6 +228,8 @@ export const api = {
   downloaderStatus: () => invoke<DownloaderStatus>("downloader_status"),
   /** fetches the newest version of yt-dlp and returns its number. */
   ytdlpAktualisieren: () => invoke<string>("update_ytdlp"),
+  aktualisierungenPruefen: () => invoke<Aktualisierungen>("check_updates"),
+  releaseSeiteOeffnen: () => invoke<void>("open_release_page"),
   /** recognises by itself whether a link was pasted or a search typed. */
   resolveInput: (input: string, limit?: number) =>
     invoke<LinkPlan>("resolve_input", { input, limit: limit ?? null }),

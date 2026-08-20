@@ -25,6 +25,7 @@ const FERTIG = [
   "lib/mix.ts",
   "lib/sort.ts",
   "components/AddToPlaylistDialog.tsx",
+  "components/Aktualisierung.tsx",
   "components/AkzentWahl.tsx",
   "components/AlbumEditor.tsx",
   "components/ArtistEditor.tsx",

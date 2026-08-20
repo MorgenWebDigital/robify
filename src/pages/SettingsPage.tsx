@@ -89,7 +89,6 @@ export function SettingsPage() {
 
   const [paths, setPaths] = useState<AppPaths | null>(null);
   const [werkzeuge, setWerkzeuge] = useState<DownloaderStatus | null>(null);
-  const [holt, setHolt] = useState(false);
   const [saving, setSaving] = useState(false);
   const [zuruecksetzen, setZuruecksetzen] = useState(false);
   const [dateienLoeschen, setDateienLoeschen] = useState(false);
@@ -123,28 +122,6 @@ export function SettingsPage() {
       notify(errorMessage(error), "error");
     } finally {
       setSaving(false);
-    }
-  };
-
-  // yt-dlp ages faster than robify.
-  //
-  // youtube keeps changing its player and turns old versions away with a 403.
-  // on a desktop yt-dlp is a file that renews itself, on android it sits in
-  // the library and had stayed at the state of november 2025 there, eight
-  // months behind the current one. that is exactly what the youtube downloads
-  // on the phone failed on
-  const werkzeugHolen = async () => {
-    setHolt(true);
-    try {
-      const fassung = await api.ytdlpAktualisieren();
-      setWerkzeuge((vorher) =>
-        vorher ? { ...vorher, ytdlpVersion: fassung } : vorher,
-      );
-      notify(t("yt-dlp steht jetzt auf {0}.", fassung), "success");
-    } catch (error) {
-      notify(errorMessage(error), "error");
-    } finally {
-      setHolt(false);
     }
   };
 
@@ -431,20 +408,7 @@ export function SettingsPage() {
 
         {werkzeuge && (
           <Section title={t("Werkzeuge")}>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                onClick={() => void werkzeugHolen()}
-                variant="outline"
-                disabled={holt}
-              >
-                {holt ? t("Holt…") : t("yt-dlp aktualisieren")}
-              </Button>
-              <span className="text-xs text-mute">
-                {t(
-                  "YouTube weist alte Fassungen mit „403“ ab. Hilft eine Aktualisierung nicht, liegt es an der Quelle.",
-                )}
-              </span>
-            </div>
+            <div className="flex flex-wrap items-center gap-3"></div>
             <AngabeZeile
               label={t("yt-dlp")}
               value={werkzeuge.ytdlpVersion ?? t("unbekannt")}

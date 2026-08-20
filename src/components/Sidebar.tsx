@@ -6,6 +6,7 @@ import { t } from "../lib/i18n";
 import { NAV, istHier } from "../lib/navigation";
 import { useLibrary } from "../store/library";
 import { NotesMark, SettingsIcon } from "./Icons";
+import { Aktualisierungsknopf } from "./Aktualisierung";
 
 export function Sidebar() {
   const playlists = useLibrary((s) => s.playlists);
@@ -116,15 +117,21 @@ export function Sidebar() {
         <span className="px-2 text-xs text-mute">
           {stats ? plural(stats.trackCount, "Titel") : "…"}
         </span>
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            `nav-item justify-center p-2 ${isActive ? "is-active" : "hover:bg-ink-800"}`
-          }
-          aria-label={t("Einstellungen")}
-        >
-          <SettingsIcon size={18} />
-        </NavLink>
+        <div className="flex items-center gap-1">
+          {/* stands next to the settings and only while there is something:
+              an empty place is understood at a glance, one that always shows
+              something has to be read every time */}
+          <Aktualisierungsknopf />
+          <NavLink
+            to="/settings"
+            className={({ isActive }) =>
+              `nav-item justify-center p-2 ${isActive ? "is-active" : "hover:bg-ink-800"}`
+            }
+            aria-label={t("Einstellungen")}
+          >
+            <SettingsIcon size={18} />
+          </NavLink>
+        </div>
       </div>
     </nav>
   );
