@@ -16,6 +16,20 @@ import { DownloadIcon } from "./Icons";
 // renews itself, robify does not: an installed app cannot exchange its own
 // files without a package manager, and the honest way is therefore the page
 // the new version lies on.
+// what the last check found, for as long as the app is running.
+//
+// the effect below runs again at every fresh mount, and there are more of
+// those than one thinks: switching the language rebuilds the whole app, and
+// during development every saved file does. github does not mind being asked,
+// but asking the same question three times in a minute is answered three
+// times with the same thing.
+let gemerkt: Promise<Aktualisierungen> | null = null;
+
+function einmalPruefen(): Promise<Aktualisierungen> {
+  gemerkt ??= api.aktualisierungenPruefen();
+  return gemerkt;
+}
+
 export function Aktualisierungsknopf() {
   const notify = useUi((s) => s.notify);
   const [stand, setStand] = useState<Aktualisierungen | null>(null);
@@ -29,12 +43,15 @@ export function Aktualisierungsknopf() {
   // at every start about something the user cannot do anything about anyway.
   useEffect(() => {
     let gilt = true;
-    api
-      .aktualisierungenPruefen()
+    einmalPruefen()
       .then((was) => {
         if (gilt) setStand(was);
       })
-      .catch(() => {});
+      .catch(() => {
+        // asked once more at the next start: a failure is not to stick to the
+        // running app
+        gemerkt = null;
+      });
     return () => {
       gilt = false;
     };
@@ -47,7 +64,11 @@ export function Aktualisierungsknopf() {
       notify(t("yt-dlp steht jetzt auf {0}.", fassung), "success");
       // gone from the list, and with it possibly the button: what has been
       // fetched is not to keep offering itself
-      setStand((vorher) => (vorher ? { ...vorher, ytdlp: null } : vorher));
+      setStand((vorher) => {
+        const neuer = vorher ? { ...vorher, ytdlp: null } : vorher;
+        if (neuer) gemerkt = Promise.resolve(neuer);
+        return neuer;
+      });
     } catch (error) {
       notify(errorMessage(error), "error");
     } finally {

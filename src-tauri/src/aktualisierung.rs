@@ -9,13 +9,15 @@
 //! limit, or when the repository does not exist yet. the alternative would be
 //! a warning at every start that nobody can act on.
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use serde::Serialize;
 
-/// the release pages the two are published on.
-const APP_MARKE: &str = "https://api.github.com/repos/MorgenWebDigital/robify/releases/latest";
+/// the two repositories, as owner and name.
+const APP_LAGER: &str = "MorgenWebDigital/robify";
+const YTDLP_LAGER: &str = "yt-dlp/yt-dlp";
+
+/// the page the new version of robify lies on.
 pub const APP_SEITE: &str = "https://github.com/MorgenWebDigital/robify/releases/latest";
-const YTDLP_MARKE: &str = "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest";
 
 /// a version that stands above the one installed.
 #[derive(Debug, Clone, Serialize)]
@@ -74,25 +76,46 @@ pub fn neuer_als(neu: &str, jetzt: &str) -> bool {
     false
 }
 
+/// reads the tag out of the address a release page ends up at.
+///
+/// `…/releases/tag/2026.08.19` carries it in the last segment. a repository
+/// without any release lands on `…/releases` instead, and nothing is to be
+/// read there — that is no fault, there is simply nothing yet.
+///
+/// the leading `v` of a tag such as `v0.2.0` falls away, so that what is
+/// compared afterwards is a number and not a mixture of both spellings.
+fn marke_aus_adresse(adresse: &str) -> Option<String> {
+    adresse
+        .rsplit_once("/releases/tag/")
+        .map(|(_, marke)| {
+            marke
+                .trim_end_matches('/')
+                .trim_start_matches(['v', 'V'])
+                .to_string()
+        })
+        .filter(|marke| !marke.is_empty())
+}
+
 /// fetches the tag of the newest release.
 ///
-/// github answers with the whole release, of which one field is read. the
-/// leading `v` of a tag such as `v0.2.0` falls away, so that what is compared
-/// afterwards is a number and not a mixture of both spellings.
-async fn neueste_marke(adresse: &str) -> Result<String> {
+/// deliberately not over the api of github. that one allows sixty questions
+/// an hour without a login, counted per address and shared with everything
+/// else that goes out from there — a browser tab on the same connection
+/// spends from the same purse. two questions at every start run into it
+/// quickly, and from then on the check reports nothing for an hour without
+/// being able to say why. that happened while this was being built.
+///
+/// `/releases/latest` on the ordinary site points at the newest release, and
+/// the address it points to carries the tag. a `head` fetches that address
+/// and no body with it: nothing to count, nothing to download.
+async fn neueste_marke(lager: &str) -> Result<Option<String>> {
     let antwort = crate::online::client()
-        .get(adresse)
-        .header("Accept", "application/vnd.github+json")
+        .head(format!("https://github.com/{lager}/releases/latest"))
         .send()
         .await?
         .error_for_status()?;
 
-    let daten: serde_json::Value = antwort.json().await?;
-    daten["tag_name"]
-        .as_str()
-        .map(|marke| marke.trim_start_matches(['v', 'V']).to_string())
-        .filter(|marke| !marke.is_empty())
-        .ok_or_else(|| anyhow!("Antwort ohne tag_name"))
+    Ok(marke_aus_adresse(antwort.url().as_str()))
 }
 
 /// asks both sources and reports what stands above what is installed.
@@ -101,8 +124,8 @@ async fn neueste_marke(adresse: &str) -> Result<String> {
 /// on android from the library, and this module is to know neither of the two.
 pub async fn pruefen(ytdlp_jetzt: Option<String>) -> Aktualisierungen {
     let jetzt = env!("CARGO_PKG_VERSION");
-    let app = match neueste_marke(APP_MARKE).await {
-        Ok(neu) if neuer_als(&neu, jetzt) => Some(Neuerung {
+    let app = match neueste_marke(APP_LAGER).await {
+        Ok(Some(neu)) if neuer_als(&neu, jetzt) => Some(Neuerung {
             jetzt: jetzt.to_string(),
             neu,
         }),
@@ -115,8 +138,8 @@ pub async fn pruefen(ytdlp_jetzt: Option<String>) -> Aktualisierungen {
 
     // without a version of its own there is nothing to compare: yt-dlp is
     // missing entirely then, and the downloader already says so
-    let ytdlp = match (ytdlp_jetzt, neueste_marke(YTDLP_MARKE).await) {
-        (Some(jetzt), Ok(neu)) if neuer_als(&neu, &jetzt) => Some(Neuerung { jetzt, neu }),
+    let ytdlp = match (ytdlp_jetzt, neueste_marke(YTDLP_LAGER).await) {
+        (Some(jetzt), Ok(Some(neu))) if neuer_als(&neu, &jetzt) => Some(Neuerung { jetzt, neu }),
         (_, Err(fehler)) => {
             eprintln!("Aktualisierung: yt-dlp ließ sich nicht prüfen: {fehler}");
             None
@@ -153,6 +176,29 @@ mod tests {
     fn ytdlp_zaehlt_nach_datum() {
         assert!(neuer_als("2026.08.15", "2026.07.30"));
         assert!(!neuer_als("2025.12.01", "2026.01.02"));
+    }
+
+    #[test]
+    fn die_marke_steht_im_letzten_stueck_der_adresse() {
+        assert_eq!(
+            marke_aus_adresse("https://github.com/yt-dlp/yt-dlp/releases/tag/2026.08.19"),
+            Some("2026.08.19".to_string())
+        );
+        assert_eq!(
+            marke_aus_adresse("https://github.com/MorgenWebDigital/robify/releases/tag/v0.2.0"),
+            Some("0.2.0".to_string())
+        );
+    }
+
+    // a repository without a release lands on the list of releases, and there
+    // is nothing there to read
+    #[test]
+    fn ohne_veroeffentlichung_steht_keine_marke_da() {
+        assert_eq!(
+            marke_aus_adresse("https://github.com/MorgenWebDigital/robify/releases"),
+            None
+        );
+        assert_eq!(marke_aus_adresse("https://github.com/x/y/releases/tag/"), None);
     }
 
     // a suffix must not make a version look newer than the one without it
