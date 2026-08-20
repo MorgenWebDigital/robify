@@ -387,10 +387,10 @@ const GRID_COLUMNS = {
 // six on a desktop, not five. the row fills the width either way, so the
 // number of columns is what sets the size of a cover: at five they came to
 // 184 points and stood as large as on a page of their own, at six they come
-// to 155, which reads as an excerpt again.
+// to 161, which reads as an excerpt again.
 //
-// there is nothing between the two. what is left is the padding of a tile,
-// and that is why it stands at 8 points rather than 12.
+// there is nothing between the two. what is left is the padding of a tile and
+// the gap of the grid, and both stand at 8 points rather than 12 and 16.
 //
 // a value of its own and not a fourth size: `GridSize` also stands in the
 // settings for the tile size of the playlists, and there are only three
@@ -410,17 +410,15 @@ export function Grid({
   vorschau?: boolean;
 }) {
   const spalten = vorschau ? VORSCHAU_SPALTEN : GRID_COLUMNS[size];
-  // sixteen pixels between the tiles, not four.
+  // eight pixels between the tiles.
   //
-  // every tile carries `p-3` and a hover background of its own. four pixels
-  // apart those rectangles almost touched, so moving across the grid read as
-  // one continuous band with slits in it rather than as one tile lighting up.
-  // the covers looked squeezed on top of that.
-  //
-  // the preview got this value first; the full grids kept the old four and
-  // were the ones the problem was actually visible on, they carry the most
-  // tiles.
-  return <div className={`grid gap-4 ${spalten}`}>{children}</div>;
+  // every tile carries a hover background of its own, and at the four pixels
+  // this once stood at those rectangles almost touched: moving across the grid
+  // read as one continuous band with slits in it rather than as one tile
+  // lighting up. eight keep them apart while the covers stay close together,
+  // and with the padding of a tile they add up to a good two dozen points
+  // between one cover and the next.
+  return <div className={`grid gap-2 ${spalten}`}>{children}</div>;
 }
 
 // a playlist as a row, the same details, only saving space
