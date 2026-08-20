@@ -131,10 +131,24 @@ async fn abgleich_mit_den_katalogen() {
     // fetches a standalone build of its own for exactly this reason, and the
     // report has to measure that one
     let werkzeuge = std::env::temp_dir().join("robify-werkzeuge");
-    let ytdlp = downloader::ensure_ytdlp(None, &werkzeuge)
+    let _ = std::fs::create_dir_all(&werkzeuge);
+    let ytdlp = downloader::managed_ytdlp(&werkzeuge);
+    // `ensure_ytdlp` would take whatever lies in the path, and that is
+    // exactly what must not be measured here
+    let ytdlp = if ytdlp.exists() {
+        ytdlp
+    } else {
+        downloader::eigenes_holen(&werkzeuge)
+            .await
+            .expect("yt-dlp geholt")
+    };
+    let fassung = tokio::process::Command::new(&ytdlp)
+        .arg("--version")
+        .output()
         .await
-        .expect("yt-dlp bereitgestellt");
-    println!("yt-dlp: {}", ytdlp.display());
+        .map(|a| String::from_utf8_lossy(&a.stdout).trim().to_string())
+        .unwrap_or_default();
+    println!("yt-dlp {fassung} aus {}", ytdlp.display());
     let work = std::env::temp_dir().join("robify-abgleich");
     let _ = std::fs::remove_dir_all(&work);
     let app = tauri::test::mock_app();
