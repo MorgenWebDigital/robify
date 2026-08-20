@@ -68,6 +68,22 @@ jobs:
       - name: Install the dependencies
         run: npm ci
 
+      # the text of the release comes out of the changelog, not out of a
+      # sentence pointing at it. robify reads it from the release when
+      # somebody asks what has changed, and it cannot open a file that lies
+      # in the repository
+      - name: Notes of the release
+        id: notizen
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          {
+            echo 'text<<AENDERUNGEN'
+            node scripts/aenderungen.mjs "${{ github.ref_name }}"
+            echo ''
+            echo 'AENDERUNGEN'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build and bundle
         uses: tauri-apps/tauri-action@v0
         env:
@@ -80,7 +96,7 @@ jobs:
           # systems one of them fails silently sooner or later
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: Robify ${{ github.ref_name }}
-          releaseBody: ${{ github.ref_type == 'tag' && 'See CHANGELOG.md.' || '' }}
+          releaseBody: ${{ steps.notizen.outputs.text }}
           releaseDraft: true
           prerelease: false
 

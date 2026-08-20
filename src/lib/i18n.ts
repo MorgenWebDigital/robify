@@ -455,6 +455,22 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "الأدوات",
     zh: "工具",
   },
+  "Jetzt aktualisieren": {
+    en: "Update now",
+    es: "Actualizar ahora",
+    fr: "Mettre à jour",
+    ru: "Обновить сейчас",
+    ar: "حدّث الآن",
+    zh: "立即更新",
+  },
+  "Zu dieser Fassung liegen keine Angaben vor.": {
+    en: "No details are given for this version.",
+    es: "No hay detalles para esta versión.",
+    fr: "Aucune information sur cette version.",
+    ru: "Сведений об этой версии нет.",
+    ar: "لا تتوفّر تفاصيل عن هذه النسخة.",
+    zh: "此版本没有说明。",
+  },
   "Aktualisierung verfügbar": {
     en: "Update available",
     es: "Actualización disponible",

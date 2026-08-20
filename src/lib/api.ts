@@ -231,6 +231,7 @@ export const api = {
   ytdlpAktualisieren: () => invoke<YtdlpErneuert>("update_ytdlp"),
   aktualisierungenPruefen: () => invoke<Aktualisierungen>("check_updates"),
   releaseSeiteOeffnen: () => invoke<void>("open_release_page"),
+  aktualisierungsnotizen: () => invoke<string | null>("update_notes"),
   /** recognises by itself whether a link was pasted or a search typed. */
   resolveInput: (input: string, limit?: number) =>
     invoke<LinkPlan>("resolve_input", { input, limit: limit ?? null }),

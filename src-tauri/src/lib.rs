@@ -477,6 +477,7 @@ pub fn run() {
             commands::update_ytdlp,
             commands::check_updates,
             commands::open_release_page,
+            commands::update_notes,
             commands::resolve_input,
             commands::start_download,
             commands::cancel_download,

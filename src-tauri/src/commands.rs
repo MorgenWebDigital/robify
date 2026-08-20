@@ -1451,6 +1451,15 @@ pub async fn check_updates(
     Ok(crate::aktualisierung::pruefen(fassung).await)
 }
 
+/// the notes of the newest robify release, for "show more".
+///
+/// separate from the check and not part of it: the check runs at every start
+/// and is to stay cheap, the notes are fetched at a click and rarely.
+#[tauri::command]
+pub async fn update_notes() -> CmdResult<Option<String>> {
+    Ok(crate::aktualisierung::notizen().await)
+}
+
 /// opens the release page of robify in the browser.
 ///
 /// deliberately without an address as an argument: it is the one fixed page,

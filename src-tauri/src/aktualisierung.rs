@@ -118,6 +118,36 @@ async fn neueste_marke(lager: &str) -> Result<Option<String>> {
     Ok(marke_aus_adresse(antwort.url().as_str()))
 }
 
+/// the notes of the newest release, fetched only when someone asks for them.
+///
+/// over the api of github this time, and against the rule the check follows.
+/// the reason is the opposite one: the text of a release is to be had nowhere
+/// else, and it is fetched at a click and not at every start. sixty questions
+/// an hour are plenty for that.
+///
+/// a release without notes and one that does not exist come to the same thing
+/// here: nothing to show, and no complaint about it.
+pub async fn notizen() -> Option<String> {
+    let adresse = format!("https://api.github.com/repos/{APP_LAGER}/releases/latest");
+    let antwort = crate::online::client()
+        .get(&adresse)
+        .header("Accept", "application/vnd.github+json")
+        .send()
+        .await
+        .and_then(|a| a.error_for_status())
+        .ok()?;
+
+    let daten: serde_json::Value = antwort.json().await.ok()?;
+    let text = daten["body"].as_str()?.trim();
+    if text.is_empty() {
+        return None;
+    }
+
+    // a release text can grow long, and what stands past four thousand
+    // characters nobody reads in a dialogue. the rest is on the page itself
+    Some(text.chars().take(4000).collect())
+}
+
 /// asks both sources and reports what stands above what is installed.
 ///
 /// `ytdlp_jetzt` comes from outside: on a desktop it is read from the file,

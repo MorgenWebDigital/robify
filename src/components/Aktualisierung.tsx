@@ -155,7 +155,6 @@ export function Aktualisierungszeile({ oeffnen }: { oeffnen: () => void }) {
 
 // --- what stands in the window ---
 
-/** what is to be had, and what is to be done about it. */
 export function Aktualisierungsfenster({
   offen,
   schliessen,
@@ -165,39 +164,58 @@ export function Aktualisierungsfenster({
 }) {
   const notify = useUi((s) => s.notify);
   const was = useAktualisierungen();
-  const [holt, setHolt] = useState(false);
+  const [laeuft, setLaeuft] = useState(false);
+  const [mehr, setMehr] = useState(false);
+  const [notizen, setNotizen] = useState<string | null>(null);
 
-  const ytdlpHolen = async () => {
-    setHolt(true);
+  // the notes are fetched at the click on "show more" and not before: the
+  // check runs at every start and is to stay cheap, this is one question over
+  // the api of github and it is asked rarely
+  useEffect(() => {
+    if (!mehr || !was?.app || notizen !== null) return;
+    api
+      .aktualisierungsnotizen()
+      .then((text) => setNotizen(text ?? ""))
+      .catch(() => setNotizen(""));
+  }, [mehr, was?.app, notizen]);
+
+  // one key for everything that is pending.
+  //
+  // the two are renewed in different ways — yt-dlp exchanges itself, robify
+  // cannot and points at its page — but that is our business and not the
+  // user's. they want it up to date, and one key says so.
+  const aktualisieren = async () => {
+    setLaeuft(true);
     try {
-      const erneuert = await api.ytdlpAktualisieren();
-      notify(
-        erneuert.eigeneKopie
-          ? // the found yt-dlp belonged to pip or to a package manager and
-            // would not renew itself. saying so matters: from now on robify
-            // works with a different file than before
-            t(
-              "yt-dlp gehörte einer fremden Verwaltung und erneuerte sich nicht selbst. Robify benutzt ab jetzt eine eigene Kopie, Fassung {0}.",
-              erneuert.fassung,
-            )
-          : t("yt-dlp steht jetzt auf {0}.", erneuert.fassung),
-        "success",
-      );
-      // gone from the list, and with it possibly the way in: what has been
-      // fetched is not to keep offering itself
-      if (stand) setzen({ ...stand, ytdlp: null });
+      if (was?.ytdlp) {
+        const erneuert = await api.ytdlpAktualisieren();
+        notify(
+          erneuert.eigeneKopie
+            ? // the found yt-dlp belonged to pip or to a package manager and
+              // would not renew itself. saying so matters: from now on robify
+              // works with a different file than before
+              t(
+                "yt-dlp gehörte einer fremden Verwaltung und erneuerte sich nicht selbst. Robify benutzt ab jetzt eine eigene Kopie, Fassung {0}.",
+                erneuert.fassung,
+              )
+            : t("yt-dlp steht jetzt auf {0}.", erneuert.fassung),
+          "success",
+        );
+        if (stand) setzen({ ...stand, ytdlp: null });
+      }
+
+      if (was?.app) {
+        // robify cannot exchange its own files without going behind the back
+        // of the manager that put them there. the honest step is the page the
+        // new version lies on
+        await api.releaseSeiteOeffnen();
+      }
+
+      schliessen();
     } catch (error) {
       notify(errorMessage(error), "error");
     } finally {
-      setHolt(false);
-    }
-  };
-
-  const seiteOeffnen = async () => {
-    try {
-      await api.releaseSeiteOeffnen();
-    } catch (error) {
-      notify(errorMessage(error), "error");
+      setLaeuft(false);
     }
   };
 
@@ -208,75 +226,76 @@ export function Aktualisierungsfenster({
       onClose={schliessen}
       width="max-w-md"
       footer={
-        <Button onClick={schliessen} variant="ghost">
-          {t("Schließen")}
-        </Button>
+        <>
+          <Button onClick={schliessen} variant="ghost">
+            {t("Schließen")}
+          </Button>
+          <Button
+            onClick={() => void aktualisieren()}
+            variant="primary"
+            disabled={laeuft}
+          >
+            {laeuft ? t("Holt…") : t("Jetzt aktualisieren")}
+          </Button>
+        </>
       }
     >
-      <div className="space-y-4">
-        {was?.app && (
-          <Zeile
-            name={t("Robify")}
-            jetzt={was.app.jetzt}
-            neu={was.app.neu}
-            hinweis={t(
-              "Robify kann sich nicht selbst austauschen. Die neue Fassung liegt zum Herunterladen bereit.",
+      <div className="space-y-3">
+        {/* short and nothing else: what is renewed, and to which version. */}
+        <ul className="space-y-1.5">
+          {was?.app && <Zeile name={t("Robify")} neu={was.app.neu} />}
+          {was?.ytdlp && <Zeile name={t("yt-dlp")} neu={was.ytdlp.neu} />}
+        </ul>
+
+        <button
+          type="button"
+          onClick={() => setMehr((offen) => !offen)}
+          className="text-sm text-mute underline decoration-mute/40 underline-offset-2 transition hover:text-fg"
+        >
+          {mehr ? t("Weniger anzeigen") : t("Mehr anzeigen")}
+        </button>
+
+        {mehr && (
+          <div className="space-y-3 rounded-xl bg-ink-800 p-4 text-sm text-mute">
+            {was?.app && (
+              <div className="space-y-2">
+                <p>
+                  {t(
+                    "Robify kann sich nicht selbst austauschen. Die neue Fassung liegt zum Herunterladen bereit.",
+                  )}
+                </p>
+                {notizen === null ? (
+                  <p>{t("Holt…")}</p>
+                ) : notizen ? (
+                  // as it stands in the changelog: line breaks kept, nothing
+                  // interpreted. a text from the net is not to become markup
+                  // here
+                  <p className="whitespace-pre-wrap">{notizen}</p>
+                ) : (
+                  <p>{t("Zu dieser Fassung liegen keine Angaben vor.")}</p>
+                )}
+              </div>
             )}
-            knopf={
-              <Button onClick={() => void seiteOeffnen()} variant="primary">
-                {t("Zur Veröffentlichung")}
-              </Button>
-            }
-          />
-        )}
-        {was?.ytdlp && (
-          <Zeile
-            name={t("yt-dlp")}
-            jetzt={was.ytdlp.jetzt}
-            neu={was.ytdlp.neu}
-            hinweis={t(
-              "YouTube weist alte Fassungen mit „403“ ab. Hilft eine Aktualisierung nicht, liegt es an der Quelle.",
+            {was?.ytdlp && (
+              <p>
+                {t(
+                  "YouTube weist alte Fassungen mit „403“ ab. Hilft eine Aktualisierung nicht, liegt es an der Quelle.",
+                )}
+              </p>
             )}
-            knopf={
-              <Button
-                onClick={() => void ytdlpHolen()}
-                variant="primary"
-                disabled={holt}
-              >
-                {holt ? t("Holt…") : t("Jetzt erneuern")}
-              </Button>
-            }
-          />
+          </div>
         )}
       </div>
     </Modal>
   );
 }
 
-/** one of the two, with both versions and what is to be done about it. */
-function Zeile({
-  name,
-  jetzt,
-  neu,
-  hinweis,
-  knopf,
-}: {
-  name: string;
-  jetzt: string;
-  neu: string;
-  hinweis: string;
-  knopf: React.ReactNode;
-}) {
+/** one line: what is renewed, and to which version. */
+function Zeile({ name, neu }: { name: string; neu: string }) {
   return (
-    <div className="space-y-2 rounded-xl bg-ink-800 p-4">
-      <div className="flex flex-wrap items-baseline gap-x-2">
-        <span className="font-semibold">{name}</span>
-        <span className="text-sm text-mute">
-          {t("{0} statt {1}", neu, jetzt)}
-        </span>
-      </div>
-      <p className="text-sm text-mute">{hinweis}</p>
-      <div className="flex">{knopf}</div>
-    </div>
+    <li className="flex items-baseline gap-2">
+      <span className="font-semibold">{name}</span>
+      <span className="text-sm text-mute">{neu}</span>
+    </li>
   );
 }
