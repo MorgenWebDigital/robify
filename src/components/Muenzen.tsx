@@ -118,6 +118,17 @@ const MUENZEN: Record<string, Muenzbild> = {
     ),
   },
 
+  // the d with the two bars through it
+  DAI: {
+    farbe: "#f5ac37",
+    glyphe: (
+      <g {...strich} strokeWidth={1.9}>
+        <path d="M9.2 6.6h2.9a5.4 5.4 0 0 1 0 10.8H9.2z" />
+        <path d="M5.6 10.2h12.8M5.6 13.8h12.8" />
+      </g>
+    ),
+  },
+
   // the dollar sign in its ring
   USDC: {
     farbe: "#2775ca",

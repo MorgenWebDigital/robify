@@ -47,6 +47,12 @@ export interface Spendenweg {
  * stablecoin traffic runs because a transfer there costs cents. bitcoin is
  * the one everybody has, monero the one for whoever minds who can read along.
  *
+ * named under `dazu` are only the stablecoins. a wrapped bitcoin and a
+ * bridged dogecoin arrive at those addresses as well, but naming them would
+ * invite a detour: bitcoin has an entry of its own here, and whoever holds
+ * dogecoin holds it on its own chain, which this list does not take. an
+ * offer nobody can sensibly accept is worse than none.
+ *
  * bitcoin deliberately as a plain bech32 address and not as a silent payment:
  * that would hide the sum received and every giver, but hardly any exchange
  * can pay to one, and that is where a donation usually comes from.
@@ -61,7 +67,7 @@ export const SPENDEN: Spendenweg[] = [
   {
     name: "Ethereum",
     adresse: "0x6cBc187FbCc8aE8bD85cAade7b701f2936a14204",
-    dazu: ["USDT", "USDC"],
+    dazu: ["USDT", "USDC", "DAI"],
   },
   {
     name: "Solana",
@@ -76,6 +82,6 @@ export const SPENDEN: Spendenweg[] = [
   {
     name: "Tron",
     adresse: "TWYGPLvr6tkz9FBbF5Q8HtULafcLu4RfAc",
-    dazu: ["USDT"],
+    dazu: ["USDT", "USDC"],
   },
 ];
