@@ -23,6 +23,7 @@ import { dirname, join } from "node:path";
 const MAIN_ACTIVITY =
   "src-tauri/gen/android/app/src/main/java/de/robify/player/MainActivity.kt";
 const APP_GRADLE = "src-tauri/gen/android/app/build.gradle.kts";
+const PROGUARD = "src-tauri/gen/android/app/robify-regeln.pro";
 const PAKET_ORDNER = "src-tauri/gen/android/app/src/main/java/de/robify/player";
 /** the version of `youtubedl-android`, it brings yt-dlp and python itself. */
 const YTDLP_FASSUNG = "0.18.1";
@@ -560,6 +561,41 @@ function dateizugriffErbitten() {
  * same thing to the webview once more, and the two together cover old and new
  * android versions alike.
  */
+// keeps the bridges to rust from being optimised away.
+//
+// the release build runs r8 over the kotlin part and throws out what nothing
+// calls. nothing in kotlin calls these three classes: rust reaches them
+// through jni, by their name, at run time, and r8 cannot see that. so it
+// removed them, the app started, and it died at the first tap on the settings
+// with `NoSuchMethodError: no static method Wiedergabe.melden`.
+//
+// the debug build is not minified and showed nothing of it. the fault
+// therefore appeared only in the installers, which is the worst place for it
+// to appear.
+//
+// its own file rather than the `proguard-rules.pro` of the template: the
+// gradle part reads every `.pro` under the app folder, and what is ours stays
+// apart from what tauri generates.
+function brueckenSchuetzen() {
+  writeFileSync(
+    PROGUARD,
+    [
+      "# rust reaches these classes through jni, by their name. r8 sees no",
+      "# call to them and would remove them.",
+      "-keep class de.robify.player.Wiedergabe { *; }",
+      "-keep class de.robify.player.Ytdlp { *; }",
+      "-keep class de.robify.player.Dateien { *; }",
+      "",
+      "# what is declared in kotlin and implemented in rust",
+      "-keepclasseswithmembernames class * {",
+      "    native <methods>;",
+      "}",
+      "",
+    ].join("\n"),
+  );
+  console.log("Brücken zu Rust: vor der Optimierung geschützt");
+}
+
 function tastaturVerhaltenSetzen() {
   const manifest = readFileSync(MANIFEST, "utf8");
   if (manifest.includes("windowSoftInputMode")) {
@@ -698,5 +734,6 @@ systemplayerEinbinden();
 benachrichtigungenErbitten();
 dateizugriffErbitten();
 speicherZuegeln();
+brueckenSchuetzen();
 tastaturVerhaltenSetzen();
 startsymbolEinlegen();
