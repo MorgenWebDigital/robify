@@ -69,6 +69,21 @@ export function useAktualisierungen(): Aktualisierungen | null {
   return wert;
 }
 
+/**
+ * the colour of the marking, in every appearance.
+ *
+ * deliberately not the accent colour. that one is freely chosen, and the
+ * default is a grey that vanishes on a dark surface — the marking would then
+ * be invisible for exactly those who never touched the setting. a signal has
+ * to be a signal whatever else is set.
+ *
+ * `--danger` and not a red of its own: it is already tuned for light and
+ * dark, and a second red beside it would drift apart from it at the next
+ * change. the name says "danger" and an update is none, but the app has one
+ * signal colour and this is it.
+ */
+export const SIGNAL = "var(--danger)";
+
 /** whether anything at all is to be had. */
 export function etwasNeues(was: Aktualisierungen | null): boolean {
   return Boolean(was?.app || was?.ytdlp);
@@ -92,11 +107,11 @@ export function Aktualisierungsknopf() {
         aria-label={t("Aktualisierung verfügbar")}
         // the same build as the gear beside it: the rounded square of the
         // navigation, and `raised-row` holds it in the raised state the gear
-        // only takes on the page it belongs to. a whole surface in the accent
+        // only takes on the page it belongs to. a whole surface in a signal
         // colour would shout louder than the play button, and nothing here is
-        // more urgent than that one — the accent therefore sits on the sign
+        // more urgent than that one — the colour therefore sits on the sign
         className="nav-item raised-row justify-center p-2"
-        style={{ color: "var(--accent)" }}
+        style={{ color: SIGNAL }}
       >
         <DownloadIcon size={18} />
       </button>
@@ -130,7 +145,7 @@ export function Aktualisierungszeile({ oeffnen }: { oeffnen: () => void }) {
         type="button"
         onClick={oeffnen}
         className="nav-item w-full gap-3 px-3 py-3 text-sm font-medium"
-        style={{ color: "var(--accent)" }}
+        style={{ color: SIGNAL }}
       >
         <DownloadIcon size={20} />
         {t("Aktualisierung verfügbar")}

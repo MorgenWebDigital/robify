@@ -8,6 +8,7 @@ import {
   Aktualisierungsfenster,
   Aktualisierungszeile,
   etwasNeues,
+  SIGNAL,
   useAktualisierungen,
 } from "./Aktualisierung";
 
@@ -118,7 +119,7 @@ export function Unterleiste() {
                 aria-hidden="true"
                 className="absolute -end-1 -top-1 h-2.5 w-2.5 rounded-full"
                 style={{
-                  background: "var(--accent)",
+                  background: SIGNAL,
                   boxShadow: "0 0 0 2px var(--canvas)",
                 }}
               />
