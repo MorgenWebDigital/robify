@@ -1,37 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <!--
-    Robify-Zeichen: zwei Noten unter einem gemeinsamen Balken.
+    the robify mark: two notes under a shared beam.
 
-    Ein Entwurf daneben ließ drei Zeichen frei schweben; hier hält
-    ein durchgehender Strich sie zusammen und wird zugleich zur Tonspur. Das
-    Zeichen liest sich als ein Körper statt als Gruppe und bleibt dadurch bei
-    kleinen Größen ruhiger.
+    a draft next to it let three marks float freely, and here a continuous
+    stroke holds them together and becomes the waveform at the same time. the
+    mark reads as one body instead of a group and therefore stays calmer at
+    small sizes.
   -->
   <!--
-    Ohne den Wellenausläufer ist die Zeichnung schmaler geworden. Diese
-    Verschiebung rückt ihren neuen Mittelpunkt (204/288) in die Feldmitte und
-    zieht sie um knapp die Hälfte auf. Danach bleiben rings mindestens 60 px
-    Rand, genug für die runde Android-Maske.
+    without the trailing wave the drawing has grown narrower. this transform
+    moves its new centre (204/288) into the middle of the field and scales it
+    up by close to half. at least 60 px of margin are left all around
+    afterwards, enough for the round android mask.
   -->
   <g fill="#a8a8b3" transform="translate(256 256) scale(1.45) translate(-204 -288)">
-    <!-- Balken über beiden Hälsen, ansteigend. -->
+    <!-- the beam over both stems, rising. -->
     <path d="M150 214 L338 166 v52 L150 266 z" />
 
     <!--
-      Hälse.
+      the stems.
 
-      Der rechte beginnt bei 172.64 statt bei 166: Genau dort liegt die
-      Oberkante des ansteigenden Balkens an seiner linken Seite. Setzte er
-      höher an, schaute seine obere linke Ecke über den Balken hinaus und
-      bildete eine kleine Stufe, bei großer Darstellung ein sichtbarer
-      Absatz, bei kleiner ein ausgefranster Rand.
+      the right one starts at 172.64 instead of at 166: exactly there lies the
+      top edge of the rising beam on its left side. set higher, its top left
+      corner looked out over the beam and formed a small step, a visible ledge
+      at a large size and a frayed edge at a small one.
 
-      Die Unterkante bleibt bei 316, die Höhe gleicht das aus.
+      the bottom edge stays at 316 and the height makes up for it.
     -->
     <rect x="150" y="214" width="26" height="150" />
     <rect x="312" y="172.64" width="26" height="143.36" />
 
-    <!-- Notenköpfe, gekippt wie in der Notenschrift. -->
+    <!-- the note heads, tilted as in musical notation. -->
     <ellipse cx="120" cy="366" rx="52" ry="40" transform="rotate(-20 120 366)" />
     <ellipse cx="282" cy="318" rx="52" ry="40" transform="rotate(-20 282 318)" />
   </g>

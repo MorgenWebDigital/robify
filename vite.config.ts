@@ -2,7 +2,7 @@ import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
-// Tauri erwartet einen festen Port und darf bei Fehlern nicht ausweichen.
+// tauri expects a fixed port and must not fall back to another one on error
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
@@ -15,26 +15,23 @@ export default defineConfig({
     hmr: host ? { protocol: "ws", host, port: 1421 } : undefined,
     watch: { ignored: ["**/src-tauri/**"] },
   },
-  /*
-   * Tests laufen in einem nachgebauten Dokument.
-   *
-   * Die Rechenteile unter `lib/` kämen ohne aus, die Bauteile nicht: Genau
-   * dort lagen die letzten Fehler, und alle drei hätten sich nur im Dokument
-   * zeigen können. Der Fokus, der nach jedem Tastendruck aus dem Feld sprang;
-   * die Kachel, die als `inline` gezeichnet wurde; das Menü, das die
-   * Bildlauffläche verlängerte.
-   *
-   * `globals` spart das Einbinden von `describe` und `expect` in jeder Datei,
-   * `setup` bringt die zusätzlichen Vergleiche und räumt zwischen den Tests
-   * auf.
-   */
+  // the tests run in a rebuilt document.
+  //
+  // the calculating parts under `lib/` would get by without one, the
+  // components would not: the last bugs lay exactly there, and all three could
+  // only have shown in a document. the focus jumping out of the field after
+  // every keystroke, the tile drawn as `inline`, the menu extending the
+  // scrolling area.
+  //
+  // `globals` saves importing `describe` and `expect` in every file, and
+  // `setup` brings the extra matchers and cleans up between the tests
   test: {
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/aufbau.ts"],
   },
 
-  // Tauri nutzt Chromium (Windows/Android) bzw. WebKit (macOS/Linux).
+  // tauri uses chromium on windows and android, webkit on macos and linux
   build: {
     target:
       process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : "safari15",
