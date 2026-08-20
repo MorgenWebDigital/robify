@@ -960,6 +960,16 @@ const BEIWERK: [&str; 22] = [
 /// words after which only a name follows, never a version.
 const NAMENSWORT: [&str; 6] = ["feat", "ft", "featuring", "with", "prod", "by"];
 
+/// whether a single word says nothing about which recording it is.
+pub fn ist_beiwerk_wort(wort: &str) -> bool {
+    BEIWERK.contains(&wort) || wort.chars().all(|z| z.is_ascii_digit())
+}
+
+/// whether only a name can follow this word.
+pub fn ist_namenswort(wort: &str) -> bool {
+    NAMENSWORT.contains(&wort)
+}
+
 /// whether a bracketed addition says nothing about the version.
 ///
 /// "(Official Video)" and "(feat. Julian Casablancas)" leave the recording

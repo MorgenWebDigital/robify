@@ -1287,14 +1287,28 @@ fn coverage_penalty(query: &str, candidate: &SearchResult) -> f64 {
         .filter(|word| !available.contains(*word))
         .count();
 
-    // extra words in the title hint at a different version ("… (XY Remix)")
-    // but weigh less than a missing word
-    let extra = title
-        .split(' ')
-        .filter(|word| !word.is_empty() && !wanted_words.contains(word))
-        .count();
+    // a word in the title that was not searched for points at a different
+    // version, and now and then at a different track: "Love Bicep Glue" is a
+    // mashup and went into the library as "Bicep - Glue".
+    //
+    // trivia and guest credits are no such sign. "Money Trees ft. Jay Rock"
+    // is exactly what was searched for, and charging for the guests would
+    // push the official upload behind a bare reupload
+    let mut extra = 0usize;
+    for word in title.split(' ').filter(|word| !word.is_empty()) {
+        // behind "feat", "ft" or "prod" stands a name, never a version
+        if crate::online::ist_namenswort(word) {
+            break;
+        }
+        if wanted_words.contains(&word) || crate::online::ist_beiwerk_wort(word) {
+            continue;
+        }
+        extra += 1;
+    }
 
-    missing as f64 * 20.0 + (extra as f64 * 3.0).min(15.0)
+    // deliberately below what a missing word costs: a hit carrying every
+    // searched word and a label name on top is still the better one
+    missing as f64 * 20.0 + (extra as f64 * 9.0).min(18.0)
 }
 
 /// shorter than this is no whole track but a preview.
@@ -2716,6 +2730,45 @@ mod tests {
     /// the reported case: youtube had blocked, and a bootleg edit stood ready
     /// as the fallback address. it went into the library as the original,
     /// album "PLAY045 - THE MEME CUTS III" and all
+    /// "Bicep - Glue" came out of the library as "Love Bicep Glue" by
+    /// BLINDMANZ. the foreign word carries no bracket, so only its weight in
+    /// the ranking separates the mashup from the track
+    #[test]
+    fn ein_fremdes_wort_im_titel_wiegt_schwerer_als_beiwerk() {
+        let mashup = treffer_bei("Love Bicep Glue", 269, "https://bandcamp.com/a");
+        let echt = treffer_bei("BICEP | GLUE (Official Video)", 285, "https://youtube.com/b");
+
+        assert!(
+            coverage_penalty("Bicep Glue", &mashup) > coverage_penalty("Bicep Glue", &echt),
+            "das Mashup steht nicht hinter der Aufnahme"
+        );
+        assert_eq!(coverage_penalty("Bicep Glue", &echt), 0.0);
+    }
+
+    /// guests and label names must not push the official upload down
+    #[test]
+    fn gaeste_und_beiwerk_kosten_nichts() {
+        let mit_gaesten = treffer_bei(
+            "Kendrick Lamar - Money Trees ft. Jay Rock",
+            386,
+            "https://youtube.com/a",
+        );
+        assert_eq!(
+            coverage_penalty("Kendrick Lamar Money Trees", &mit_gaesten),
+            0.0
+        );
+
+        let mit_beiwerk = treffer_bei(
+            "Michael Jackson - Billie Jean 2009 Official HD",
+            294,
+            "https://youtube.com/b",
+        );
+        assert_eq!(
+            coverage_penalty("Michael Jackson Billie Jean", &mit_beiwerk),
+            0.0
+        );
+    }
+
     #[test]
     fn ein_bootleg_taugt_nicht_als_ausweichadresse() {
         let echt = treffer_bei(

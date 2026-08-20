@@ -327,3 +327,36 @@ async fn drm_quelle_wird_uebersprungen() {
 
     let _ = std::fs::remove_dir_all(&work_dir);
 }
+
+/// shows the ranking robify forms for a query, in the order it downloads.
+///
+/// the diagnostic for a wrong recording: "Bicep - Glue" came out of the
+/// library as "Love Bicep Glue" by BLINDMANZ, and only the ranking says
+/// whether that hit stood on top or whether the right one had failed first.
+///
+///     cargo test --test download_live rangliste -- --ignored --nocapture
+#[tokio::test]
+#[ignore]
+async fn rangliste_zeigen() {
+    let ytdlp = robify_lib::downloader::managed_ytdlp(&std::env::temp_dir().join("robify-werkzeuge"));
+    for frage in ["Bicep Glue", "Michael Jackson Billie Jean"] {
+        println!("\n=== {frage} ===");
+        let treffer = robify_lib::downloader::search_everywhere(&ytdlp, frage, 5)
+            .await
+            .unwrap_or_default();
+        let plaene = robify_lib::downloader::plans_with_fallbacks(treffer);
+        for (rang, plan) in plaene.iter().take(8).enumerate() {
+            println!(
+                "{}. {:52} {:16} {:>6}s  {}",
+                rang + 1,
+                plan.title.chars().take(52).collect::<String>(),
+                plan.subtitle.as_deref().unwrap_or("-").chars().take(16).collect::<String>(),
+                plan.duration_ms.unwrap_or(0) / 1000,
+                plan.source
+            );
+            for ausweich in &plan.fallbacks {
+                println!("      ausweich: {ausweich}");
+            }
+        }
+    }
+}
