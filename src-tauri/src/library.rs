@@ -657,16 +657,26 @@ pub fn refresh_release_type(conn: &Connection, album_id: i64) -> Result<()> {
     if art != ART_GERATEN {
         return Ok(());
     }
-    let count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM tracks WHERE album_id = ?1",
-        [album_id],
-        |r| r.get(0),
-    )?;
     conn.execute(
         "UPDATE albums SET release_type = ?2 WHERE id = ?1",
-        params![album_id, ReleaseType::from_track_count(count).as_str()],
+        params![album_id, geschaetzte_art(conn, album_id)?.as_str()],
     )?;
     Ok(())
+}
+
+/// how large a release is, judged by what lies here.
+///
+/// not the number of tracks alone. whoever holds track nine holds a piece of
+/// at least nine, and that number stands in the file: it turns three tracks
+/// out of a record of twelve from an apparent ep into what it is. the bound
+/// is free and needs no source.
+fn geschaetzte_art(conn: &Connection, album_id: i64) -> Result<ReleaseType> {
+    let (anzahl, hoechste): (i64, i64) = conn.query_row(
+        "SELECT COUNT(*), COALESCE(MAX(track_no), 0) FROM tracks WHERE album_id = ?1",
+        [album_id],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )?;
+    Ok(ReleaseType::from_track_count(anzahl.max(hoechste)))
 }
 
 /// releases whose kind is still only guessed, with the artist to ask under.
@@ -707,21 +717,15 @@ pub fn set_release_kind(conn: &Connection, album_id: i64, art: ReleaseType) -> R
 /// classifies every release not set by hand from its track count.
 pub fn refresh_release_types(conn: &Connection) -> Result<()> {
     let mut stmt = conn.prepare(
-        "SELECT al.id, COUNT(t.id)
-         FROM albums al LEFT JOIN tracks t ON t.album_id = al.id
-         WHERE al.release_type_locked = 0 -- ART_GERATEN
-         GROUP BY al.id",
+        "SELECT id FROM albums WHERE release_type_locked = 0", // ART_GERATEN
     )?;
-    let rows: Vec<(i64, i64)> = stmt
-        .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
+    let rows: Vec<i64> = stmt
+        .query_map([], |r| r.get(0))?
         .collect::<rusqlite::Result<_>>()?;
     drop(stmt);
 
-    for (album_id, count) in rows {
-        conn.execute(
-            "UPDATE albums SET release_type = ?2 WHERE id = ?1",
-            params![album_id, ReleaseType::from_track_count(count).as_str()],
-        )?;
+    for album_id in rows {
+        refresh_release_type(conn, album_id)?;
     }
     Ok(())
 }

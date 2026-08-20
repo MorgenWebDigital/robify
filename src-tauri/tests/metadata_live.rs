@@ -250,3 +250,24 @@ async fn kuenstler_muessen_zum_eigenen_werk_passen() {
         fremd.map(|k| k.name)
     );
 }
+
+/// the kind of a release, asked by the name of the album.
+///
+///     cargo test --test metadata_live arten -- --ignored --nocapture
+#[tokio::test]
+#[ignore]
+async fn arten_werden_erkannt() {
+    let _reihe = serialize();
+    for (kuenstler, album, erwartet) in [
+        ("Yeat", "2093", "album"),
+        ("Yeat", "ADL", "album"),
+        ("Yeat", "DANGEROUS SUMMER", "ep"),
+        ("Yeat", "Million Dollar Minion", "single"),
+        ("Don Toliver", "OCTANE", "album"),
+        ("Don Toliver", "Love Sick", "album"),
+        ("Pashanim", "grünewürfelflow", "?"),
+    ] {
+        let gefunden = online::release_kind(kuenstler, album).await;
+        println!("{album:24} erwartet {erwartet:8} gefunden {gefunden:?}");
+    }
+}

@@ -481,6 +481,20 @@ pub async fn release_kind(artist: &str, album: &str) -> Option<(String, i64)> {
         return None;
     }
 
+    // three sources, the most exact one first.
+    //
+    // musicbrainz keeps the kind as a curated field and says outright what a
+    // release is. deezer names it too, but out of a shop's catalogue. itunes
+    // hides it in the album name and otherwise has to be counted — and
+    // counting cannot settle it: "DANGEROUS SUMMER" holds eleven tracks and
+    // is an ep all the same.
+    if let Some(gefunden) = musicbrainz_release_kind(artist, album).await {
+        return Some(gefunden);
+    }
+    if let Some(gefunden) = deezer_release_kind(artist, album).await {
+        return Some(gefunden);
+    }
+
     let url = format!(
         "https://itunes.apple.com/search?term={}&entity=album&limit=5",
         urlencoding::encode(&format!("{artist} {album}"))
@@ -501,21 +515,103 @@ pub async fn release_kind(artist: &str, album: &str) -> Option<(String, i64)> {
         }
         // the same album name exists under several artists: "Love Sick" by
         // Don Toliver and by Gemini stand next to each other in the answer
-        if !artist.trim().is_empty()
-            && !looks_like_same(kuenstler, artist)
-            && !contains_word_sequence(
-                &normalize_for_match(kuenstler),
-                &normalize_for_match(artist),
-            )
-            && !contains_word_sequence(
-                &normalize_for_match(artist),
-                &normalize_for_match(kuenstler),
-            )
-        {
+        if !passt_zum_kuenstler(kuenstler, artist) {
             return None;
         }
         Some((art, anzahl.unwrap_or(0)))
     })
+}
+
+/// the kind of a release as musicbrainz keeps it.
+///
+/// the most exact of the three: there the kind is a field of its own, curated
+/// by hand, not derived from a shop's catalogue. `primary-type` says Album,
+/// Single, EP, Broadcast or Other, and robify knows the first three.
+///
+/// the score of the answer decides whether it counts. musicbrainz answers a
+/// query always, and below ninety it is guessing at the name.
+async fn musicbrainz_release_kind(artist: &str, album: &str) -> Option<(String, i64)> {
+    musicbrainz_ticket().await;
+    let frage = format!(r#"artist:"{artist}" AND release:"{album}""#);
+    let url = format!(
+        "https://musicbrainz.org/ws/2/release-group?query={}&fmt=json&limit=3",
+        urlencoding::encode(&frage)
+    );
+    let antwort = client().get(&url).send().await.ok()?.error_for_status().ok()?;
+    let daten: serde_json::Value = antwort.json().await.ok()?;
+
+    daten["release-groups"].as_array()?.iter().find_map(|gruppe| {
+        if gruppe["score"].as_i64().unwrap_or(0) < 90 {
+            return None;
+        }
+        if !looks_like_same(gruppe["title"].as_str()?, album) {
+            return None;
+        }
+        let kuenstler = gruppe["artist-credit"]
+            .as_array()
+            .and_then(|liste| liste.first())
+            .and_then(|eintrag| eintrag["name"].as_str())
+            .unwrap_or_default();
+        if !passt_zum_kuenstler(kuenstler, artist) {
+            return None;
+        }
+        // a broadcast or anything else musicbrainz knows is none of the three
+        // kinds robify tells apart. it is left to the next source rather than
+        // pressed into one of them
+        let art = match gruppe["primary-type"].as_str()? {
+            "EP" => "ep",
+            "Single" => "single",
+            "Album" => "album",
+            _ => return None,
+        };
+        Some((art.to_string(), 0))
+    })
+}
+
+/// the kind of a release as deezer states it.
+///
+/// their catalogue reaches further than apple's into what is not a chart
+/// release, and above all they carry the kind as a field of its own:
+/// `record_type` says "album", "single", "ep" or "compilation". a collection
+/// counts as an album here, robify knows no fourth kind.
+async fn deezer_release_kind(artist: &str, album: &str) -> Option<(String, i64)> {
+    let url = format!(
+        "https://api.deezer.com/search/album?q={}&limit=5",
+        urlencoding::encode(&format!("{artist} {album}"))
+    );
+    let antwort = client().get(&url).send().await.ok()?.error_for_status().ok()?;
+    let daten: serde_json::Value = antwort.json().await.ok()?;
+
+    daten["data"].as_array()?.iter().find_map(|treffer| {
+        let name = treffer["title"].as_str()?;
+        if !looks_like_same(name, album) {
+            return None;
+        }
+        let kuenstler = treffer["artist"]["name"].as_str().unwrap_or_default();
+        if !passt_zum_kuenstler(kuenstler, artist) {
+            return None;
+        }
+        let art = match treffer["record_type"].as_str()? {
+            "single" => "single",
+            "ep" => "ep",
+            _ => "album",
+        };
+        Some((art.to_string(), treffer["nb_tracks"].as_i64().unwrap_or(0)))
+    })
+}
+
+/// whether two artist fields describe the same person.
+///
+/// not a plain comparison: a release stands under "Internet Money, Gunna &
+/// Don Toliver" while the track knows only "Don Toliver", and the other way
+/// round just as often.
+fn passt_zum_kuenstler(gefunden: &str, gesucht: &str) -> bool {
+    if gesucht.trim().is_empty() {
+        return true;
+    }
+    looks_like_same(gefunden, gesucht)
+        || contains_word_sequence(&normalize_for_match(gefunden), &normalize_for_match(gesucht))
+        || contains_word_sequence(&normalize_for_match(gesucht), &normalize_for_match(gefunden))
 }
 
 async fn search_itunes(query: &str, limit: usize) -> Result<Vec<MetadataCandidate>> {

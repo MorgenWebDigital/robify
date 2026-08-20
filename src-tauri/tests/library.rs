@@ -1032,3 +1032,55 @@ fn geratene_art_wird_nachgezogen_gesicherte_nicht() {
     einfuegen("/m/5.mp3", "Fuenf", "Ohne Angabe", None);
     assert_eq!(art_von("Ohne Angabe"), "album");
 }
+
+// counting what lies here cannot settle the kind of a release, but the track
+// numbers narrow it down for free: whoever holds track nine holds a piece of
+// at least nine.
+#[test]
+fn die_hoechste_titelnummer_zaehlt_als_untergrenze() {
+    let conn = Connection::open_in_memory().expect("Speicher-Datenbank");
+    db::migrate(&conn).expect("Migration");
+
+    let einfuegen = |pfad: &str, titel: &str, nummer: i64| {
+        library::upsert_track(
+            &conn,
+            &library::TrackInsert {
+                path: pfad.into(),
+                title: titel.into(),
+                artist: "Probeband".into(),
+                featured_artists: None,
+                album: Some("Bruchstueck".into()),
+                album_artist: None,
+                release_type: None,
+                track_no: Some(nummer),
+                disc_no: None,
+                duration_ms: 200_000,
+                genre: None,
+                year: None,
+                format: "mp3".into(),
+                source: None,
+                source_url: None,
+            },
+        )
+        .expect("Titel anlegen");
+    };
+
+    let art = || -> String {
+        conn.query_row(
+            "SELECT release_type FROM albums WHERE title = 'Bruchstueck'",
+            [],
+            |r| r.get(0),
+        )
+        .expect("Album")
+    };
+
+    // three tracks would look like an ep …
+    einfuegen("/m/a.mp3", "Eins", 1);
+    einfuegen("/m/b.mp3", "Zwei", 2);
+    einfuegen("/m/c.mp3", "Drei", 3);
+    assert_eq!(art(), "ep");
+
+    // … until one of them turns out to be number twelve
+    einfuegen("/m/d.mp3", "Zwoelf", 12);
+    assert_eq!(art(), "album");
+}

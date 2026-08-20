@@ -2241,19 +2241,22 @@ async fn download_inner<R: Runtime>(
     // was a guess dressed up as knowledge. counting the tracks that happen to
     // lie in the library is no better: two out of a record of twenty-two are
     // no single.
-    if metadata.release_type.is_none() {
-        if metadata.album.trim().is_empty() {
-            // no album, no question
-            metadata.release_type = Some("single".to_string());
-        } else if !cancel.load(Ordering::SeqCst) {
-            // ask by the name of the album. the match on the track needs
-            // title and artist to fit and fails at a video title dressed in
-            // "(Official Audio)"; the album name is plain
-            if let Some((art, _)) =
-                crate::online::release_kind(&metadata.artist, &metadata.album).await
-            {
-                metadata.release_type = Some(art);
-            }
+    if metadata.album.trim().is_empty() {
+        // no album, no question
+        metadata.release_type = Some("single".to_string());
+    } else if !cancel.load(Ordering::SeqCst) {
+        // asked always, not only where nothing is known yet.
+        //
+        // the match on the track brings a kind along, but a derived one:
+        // itunes hides it in the album name and otherwise it is counted, and
+        // counting says "album" for an ep of eleven tracks. it arrived first
+        // and blocked the better answer. asked by the name of the album,
+        // musicbrainz keeps the kind as a curated field and says outright
+        // what a release is.
+        if let Some((art, _)) =
+            crate::online::release_kind(&metadata.artist, &metadata.album).await
+        {
+            metadata.release_type = Some(art);
         }
     }
 
