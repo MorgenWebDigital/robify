@@ -368,12 +368,21 @@ runs and clippy. The installers come into being at release, see
 Every push to `main` builds an android apk and attaches it to the pre-release
 `testgeraet`. An updater on the device polls the same address every time and
 fetches the new state. [Obtainium](https://github.com/ImranR98/Obtainium) is
-suited to it: it watches the releases of the repository and installs new
+suited to it: it watches the releases of a repository and installs new
 versions. Installing from unknown sources has to be allowed for the source on
 the device.
 
-With a private repository obtainium needs a github token in its settings, as
-the assets of private repositories are not handed out without authentication.
+That pre-release does not lie in this repository but in a private one of its
+own, named in the secret `TESTGERAET_REPO`. A test build stands next to the
+released version otherwise, installable and half finished, and a stranger can
+hardly tell the two apart. The other repository needs nothing but a first
+commit; the workflow writes only the release into it.
+
+The workflow reaches it with `TESTGERAET_TOKEN`, a token of its own, as the
+token of a run never leaves the repository it runs in. A fine-grained token
+with `Contents: read and write` on that one repository is enough. Obtainium in
+turn needs a github token in its settings, as the assets of a private
+repository are not handed out without authentication.
 
 For the work itself the detour through github is too slow. With a device
 attached and usb debugging switched on, `npm run android:dev` puts changes to
@@ -426,6 +435,12 @@ workflow signs the apk. Both need secrets in the repository:
 | `ANDROID_KEYSTORE`          | `base64 -w0 robify-release.keystore`                       |
 | `ANDROID_KEYSTORE_PASSWORD` | the password set for the keystore                          |
 | `ANDROID_KEY_ALIAS`         | `robify`                                                   |
+| `TESTGERAET_REPO`           | the private repository for the test builds, `owner/name`   |
+| `TESTGERAET_TOKEN`          | a token with write access to that repository               |
+
+The last two belong to the test device alone, see the section on it. Kept as a
+secret rather than as a variable, the name of the private repository does not
+stand in the public log of a run either.
 
 Android allows an update only where the signature is the same as on the
 installed version, hence a key of one's own from the first test build rather

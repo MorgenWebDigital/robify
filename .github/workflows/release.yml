@@ -287,4 +287,3 @@ jobs:
           gh release upload "${{ github.ref_name }}" \
             --repo "${{ github.repository }}" \
             SHA256SUMS *.asc --clobber
-
