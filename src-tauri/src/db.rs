@@ -235,6 +235,23 @@ CREATE TABLE IF NOT EXISTS recommendations (
         [],
     )?;
 
+    // releases from before the kinds were told apart.
+    //
+    // until now the import wrote its guess with the same lock a decision of
+    // the user gets, and the guess for anything with an album name was
+    // "album". those rows are set loose again so the classification by what
+    // is actually there can reach them.
+    //
+    // only "album", and only where the lock stands at 1: every other value
+    // was set on purpose, and what is loosened here is exactly what the
+    // faulty import produced. whoever really wants an album says so again,
+    // and it stands for good.
+    conn.execute(
+        "UPDATE albums SET release_type_locked = 0
+         WHERE release_type_locked = 1 AND release_type = 'album'",
+        [],
+    )?;
+
     merge_duplicates(conn)?;
     Ok(())
 }

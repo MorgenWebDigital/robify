@@ -964,3 +964,71 @@ fn playlists_lassen_sich_umsortieren() {
 
     std::fs::remove_dir_all(&dir).ok();
 }
+
+// the kind of a release used to be almost always wrong, and the cause was one
+// column carrying three meanings: the import wrote its guess with the same
+// lock a decision of the user gets. since almost every downloaded track brings
+// an album name along, almost everything counted as an album and stayed that
+// way.
+#[test]
+fn geratene_art_wird_nachgezogen_gesicherte_nicht() {
+    let conn = Connection::open_in_memory().expect("Speicher-Datenbank");
+    db::migrate(&conn).expect("Migration");
+
+    let einfuegen = |pfad: &str, titel: &str, album: &str, art: Option<ReleaseType>| {
+        library::upsert_track(
+            &conn,
+            &library::TrackInsert {
+                path: pfad.into(),
+                title: titel.into(),
+                artist: "Probeband".into(),
+                featured_artists: None,
+                album: Some(album.into()),
+                album_artist: None,
+                release_type: art,
+                track_no: None,
+                disc_no: None,
+                duration_ms: 200_000,
+                genre: None,
+                year: None,
+                format: "mp3".into(),
+                source: None,
+                source_url: None,
+            },
+        )
+        .expect("Titel anlegen")
+    };
+
+    let art_von = |album: &str| -> String {
+        conn.query_row(
+            "SELECT release_type FROM albums WHERE title = ?1",
+            [album],
+            |r| r.get(0),
+        )
+        .expect("Album")
+    };
+
+    // nothing known: one track alone is a single, and it stays revisable
+    einfuegen("/m/1.mp3", "Eins", "Ohne Angabe", None);
+    assert_eq!(art_von("Ohne Angabe"), "single");
+
+    // four of them make an ep, without anybody having to scan a folder
+    for (nummer, titel) in [(2, "Zwei"), (3, "Drei"), (4, "Vier")] {
+        einfuegen(&format!("/m/{nummer}.mp3"), titel, "Ohne Angabe", None);
+    }
+    assert_eq!(art_von("Ohne Angabe"), "ep");
+
+    // what a source said is not overwritten by what happens to lie here
+    einfuegen("/m/x.mp3", "Erster", "Mit Angabe", Some(ReleaseType::Album));
+    assert_eq!(art_von("Mit Angabe"), "album");
+    library::refresh_release_types(&conn).expect("Auffrischen");
+    assert_eq!(art_von("Mit Angabe"), "album");
+
+    // and a decision of the user stands above both
+    let id: i64 = conn
+        .query_row("SELECT id FROM albums WHERE title = ?1", ["Ohne Angabe"], |r| r.get(0))
+        .expect("Album");
+    library::update_album(&conn, id, "Ohne Angabe", None, ReleaseType::Album).expect("ändern");
+    einfuegen("/m/5.mp3", "Fuenf", "Ohne Angabe", None);
+    assert_eq!(art_von("Ohne Angabe"), "album");
+}

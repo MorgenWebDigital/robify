@@ -349,6 +349,11 @@ pub fn run() {
             let conn = db::open(&db_path)?;
             db::migrate(&conn)?;
 
+            // classifies afresh what the migration set loose. without this
+            // the correction would arrive only at the next folder scan, and
+            // whoever never scans would keep looking at the old, wrong kind
+            library::refresh_release_types(&conn)?;
+
             // the write-ahead log grows between checkpoints and was never
             // truncated: next to a 2.8 mb database lay 4.2 mb of log
             let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");

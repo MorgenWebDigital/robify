@@ -2235,16 +2235,16 @@ async fn download_inner<R: Runtime>(
         }
     }
 
-    // without an album it is a single, and "album" would plainly be wrong
-    if metadata.release_type.is_none() {
-        metadata.release_type = Some(
-            if metadata.album.trim().is_empty() {
-                "single"
-            } else {
-                "album"
-            }
-            .to_string(),
-        );
+    // without an album name it is a single, and that much is certain.
+    //
+    // with one it used to say "album", and that was a guess dressed up as
+    // knowledge: it was written with the same lock a decision of the user
+    // gets, and nothing corrected it afterwards. since almost every
+    // downloaded track carries an album name, almost everything stood as an
+    // album. left open, the library classifies by what is actually there and
+    // revises it as more arrives
+    if metadata.release_type.is_none() && metadata.album.trim().is_empty() {
+        metadata.release_type = Some("single".to_string());
     }
 
     // without a cover the metadata search found nothing either, which was

@@ -406,17 +406,22 @@ pub fn upsert_album(
             )?;
         }
         if let Some(rt) = release_type {
+            // never over a decision of the user: theirs stands above what a
+            // source says
             conn.execute(
-                "UPDATE albums SET release_type = ?2, release_type_locked = 1 WHERE id = ?1",
-                params![id, rt.as_str()],
+                "UPDATE albums SET release_type = ?2, release_type_locked = ?3
+                 WHERE id = ?1 AND release_type_locked <> ?4",
+                params![id, rt.as_str(), ART_AUS_QUELLE, ART_VOM_NUTZER],
             )?;
         }
         return Ok(id);
     }
 
     let (rt, locked) = match release_type {
-        Some(rt) => (rt, 1),
-        None => (ReleaseType::Album, 0),
+        Some(rt) => (rt, ART_AUS_QUELLE),
+        // nothing known yet. the classification by the tracks that are here
+        // follows right after the track is in
+        None => (ReleaseType::Album, ART_GERATEN),
     };
     conn.execute(
         "INSERT INTO albums (artist_id, title, title_key, release_type, release_type_locked, year, created_at)
@@ -618,7 +623,50 @@ pub fn upsert_track(conn: &Connection, t: &TrackInsert) -> Result<i64> {
     )?;
     let track_id = conn.last_insert_rowid();
     set_track_artists(conn, track_id, &main, &featured)?;
+    // right here and not only at the next folder scan: whoever downloads a
+    // track sees its release on the artist page a moment later, and it is to
+    // stand under the right heading then
+    refresh_release_type(conn, album_id)?;
     Ok(track_id)
+}
+
+/// where the kind of a release comes from.
+///
+/// one column, three meanings, and mixing them up was the fault: the import
+/// wrote its guess with the same lock the user gets, and from then on nothing
+/// corrected it. every downloaded track carried an album name, therefore
+/// counted as an album, and stood as one for good.
+///
+/// guessed is revised as the library grows. what a source said stays. what
+/// the user set stands above both.
+pub const ART_GERATEN: i64 = 0;
+pub const ART_VOM_NUTZER: i64 = 1;
+pub const ART_AUS_QUELLE: i64 = 2;
+
+/// classifies one album by the tracks lying here, where nothing better is
+/// known.
+///
+/// called after every track that arrives, so the kind is right at once
+/// instead of only after the next folder scan.
+pub fn refresh_release_type(conn: &Connection, album_id: i64) -> Result<()> {
+    let art: i64 = conn.query_row(
+        "SELECT release_type_locked FROM albums WHERE id = ?1",
+        [album_id],
+        |r| r.get(0),
+    )?;
+    if art != ART_GERATEN {
+        return Ok(());
+    }
+    let count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM tracks WHERE album_id = ?1",
+        [album_id],
+        |r| r.get(0),
+    )?;
+    conn.execute(
+        "UPDATE albums SET release_type = ?2 WHERE id = ?1",
+        params![album_id, ReleaseType::from_track_count(count).as_str()],
+    )?;
+    Ok(())
 }
 
 /// classifies every release not set by hand from its track count.
@@ -626,7 +674,7 @@ pub fn refresh_release_types(conn: &Connection) -> Result<()> {
     let mut stmt = conn.prepare(
         "SELECT al.id, COUNT(t.id)
          FROM albums al LEFT JOIN tracks t ON t.album_id = al.id
-         WHERE al.release_type_locked = 0
+         WHERE al.release_type_locked = 0 -- ART_GERATEN
          GROUP BY al.id",
     )?;
     let rows: Vec<(i64, i64)> = stmt
