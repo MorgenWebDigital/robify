@@ -217,17 +217,58 @@ fn ffmpeg_rufen(args: &[String]) -> Result<Ausgabe> {
     })
 }
 
+/// the command that renews a yt-dlp installed through pip.
+///
+/// `python3` does not exist on windows, and `pip` alone hits the wrong python
+/// wherever several are installed. the detour over the interpreter is the one
+/// way that holds on every system.
+#[cfg(all(not(target_os = "android"), windows))]
+const PIP_BEFEHL: &str = "py -m pip install --upgrade yt-dlp";
+#[cfg(all(not(target_os = "android"), not(windows)))]
+const PIP_BEFEHL: &str = "python3 -m pip install --upgrade yt-dlp";
+
+/// turns yt-dlp's refusal to renew itself into a sentence that says what to do.
+///
+/// `-U` overwrites the running file with a freshly fetched one. that works
+/// where yt-dlp is a single file and nowhere else: installed through pip or
+/// through a package manager, the file belongs to that manager, and yt-dlp
+/// refuses rather than leave it behind in a state its owner no longer knows.
+///
+/// the refusal is right, its wording is not: it stands in english, names no
+/// command, and reads in the interface like a defect of robify.
+#[cfg(not(target_os = "android"))]
+fn verweigerung_deuten(stderr: &str) -> String {
+    let text = stderr.trim();
+    let klein = text.to_ascii_lowercase();
+
+    if klein.contains("pip") || klein.contains("pypi") {
+        return crate::fehler!(
+            "yt-dlp wurde mit pip eingerichtet und erneuert sich deshalb nicht selbst. Führe im Terminal aus: {0}",
+            PIP_BEFEHL
+        );
+    }
+
+    // a package manager or a build of one's own. which one it is, only the
+    // system knows, and a wrong command is worse than none
+    if klein.contains("package manager") || klein.contains("manual build") {
+        return crate::fehler!(
+            "yt-dlp stammt aus der Paketverwaltung deines Systems und erneuert sich deshalb nicht selbst. Erneuere es dort, wo du es eingerichtet hast."
+        );
+    }
+
+    text.to_string()
+}
+
 /// brings yt-dlp up to date and names the version afterwards.
 ///
 /// on a desktop yt-dlp does this itself: `-U` fetches the new file and writes
-/// it over its own. whoever installed it through a package manager gets a
-/// refusal from yt-dlp, and that is passed on verbatim instead of being
-/// turned into an error of our own.
+/// it over its own. whoever installed it otherwise gets a refusal, and that is
+/// translated into an instruction rather than passed on verbatim.
 #[cfg(not(target_os = "android"))]
 pub async fn aktualisieren(werkzeug: &Path) -> Result<String> {
     let lauf = einmal(werkzeug, &["-U".to_string()]).await?;
     if !lauf.erfolg {
-        anyhow::bail!("{}", lauf.stderr.trim());
+        anyhow::bail!("{}", verweigerung_deuten(&lauf.stderr));
     }
     let fassung = einmal(werkzeug, &["--version".to_string()]).await?;
     Ok(fassung.stdout.trim().to_string())
@@ -285,4 +326,41 @@ fn aktualisieren_rufen() -> Result<Ausgabe> {
         stdout: daten["out"].as_str().unwrap_or_default().to_string(),
         stderr: daten["err"].as_str().unwrap_or_default().to_string(),
     })
+}
+
+#[cfg(all(test, not(target_os = "android")))]
+mod tests {
+    use super::*;
+
+    // the wordings yt-dlp itself uses. they are taken over verbatim so that a
+    // change on its side is noticed here and not by a user reading english
+    // again
+    const AUS_PIP: &str = "ERROR: You installed yt-dlp with pip or using the \
+                           wheel from PyPi; Use that to update";
+    const AUS_PAKET: &str = "ERROR: You installed yt-dlp from a manual build \
+                             or with a package manager; Use that to update";
+
+    #[test]
+    fn pip_wird_zur_anweisung() {
+        let text = verweigerung_deuten(AUS_PIP);
+        assert!(text.starts_with("yt-dlp wurde mit pip"));
+        assert!(text.ends_with(PIP_BEFEHL));
+        assert!(text.contains(crate::meldung::TRENNER));
+    }
+
+    #[test]
+    fn paketverwaltung_wird_zur_anweisung() {
+        let text = verweigerung_deuten(AUS_PAKET);
+        assert!(text.starts_with("yt-dlp stammt aus der Paketverwaltung"));
+        // no value belongs in it, so no separator either
+        assert!(!text.contains(crate::meldung::TRENNER));
+    }
+
+    // whatever is not one of the two refusals stays as it is: an invented
+    // explanation would cover the real cause
+    #[test]
+    fn alles_andere_bleibt_woertlich() {
+        let text = verweigerung_deuten("  ERROR: unable to download\n");
+        assert_eq!(text, "ERROR: unable to download");
+    }
 }

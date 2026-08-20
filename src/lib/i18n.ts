@@ -471,6 +471,24 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "جارٍ الجلب…",
     zh: "正在获取…",
   },
+  "yt-dlp wurde mit pip eingerichtet und erneuert sich deshalb nicht selbst. Führe im Terminal aus: {0}":
+    {
+      en: "yt-dlp was installed with pip and therefore does not renew itself. Run this in a terminal: {0}",
+      es: "yt-dlp se instaló con pip y por eso no se actualiza solo. Ejecuta esto en el terminal: {0}",
+      fr: "yt-dlp a été installé avec pip et ne se met donc pas à jour lui-même. Exécute ceci dans un terminal : {0}",
+      ru: "yt-dlp установлен через pip и поэтому не обновляет себя сам. Выполни в терминале: {0}",
+      ar: "جرى تثبيت yt-dlp عبر pip ولذلك لا يحدّث نفسه. نفّذ في الطرفية: {0}",
+      zh: "yt-dlp 是用 pip 安装的，因此无法自行更新。请在终端中执行：{0}",
+    },
+  "yt-dlp stammt aus der Paketverwaltung deines Systems und erneuert sich deshalb nicht selbst. Erneuere es dort, wo du es eingerichtet hast.":
+    {
+      en: "yt-dlp comes from the package manager of your system and therefore does not renew itself. Update it where you installed it.",
+      es: "yt-dlp viene del gestor de paquetes de tu sistema y por eso no se actualiza solo. Actualízalo donde lo instalaste.",
+      fr: "yt-dlp vient du gestionnaire de paquets de ton système et ne se met donc pas à jour lui-même. Mets-le à jour là où tu l'as installé.",
+      ru: "yt-dlp установлен через пакетный менеджер системы и поэтому не обновляет себя сам. Обнови его там, где ты его установил.",
+      ar: "جاء yt-dlp من مدير الحزم في نظامك ولذلك لا يحدّث نفسه. حدّثه من حيث ثبّتّه.",
+      zh: "yt-dlp 来自系统的包管理器，因此无法自行更新。请在你安装它的地方更新。",
+    },
   "yt-dlp steht jetzt auf {0}.": {
     en: "yt-dlp is now at {0}.",
     es: "yt-dlp está ahora en {0}.",
