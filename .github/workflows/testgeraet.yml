@@ -1,13 +1,13 @@
-# Baut bei jedem Push auf `main` eine APK für das Testgerät.
+# builds an apk for the test device at every push to `main`.
 #
-# Getrennt vom Release-Ablauf: Der baut sechs Systeme und läuft nur bei einem
-# Tag. Hier geht es um einen einzigen Stand für ein einziges Gerät, und der
-# soll ohne Zutun dort ankommen.
+# kept apart from the release workflow: that one builds six systems and runs
+# on a tag alone. here it is about a single state for a single device, and it
+# is to arrive there without help.
 #
-# Die APK landet als Anhang einer Vorabversion mit festem Tag `testgeraet`,
-# nicht als Artefakt: Artefakte lassen sich nur über den Browser und nur
-# eingeloggt laden, Anhänge einer Veröffentlichung dagegen über eine feste
-# Adresse, die ein Aktualisierungsprogramm auf dem Gerät abfragen kann.
+# the apk lands as an asset of a pre-release under the fixed tag `testgeraet`
+# and not as an artifact: artifacts can be downloaded through the browser
+# alone and only while logged in, while the assets of a release can be reached
+# under a fixed address an updater on the device can poll.
 name: Testgerät
 
 on:
@@ -34,9 +34,9 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # Ganz vorn, noch vor SDK, NDK und dem Bau: Ein falsches Kennwort fiel
-      # vorher erst beim Unterschreiben auf, also nach fünfundzwanzig Minuten
-      # Bauzeit. Hier braucht die Erkenntnis fünf Sekunden.
+      # right at the front, before sdk, ndk and the build: a wrong password
+      # used to show only at signing time, so after twenty-five minutes of
+      # building. here the insight takes five seconds
       - name: Schlüssel prüfen
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
@@ -85,11 +85,10 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          # Auch dann ablegen, wenn ein späterer Schritt scheitert. Ab Werk
-          # wirft die Aktion den Zwischenspeicher bei einem Fehlschlag weg;
-          # ein Tippfehler im Signierkennwort machte damit fünfundzwanzig
-          # Minuten Übersetzungsarbeit zunichte, und der nächste Lauf begann
-          # wieder bei null.
+          # store it even where a later step fails. out of the box the action
+          # throws the cache away on a failure, and a typo in the signing
+          # password thereby undid twenty-five minutes of compilation, with the
+          # next run starting from zero again
           cache-on-failure: true
 
       - run: npm ci
@@ -99,7 +98,7 @@ jobs:
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
         run: |
           npx tauri android init --ci
-          # Was Tauri nicht anbietet, tragen wir nach; siehe das Skript.
+          # what tauri does not offer is added afterwards, see the script
           node scripts/android-nachruesten.mjs
 
       - name: APK bauen
@@ -107,17 +106,17 @@ jobs:
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
         run: npx tauri android build --apk
 
-      # Unterschrieben wird nach dem Bauen, nicht durch Gradle: Das
-      # Android-Projekt unter `gen/` wird bei jedem Lauf neu erzeugt, eine dort
-      # eingetragene Signierregel wäre also jedes Mal wieder fort. `apksigner`
-      # arbeitet auf der fertigen Datei und ist davon unberührt.
+      # signing happens after building and not through gradle: the android
+      # project under `gen/` is created anew at every run, so a signing rule
+      # entered there would be gone every time. `apksigner` works on the
+      # finished file and is untouched by it
       - name: APK unterschreiben
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
-          # Der Keystore liegt schon entpackt da, siehe „Schlüssel prüfen“.
+          # the keystore lies unpacked already, see the key check above
           werkzeuge="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
           roh="$(find src-tauri/gen/android -name '*-release-unsigned.apk' | head -1)"
           if [ -z "$roh" ]; then
@@ -136,9 +135,9 @@ jobs:
 
           rm -f "$RUNNER_TEMP/robify.keystore"
 
-      # Ein fester Tag statt einer neuen Veröffentlichung je Push: Das
-      # Aktualisierungsprogramm auf dem Gerät fragt immer dieselbe Adresse ab,
-      # und die Liste der Veröffentlichungen bleibt übersichtlich.
+      # a fixed tag instead of a new release per push: the updater on the
+      # device polls the same address every time, and the list of releases
+      # stays clear
       - name: Vorabversion aktualisieren
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

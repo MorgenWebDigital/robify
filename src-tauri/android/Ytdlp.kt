@@ -8,50 +8,48 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Brücke zu yt-dlp auf Android.
+ * the bridge to yt-dlp on android.
  *
- * Auf dem Rechner startet Robify yt-dlp als eigenes Programm und liest dessen
- * Ausgabe. Auf Android gibt es dieses Programm nicht: Es ist in Python
- * geschrieben, und selbst die Linux-Binärdatei läuft hier nicht, weil Android
- * eine andere C-Bibliothek verwendet.
+ * on a desktop robify starts yt-dlp as a program of its own and reads its
+ * output. on android that program does not exist: it is written in python,
+ * and even the linux binary does not run here because android uses a
+ * different c library.
  *
- * `youtubedl-android` bringt yt-dlp samt einer Python-Laufzeit als Bibliothek
- * mit. Ihre Schnittstelle nimmt dieselben Schalter entgegen wie das Programm,
- * der Rust-Teil kann seine Aufrufe also unverändert weiterreichen; nur der Weg
- * dorthin ist ein anderer.
+ * `youtubedl-android` brings yt-dlp together with a python runtime as a
+ * library. its interface takes the same switches as the program, so the rust
+ * side can pass its calls on unchanged, only the way there differs.
  *
- * Die Methoden sind `@JvmStatic`, damit der Rust-Teil sie über JNI ohne
- * Umweg über eine Instanz erreicht.
+ * the methods are `@JvmStatic` so the rust side reaches them over jni without
+ * a detour through an instance.
  */
 object Ytdlp {
     /**
-     * Fortschritt je laufendem Auftrag, in Prozent.
+     * progress per running job, in percent.
      *
-     * Ein Rückruf nach Rust wäre der geradere Weg, verlangte dort aber eine
-     * eigene native Methode und einen Faden, der an der Java-Laufzeit hängt.
-     * Eine Tafel, die der Rust-Teil abfragt, kommt ohne das aus: Er fragt
-     * ohnehin im Takt nach, um die Oberfläche zu versorgen.
+     * a callback into rust would be the straighter way but would demand a
+     * native method of its own there and a thread attached to the java
+     * runtime. a table the rust side polls gets by without that: it asks on a
+     * tick anyway to supply the ui.
      */
     private val fortschritte = ConcurrentHashMap<String, Float>()
 
     /**
-     * Führt yt-dlp mit den übergebenen Schaltern aus und wartet auf das Ende.
+     * runs yt-dlp with the switches handed over and waits for the end.
      *
-     * Gibt JSON zurück: `code`, `out`, `err`. Damit sieht der Rust-Teil
-     * dasselbe wie bei einem eigenen Programm, und die Auswertung dort bleibt,
-     * wie sie ist.
+     * returns json: `code`, `out`, `err`. the rust side therefore sees the
+     * same as with a program of its own, and the evaluation there stays as it
+     * is.
      */
     @JvmStatic
     fun ausfuehren(id: String, args: Array<String>): String {
         val antwort = JSONObject()
         try {
-            // `addCommands` reicht die Liste unverändert weiter. `addOption`
-            // täte das nicht: Es legt jeden Eintrag als Schlüssel in eine
-            // Zuordnung, und ein Wert, den es schon einmal gab, fällt dabei
-            // heraus. Aus `--extractor-retries 3 --retry-sleep 3` wurde so
-            // `--extractor-retries 3 --retry-sleep`, und yt-dlp las den
-            // nächsten Schalter als Wartezeit: „invalid http retry sleep
-            // expression '--progress'“.
+            // `addCommands` passes the list on unchanged. `addOption` would
+            // not: it puts every entry into a map as a key, and a value that
+            // occurred before falls out in doing so. `--extractor-retries 3
+            // --retry-sleep 3` therefore became `--extractor-retries 3
+            // --retry-sleep`, and yt-dlp read the next switch as the sleep
+            // time: "invalid http retry sleep expression '--progress'"
             val auftrag = YoutubeDLRequest(emptyList()).addCommands(args.toList())
 
             fortschritte[id] = 0f
@@ -63,9 +61,9 @@ object Ytdlp {
             antwort.put("out", ergebnis.out)
             antwort.put("err", ergebnis.err)
         } catch (fehler: Throwable) {
-            // Auch ein Fehlschlag kommt als Antwort zurück, nicht als
-            // Ausnahme durch JNI: Eine geworfene Ausnahme müsste der Rust-Teil
-            // eigens abholen, und vergisst er das, stürzt die App ab.
+            // a failure comes back as an answer as well, not as an exception
+            // through jni: a thrown exception would have to be collected by
+            // the rust side on purpose, and forgetting that crashes the app
             antwort.put("code", -1)
             antwort.put("out", "")
             antwort.put("err", fehler.message ?: fehler.toString())
@@ -76,19 +74,19 @@ object Ytdlp {
     }
 
     /**
-     * Führt das mitgelieferte ffmpeg aus.
+     * runs the bundled ffmpeg.
      *
-     * yt-dlp bekommt ffmpeg von der Bibliothek über `--ffmpeg-location`
-     * gereicht und kann damit umwandeln. Robify wandelt aber auch einmal
-     * selbst um: Bietet eine Quelle den Titel nur in einem Format an, das der
-     * Player nicht kennt, wird die fertige Datei nachträglich gewandelt. Dafür
-     * gibt es keinen Weg über yt-dlp.
+     * yt-dlp gets ffmpeg handed to it by the library through
+     * `--ffmpeg-location` and can convert with it. robify also converts once
+     * itself though: where a source offers the track in a format alone that
+     * the player does not know, the finished file is converted afterwards.
+     * there is no way through yt-dlp for that.
      *
-     * Das Programm liegt als `libffmpeg.so` im Bibliotheksordner der App —
-     * einer der wenigen Orte, an denen Android das Ausführen noch erlaubt. Die
-     * Umgebung ist dieselbe, die `youtubedl-android` setzt, wenn es ffmpeg für
-     * yt-dlp startet; ohne sie fände das Programm seine eigenen Bibliotheken
-     * nicht.
+     * the program lies in the library folder of the app as `libffmpeg.so`,
+     * one of the few places android still allows execution in. the
+     * environment is the same one `youtubedl-android` sets when it starts
+     * ffmpeg for yt-dlp, and without it the program would not find its own
+     * libraries.
      */
     @JvmStatic
     fun umwandeln(kontext: Context, args: Array<String>): String {
@@ -113,9 +111,9 @@ object Ytdlp {
                 put("HOME", kontext.cacheDir.absolutePath)
                 put("TMPDIR", kontext.cacheDir.absolutePath)
             }
-            // Beide Ströme in einem: Liest man sie nacheinander, blockiert der
-            // eine, während der andere volläuft, und der Aufruf kehrt nie
-            // zurück. ffmpeg schreibt seine Meldungen ohnehin nur nach stderr.
+            // both streams in one: reading them one after another, one
+            // blocks while the other fills up and the call never returns.
+            // ffmpeg writes its messages to stderr alone anyway
             bau.redirectErrorStream(true)
 
             val prozess = bau.start()
@@ -134,15 +132,15 @@ object Ytdlp {
     }
 
     /**
-     * Holt die neueste Fassung von yt-dlp und legt sie über die mitgelieferte.
+     * fetches the newest version of yt-dlp and lays it over the bundled one.
      *
-     * Die Bibliothek bringt yt-dlp mit, aber in dem Stand, den sie beim
-     * Erscheinen hatte — hier November 2025, während oben schon Juli 2026
-     * steht. YouTube ändert seinen Abspieler laufend und weist alte Fassungen
-     * ab; genau daher kamen die 403 auf dem Telefon. Auf dem Rechner behilft
-     * man sich mit `yt-dlp -U`, hier gibt es diesen Weg.
+     * the library brings yt-dlp along but in the state it had when it was
+     * released, here november 2025 while july 2026 already stands above.
+     * youtube keeps changing its player and turns old versions away, and that
+     * is exactly where the 403s on the phone came from. on a desktop one
+     * helps oneself with `yt-dlp -U`, and here this is the way.
      *
-     * Zurück kommt die Fassung, die danach gilt.
+     * the version that applies afterwards comes back.
      */
     @JvmStatic
     fun aktualisieren(kontext: Context): String {
@@ -161,17 +159,17 @@ object Ytdlp {
         return antwort.toString()
     }
 
-    /** Fortschritt eines Auftrags in Prozent, oder -1, wenn er nicht läuft. */
+    /** progress of a job in percent, or -1 where it is not running. */
     @JvmStatic
     fun fortschritt(id: String): Float = fortschritte[id] ?: -1f
 
-    /** Bricht einen laufenden Auftrag ab. */
+    /** cancels a running job. */
     @JvmStatic
     fun abbrechen(id: String) {
         try {
             YoutubeDL.getInstance().destroyProcessById(id)
         } catch (_: Throwable) {
-            // Ein Auftrag, den es nicht mehr gibt, ist kein Fehler.
+            // a job that no longer exists is no error
         }
     }
 }

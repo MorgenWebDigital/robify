@@ -1,8 +1,9 @@
-# Prüft jeden Push und jeden Pull Request.
+# checks every push and every pull request.
 #
-# Getrennt vom Release-Ablauf und bewusst schmal: Er läuft bei jeder Änderung
-# und muss darum schnell sein. Gebaut wird nur, was zum Prüfen nötig ist, und
-# auf einem einzigen System; die sechs Installer entstehen erst beim Release.
+# kept apart from the release workflow and deliberately narrow: it runs at
+# every change and therefore has to be fast. only what is needed for checking
+# is built, and on a single system, the six installers come into being at
+# release.
 name: Prüfen
 
 on:
@@ -12,9 +13,8 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Ein neuer Push auf denselben Zweig bricht den vorigen Lauf ab. Ohne das
-# stauen sich bei mehreren Commits hintereinander Läufe, deren Ergebnis
-# niemanden mehr interessiert.
+# a new push to the same branch cancels the previous run. without it, several
+# commits in a row pile up runs whose result interests nobody any more.
 concurrency:
   group: pruefen-${{ github.ref }}
   cancel-in-progress: true
@@ -40,9 +40,9 @@ jobs:
       - name: Formatierung prüfen
         run: npx prettier --check src/ scripts/
 
-      # Darunter liegen die Wachen über die Übersetzung: Sie lesen sowohl die
-      # Oberfläche als auch die Rust-Quellen und schlagen an, sobald irgendwo
-      # deutscher Text ohne Fassung steht.
+      # the guards over the translation sit under it: they read the ui and
+      # the rust sources alike and fire as soon as german text without a
+      # version stands anywhere
       - name: Tests
         run: npm test
 
@@ -64,15 +64,14 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          # Auch dann ablegen, wenn ein späterer Schritt scheitert. Ab Werk
-          # wirft die Aktion den Zwischenspeicher bei einem Fehlschlag weg;
-          # ein Tippfehler im Signierkennwort machte damit fünfundzwanzig
-          # Minuten Übersetzungsarbeit zunichte, und der nächste Lauf begann
-          # wieder bei null.
+          # store it even where a later step fails. out of the box the action
+          # throws the cache away on a failure, and a typo in the signing
+          # password thereby undid twenty-five minutes of compilation, with the
+          # next run starting from zero again
           cache-on-failure: true
 
-      # Dieselbe Liste wie im Release-Ablauf: Ohne WebKitGTK lässt sich der
-      # Tauri-Teil nicht einmal übersetzen.
+      # the same list as in the release workflow: without webkitgtk the tauri
+      # part cannot even be compiled
       - name: Systemabhängigkeiten
         run: |
           sudo apt-get update
@@ -85,34 +84,33 @@ jobs:
             build-essential \
             curl wget file libssl-dev libxdo-dev libgtk-3-dev
 
-      # Der Bau braucht die Oberfläche als fertige Dateien; erzeugt werden sie
-      # hier nicht, also legen wir einen leeren Platzhalter an.
+      # the build needs the ui as finished files, and they are not generated
+      # here, so an empty placeholder is created
       - name: Platzhalter für die Oberfläche
         run: mkdir -p dist && echo '<!doctype html><title>ci</title>' > dist/index.html
 
-      # `cargo fmt --check` läuft hier bewusst nicht: Der Rust-Teil ist von
-      # Hand gesetzt und weicht an 165 Stellen von rustfmt ab, bei jeder
-      # Zeilenbreite. Ihn einmal durchzuformatieren wäre möglich, ist aber ein
-      # eigener Entschluss und keine Nebenwirkung dieses Ablaufs.
+      # `cargo fmt --check` deliberately does not run here: the rust part is
+      # set by hand and differs from rustfmt in 165 places, at every line
+      # width. formatting it through once would be possible but is a decision
+      # of its own and no side effect of this workflow
 
       - name: Clippy
         run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets
 
-      # Die Tests, die ein Netz brauchen, tragen `#[ignore]` und bleiben hier
-      # außen vor: Ein Ausfall bei YouTube oder Spotify ist kein Fehler in
-      # diesem Projekt.
+      # the tests needing a network carry `#[ignore]` and stay out here: an
+      # outage at youtube or spotify is no bug in this project
       - name: Tests
         run: cargo test --manifest-path src-tauri/Cargo.toml
 
-  # Der Rust-Teil für Android wird von den beiden Aufträgen oben nicht
-  # angefasst: Er hängt fast vollständig hinter `#[cfg(target_os = "android")]`
-  # und ist auf dem Rechner unsichtbar. Genau dort blieb ein fehlender Import
-  # stehen, der Bau brach ab, und auf dem Testgerät lief tagelang eine alte
-  # Fassung weiter, ohne dass es jemandem auffiel.
+  # the rust part for android is untouched by the two jobs above: it hangs
+  # almost entirely behind `#[cfg(target_os = "android")]` and is invisible on
+  # a desktop. exactly there a missing import stayed behind, the build broke
+  # off, and an old version kept running on the test device for days without
+  # anybody noticing.
   #
-  # Übersetzt wird nur, nicht verpackt: Die APK entsteht beim Release. Das
-  # kostet ein paar Minuten statt einer halben Stunde und fängt trotzdem
-  # jeden Fehler in diesem Teil ab.
+  # it is compiled only, not packaged: the apk comes into being at release.
+  # that costs a few minutes instead of half an hour and still catches every
+  # error in this part.
   android:
     name: Rust für Android
     runs-on: ubuntu-22.04
@@ -135,10 +133,11 @@ jobs:
       - name: Platzhalter für die Oberfläche
         run: mkdir -p dist && echo '<!doctype html><title>ci</title>' > dist/index.html
 
-      # `aws-lc-sys` übersetzt eigenen C-Code und sucht dafür einen Compiler
-      # namens `aarch64-linux-android-clang`. Den gibt es im NDK nicht: Dort
-      # trägt jeder Compiler die kleinste unterstützte Android-Fassung im
-      # Namen. Ohne diese Zuweisung scheitert schon das Bauskript.
+      # `aws-lc-sys` compiles c code of its own and looks for a compiler
+      # called `aarch64-linux-android-clang` for it. that does not exist in
+      # the ndk: every compiler carries the lowest supported android version
+      # in its name there. without this assignment the build script already
+      # fails
       - name: Clippy
         env:
           CC_aarch64_linux_android: aarch64-linux-android26-clang

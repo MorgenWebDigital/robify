@@ -1,24 +1,22 @@
 #!/usr/bin/env node
-/**
- * Prüft, dass die Versionsnummer überall dieselbe ist.
- *
- * Sie steht an vier Stellen, und jede wird von einem anderen Werkzeug
- * gelesen: `package.json` vom Fuß der App, `Cargo.toml` vom Programm selbst,
- * `tauri.conf.json` von den Installern, das `PKGBUILD` vom Arch-Paket. Wer
- * beim Release eine davon vergisst, merkt es erst an einem Paket, das sich
- * anders nennt als der Rest, und dann ist es schon draußen.
- *
- * Läuft bei jedem `npm run build` mit und bricht bei Abweichung ab.
- *
- * Aufruf: `npm run version` (oder mit einer Zahl, um sie überall zu setzen)
- */
+// version.mjs — checks that the version number is the same everywhere.
+//
+// it stands in four places, and each one is read by a different tool:
+// `package.json` by the footer of the app, `Cargo.toml` by the program
+// itself, `tauri.conf.json` by the installers, the `PKGBUILD` by the arch
+// package. whoever forgets one of them at release notices only through a
+// package calling itself differently from the rest, and by then it is out.
+//
+// runs along with every `npm run build` and stops on a mismatch.
+//
+// call: `npm run version`, or with a number to set it everywhere
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** Wo die Nummer steht und wie sie dort aussieht. */
+/** where the number stands and what it looks like there. */
 const STELLEN = [
   { datei: "package.json", muster: /("version"\s*:\s*")([^"]+)(")/ },
   { datei: "src-tauri/Cargo.toml", muster: /(^version\s*=\s*")([^"]+)(")/m },

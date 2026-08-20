@@ -21,27 +21,27 @@ import androidx.core.content.ContextCompat
 import androidx.media.session.MediaButtonReceiver
 
 /**
- * Der Player, den das Telefon selbst zeigt.
+ * the player the phone shows itself.
  *
- * Auf dem Rechner ist das Fenster der einzige Ort, an dem Robify bedient wird.
- * Auf einem Telefon nicht: Dort gehören Titel, Cover und die Knöpfe für
- * Pause und Weiter auf den Sperrbildschirm und in die Benachrichtigungen —
- * sonst muss man die App erst suchen, um einen Titel zu überspringen.
+ * on a desktop the window is the only place robify is operated from. on a
+ * phone it is not: title, cover and the buttons for pause and next belong on
+ * the lock screen and into the notifications there, otherwise one has to look
+ * for the app first in order to skip a track.
  *
- * Zwei Dinge hängen daran, die nach außen wie eines aussehen:
+ * two things hang off it that look like one from outside:
  *
- * * Eine `MediaSession` sagt dem System, was läuft und was sich damit machen
- *   lässt. Aus ihr baut Android den Player auf dem Sperrbildschirm, sie nimmt
- *   auch die Tasten von Kopfhörern und Autoradios entgegen.
- * * Ein Vordergrunddienst hält die App am Leben, solange Musik läuft. Ohne
- *   ihn darf Android den Prozess im Hintergrund abräumen, und die Wiedergabe
- *   bricht mitten im Titel ab.
+ * * a `MediaSession` tells the system what is running and what can be done
+ *   with it. android builds the player on the lock screen out of it, and it
+ *   takes in the keys of headphones and car radios as well.
+ * * a foreground service keeps the app alive while music is running. without
+ *   it android may clear the process away in the background and playback
+ *   breaks off mid-track.
  *
- * Der eigentliche Player bleibt im Rust-Teil. Hier steht nur, was das System
- * sehen soll, und die Knöpfe reichen ihre Befehle dorthin zurück.
+ * the actual player stays on the rust side. only what the system is to see
+ * stands here, and the buttons pass their commands back there.
  */
 object Wiedergabe {
-    /** Was gerade läuft; der Dienst liest es beim Aufbauen der Anzeige. */
+    /** what is running, the service reads it while building the display. */
     internal var titel: String = ""
     internal var kuenstler: String = ""
     internal var album: String = ""
@@ -55,30 +55,30 @@ object Wiedergabe {
     internal var dienst: Wiedergabedienst? = null
 
     /**
-     * Ein Knopf im Systemplayer wurde gedrückt.
+     * a button in the system player was pressed.
      *
-     * Der Rust-Teil trägt die Gegenstelle; die Namensform ist die von JNI
-     * vorgegebene, deshalb steht dort `Java_de_robify_player_Wiedergabe_befehl`.
+     * the rust side carries the counterpart, and the name form is the one jni
+     * prescribes, hence `Java_de_robify_player_Wiedergabe_befehl` there.
      */
     @JvmStatic external fun befehl(name: String, wert: Long)
 
     /**
-     * Neuer Stand aus dem Rust-Teil.
+     * a new state from the rust side.
      *
-     * Das Cover kommt als Bild in Rohform, nicht als Pfad: Robify hält seine
-     * Cover in der Datenbank, es gibt keine Datei, auf die man zeigen könnte.
+     * the cover comes as raw image bytes and not as a path: robify keeps its
+     * covers in the database, there is no file to point at.
      *
-     * Für das Bild gelten drei Fälle, und der Unterschied zwischen den letzten
-     * beiden ist wichtig:
+     * three cases apply to the image, and the difference between the last two
+     * matters:
      *
-     * * Bytes — neues Bild.
-     * * Leeres Feld — der Titel hat keins, das alte muss weg.
-     * * `null` — unverändert, nicht mitgeschickt.
+     * * bytes: a new image.
+     * * an empty array: the track has none, the old one has to go.
+     * * `null`: unchanged, not sent along.
      *
-     * Der Rust-Teil schickt es nur beim Titelwechsel; ein paar hundert
-     * Kilobyte bei jedem Druck auf Pause durch die Brücke zu schieben wäre
-     * Verschwendung. Vorher stand hier statt der drei Fälle nur „Bild oder
-     * kein Bild“, und das Cover verschwand beim ersten Pausieren.
+     * the rust side sends it on a track change only, and pushing a few
+     * hundred kilobytes through the bridge at every press on pause would be
+     * waste. instead of the three cases only image-or-no-image stood here
+     * before, and the cover disappeared at the first pause.
      */
     @JvmStatic
     fun melden(
@@ -118,7 +118,7 @@ object Wiedergabe {
         }
     }
 
-    /** Nichts läuft mehr: Anzeige weg, Dienst beenden. */
+    /** nothing is playing any more: drop the display, stop the service. */
     @JvmStatic
     fun beenden(kontext: Context) {
         val anwendung = kontext.applicationContext
@@ -129,11 +129,11 @@ object Wiedergabe {
 }
 
 /**
- * Hält die Wiedergabe am Leben und zeigt sie an.
+ * keeps the playback alive and displays it.
  *
- * Der Dienst spielt selbst nichts ab — das tut der Rust-Teil weiter. Er sagt
- * Android nur, dass hier etwas läuft, das nicht abgeräumt werden darf, und
- * trägt die Anzeige.
+ * the service plays nothing itself, the rust side carries on doing that. it
+ * only tells android that something is running here which must not be cleared
+ * away, and it carries the display.
  */
 class Wiedergabedienst : Service() {
     private lateinit var sitzung: MediaSessionCompat
@@ -163,9 +163,8 @@ class Wiedergabedienst : Service() {
                 isActive = true
             }
 
-        // Ohne eine Anzeige binnen weniger Sekunden beendet Android den Dienst
-        // von sich aus, mit einem Absturz. Darum sofort, noch vor dem ersten
-        // Auffrischen.
+        // without a display within a few seconds android ends the service by
+        // itself, with a crash. hence at once, before the first refresh
         starten(anzeige())
     }
 
@@ -184,15 +183,15 @@ class Wiedergabedienst : Service() {
         super.onDestroy()
     }
 
-    /** Neuer Stand: Sitzung und Anzeige nachziehen. */
+    /** a new state: pull session and display along. */
     fun auffrischen() {
         sitzung.setMetadata(
             MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, Wiedergabe.titel)
                 .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, Wiedergabe.kuenstler)
                 .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, Wiedergabe.album)
-                // Die Laufzeit macht aus dem Balken auf dem Sperrbildschirm
-                // erst einen Regler; ohne sie bleibt er ein Strich.
+                // the duration is what turns the bar on the lock screen into
+                // a slider, without it it stays a line
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, Wiedergabe.dauerMs)
                 .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, Wiedergabe.cover)
                 .build(),
@@ -209,10 +208,10 @@ class Wiedergabedienst : Service() {
                         PlaybackStateCompat.ACTION_SEEK_TO or
                         PlaybackStateCompat.ACTION_STOP,
                 )
-                // Die Geschwindigkeit ist kein Beiwerk: Android rechnet die
-                // Position damit selbst weiter. Stünde dort beim Abspielen 0,
-                // bliebe die Zeit auf dem Sperrbildschirm stehen, und wir
-                // müssten sie jede Sekunde neu melden.
+                // the speed is no trimming: android carries the position on
+                // from it itself. with a 0 standing there during playback the
+                // time on the lock screen would stand still and would have to
+                // be reported anew every second
                 .setState(
                     if (Wiedergabe.laeuft) PlaybackStateCompat.STATE_PLAYING
                     else PlaybackStateCompat.STATE_PAUSED,
@@ -253,13 +252,13 @@ class Wiedergabedienst : Service() {
                 .setContentText(Wiedergabe.kuenstler)
                 .setSubText(Wiedergabe.album.ifEmpty { null })
                 .setLargeIcon(Wiedergabe.cover)
-                // Unser Zeichen, nicht das Dreieck des Systems: Es steht
-                // oben links in der Benachrichtigung, in der Statusleiste und
-                // im Player auf dem Sperrbildschirm.
+                // our mark and not the triangle of the system: it stands at
+                // the top left of the notification, in the status bar and in
+                // the player on the lock screen
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentIntent(oeffnen)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                // Der laufende Titel ist keine Nachricht, die man wegwischt.
+                // the running track is no message one swipes away
                 .setOngoing(Wiedergabe.laeuft)
                 .setShowWhen(false)
 
@@ -283,7 +282,7 @@ class Wiedergabedienst : Service() {
         bau.setStyle(
             androidx.media.app.NotificationCompat.MediaStyle()
                 .setMediaSession(sitzung.sessionToken)
-                // Welche der drei Tasten in der eingeklappten Anzeige stehen.
+                // which of the three keys stand in the collapsed display
                 .setShowActionsInCompactView(0, 1, 2),
         )
 
@@ -298,8 +297,8 @@ class Wiedergabedienst : Service() {
             NotificationChannel(
                 KANAL,
                 "Wiedergabe",
-                // Niedrig: Der Player ist eine Anzeige, keine Meldung. Höher
-                // eingestuft klingelte er bei jedem Titelwechsel.
+                // low: the player is a display, not a notification. rated
+                // higher it rang at every track change
                 NotificationManager.IMPORTANCE_LOW,
             )
         kanal.setShowBadge(false)

@@ -13,8 +13,8 @@ rust-version = "1.82"
 name = "robify_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-# Nur auf Android gebraucht: Zwei Bibliotheken im Baum wollen einen Griff in
-# die Java-Laufzeit, den ihnen dort niemand gibt. Siehe `src/android.rs`.
+# needed on android alone: two libraries in the tree want a handle into the
+# java runtime that nobody gives them there. see `src/android.rs`
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.21"
 ndk-context = "0.1"
@@ -57,7 +57,7 @@ which = "8"
 tauri = { version = "2", features = ["test"] }
 
 [features]
-# Wird von `tauri dev` gesetzt und deaktiviert die produktive CSP.
+# set by `tauri dev`, it disables the production csp
 custom-protocol = ["tauri/custom-protocol"]
 
 [profile.release]

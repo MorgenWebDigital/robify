@@ -1,16 +1,14 @@
-/**
- * Typangaben für den Sucher nach ungehülltem deutschem Text.
- *
- * Das Werkzeug selbst ist JavaScript, damit es ohne Übersetzungsschritt
- * laufen kann. Die Deckungswache bindet es aber aus TypeScript ein, und
- * dorthin braucht es eine Beschreibung.
- */
+// type declarations for the finder of unwrapped german text.
+//
+// the tool itself is javascript so it can run without a compile step. the
+// coverage guard imports it from typescript though, and a description is
+// needed for that
 
-/** Alle Fundstellen unter `wurzel`, als `datei:zeile  text`. */
+/** every finding under `wurzel`, as `file:line  text`. */
 export function ungehuellteStellen(wurzel?: string): string[];
 
-/** Alle `.ts`- und `.tsx`-Dateien unter einem Verzeichnis. */
+/** every `.ts` and `.tsx` file under a directory. */
 export function dateien(verzeichnis: string): string[];
 
-/** Fundstellen einer einzelnen Datei, als `[zeile, text]`. */
+/** the findings of a single file, as `[line, text]`. */
 export function pruefen(datei: string): [number, string][];

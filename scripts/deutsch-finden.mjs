@@ -1,29 +1,25 @@
 #!/usr/bin/env node
-/**
- * Sucht Anzeigetext, der *nicht* durch `t()` läuft.
- *
- * Die Deckungswache in `src/lib/deckung.test.ts` prüft die andere Richtung:
- * Steht jeder gehüllte Begriff in der Tabelle? Text, den niemand gehüllt hat,
- * sieht sie nicht.
- *
- * Der erste Anlauf hier suchte nach deutschen Wörtern aus einer Liste. Das
- * war der falsche Zugriff: „Einstellungen behalten“, „Zeitsynchron
- * hinterlegt“ und „Zusammen“ standen nicht darin und blieben liegen. Eine
- * Wortliste ist nie vollständig.
- *
- * Darum jetzt die Umkehrung: Gemeldet wird *jeder* Text an einer Stelle, an
- * der er auf dem Bildschirm landet, sofern er nicht durch `t()` läuft. Was
- * bewusst unübersetzt bleibt, steht namentlich in `EIGENNAMEN`. Diese Liste
- * bleibt kurz, und jeder Eintrag darin ist eine Entscheidung statt einer
- * Lücke.
- */
+// deutsch-finden.mjs — looks for display text that does not run through
+// `t()`.
+//
+// the coverage guard in `src/lib/deckung.test.ts` checks the other direction:
+// is every wrapped term in the table? text nobody wrapped is invisible to it.
+//
+// the first attempt here searched for german words from a list. that was the
+// wrong grip: several phrases were not in it and stayed behind. a word list is
+// never complete.
+//
+// hence the inversion now: every text at a place where it lands on the screen
+// is reported, unless it runs through `t()`. what stays untranslated on
+// purpose stands by name in `EIGENNAMEN`. that list stays short, and every
+// entry in it is a decision instead of a gap.
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * Text, der in jeder Sprache gleich lautet.
+ * text that reads the same in every language.
  *
- * Produktnamen und Dateiformate. Alles andere gehört durch `t()`.
+ * product names and file formats. everything else belongs through `t()`.
  */
 const EIGENNAMEN = new Set([
   "Robify",
@@ -42,21 +38,21 @@ const EIGENNAMEN = new Set([
   "yt-dlp",
   "ffmpeg",
   "LRC",
-  // Der Name einer Lizenz, wie „MIT“ einer wäre.
+  // the name of a licence, as "MIT" would be one
   "PolyForm Noncommercial",
-  // In der Musik steht „feat.“ auch auf russischen und chinesischen Seiten so.
+  // in music, "feat." stands that way on russian and chinese pages too
   "feat.",
 ]);
 
-/** Diese Dateien tragen keinen Anzeigetext. */
+/** these files carry no display text. */
 const AUSGENOMMEN =
   /\.(test|d)\.tsx?$|types\.ts$|lib\/(i18n|mehrzahl|sprachen)\.ts$/;
 
 /**
- * Merkmale und Felder, deren Wert auf dem Bildschirm landet.
+ * attributes and fields whose value lands on the screen.
  *
- * `className` und `to` stehen bewusst nicht dabei: Sie tragen Technik, keinen
- * Text für Menschen.
+ * `className` and `to` are deliberately absent: they carry technology, not
+ * text for humans.
  */
 const ANZEIGEFELDER =
   "label|title|placeholder|aria-label|alt|subtitle|hint|text|message|tooltip|scope";
@@ -72,23 +68,22 @@ export function dateien(verzeichnis) {
 }
 
 /**
- * Ersetzt Unverdächtiges durch Leerzeichen gleicher Länge.
+ * replaces the harmless parts with spaces of the same length.
  *
- * Nicht durch nichts: Die Zeilennummern sollen stimmen, sonst zeigt der Fund
- * an eine falsche Stelle.
+ * not with nothing: the line numbers are to stay right, otherwise a finding
+ * points at the wrong place.
  */
 function leeren(inhalt, muster) {
   return inhalt.replace(muster, (treffer) => treffer.replace(/[^\n]/g, " "));
 }
 
 /**
- * Blendet `className={…}` und `class="…"` aus.
+ * blanks out `className={…}` and `class="…"`.
  *
- * Tailwind-Klassen sehen für die Suche aus wie Text: `text-mute/40
- * line-through` hat Buchstaben und Leerzeichen. Sie stehen oft in Zweigen
- * einer Bedingung, also genau in der Form, auf die auch echte Texte passen.
- * Die geschweiften Klammern werden dabei mitgezählt, damit auch mehrzeilige
- * Ausdrücke ganz verschwinden.
+ * to the search, tailwind classes look like text: `text-mute/40 line-through`
+ * has letters and spaces. they often stand in the branches of a condition, so
+ * in exactly the shape real texts match too. the braces are counted along so
+ * multi-line expressions disappear entirely.
  */
 function klassenLeeren(inhalt) {
   let ergebnis = inhalt;
@@ -108,28 +103,28 @@ function klassenLeeren(inhalt) {
 }
 
 /**
- * Ist das überhaupt Text für Menschen?
+ * whether this is text for humans at all.
  *
- * Zwei zusammenhängende Buchstaben genügen als Nachweis. Damit fallen
- * Trennzeichen, Zahlen, Einsetzstellen wie `{0}` und einzelne Buchstaben
- * heraus, ohne dass jedes einzeln aufgezählt werden müsste.
+ * two adjacent letters suffice as evidence. separators, numbers, placeholders
+ * such as `{0}` and single letters drop out with that, without each one having
+ * to be listed separately.
  */
 function istText(wert) {
   const blank = wert.replace(/\{\d+\}|\$\{[^}]*\}/g, "").trim();
   if (!/\p{L}{2}/u.test(blank)) return false;
   if (EIGENNAMEN.has(blank)) return false;
-  // Technische Werte: durchgehend klein, mit Bindestrich oder Punkt verbunden.
+  // technical values: lowercase throughout, joined by a hyphen or a dot
   if (/^[a-z][a-z0-9]*([-.:][a-z0-9]+)+$/.test(blank)) return false;
   return true;
 }
 
 export function pruefen(datei) {
   let inhalt = readFileSync(datei, "utf8");
-  inhalt = leeren(inhalt, /\/\*[\s\S]*?\*\//g); // Blockkommentare
-  inhalt = leeren(inhalt, /\/\/[^\n]*/g); // Zeilenkommentare
-  inhalt = leeren(inhalt, /^import[^;]*;/gm); // Einbindungen
-  // Der gehüllte Text samt Anführungszeichen. Die weiteren Werte eines
-  // Aufrufs bleiben stehen und werden für sich geprüft.
+  inhalt = leeren(inhalt, /\/\*[\s\S]*?\*\//g); // block comments
+  inhalt = leeren(inhalt, /\/\/[^\n]*/g); // line comments
+  inhalt = leeren(inhalt, /^import[^;]*;/gm); // imports
+  // the wrapped text together with its quotes. the further values of a call
+  // stay standing and are checked on their own
   inhalt = leeren(
     inhalt,
     /(?<![A-Za-z0-9_$])t\(\s*(["'`])(?:(?!\1)[^\\]|\\.)*\1/g,
@@ -144,33 +139,34 @@ export function pruefen(datei) {
       if (istText(wert)) funde.push([nummer + 1, wert.trim()]);
     };
 
-    // 1. Text zwischen zwei JSX-Marken: `>Text<`.
+    // text between two jsx marks: `>Text<`.
     //
-    //    Nur in `.tsx`: In TypeScript sieht `Promise<void>` genauso aus, und
-    //    ohne diese Einschränkung meldete der Sucher jede zweite Typangabe.
+    // in `.tsx` only: in typescript `Promise<void>` looks exactly the same,
+    // and without that restriction the finder reported every second type
     if (istJsx) {
       for (const treffer of zeile.matchAll(/(?<![=-])>([^<>{}"'`]+)</g))
         melden(treffer[1]);
 
-      // 2. Zeilen, die nur aus Text bestehen oder auf eine Einsetzung
-      //    zulaufen: `Zusammen {formatDuration(…)}`.
+      // lines consisting of text alone or running into an interpolation:
+      // `Zusammen {formatDuration(…)}`.
       //
-      //    Der große Anfangsbuchstabe trennt Text von Quelltext: Ein Satz
-      //    beginnt groß, ein Bezeichner wie `readOnly` oder `actionsRechts`
-      //    klein. Rechenzeichen und Klammern schließen den Rest aus.
+      // the capital first letter separates text from source: a sentence
+      // starts in capitals, an identifier such as `readOnly` or
+      // `actionsRechts` in lowercase. operators and brackets rule the rest
+      // out
       const nurText = zeile.match(
         /^\s*([A-ZÄÖÜ][^<>{}"'`=;()[\]:,]*?)\s*(?:\{|$)/,
       );
       if (nurText) melden(nurText[1]);
     }
 
-    // 3. Merkmale in JSX: `label="…"`.
+    // attributes in jsx: `label="…"`
     for (const treffer of zeile.matchAll(
       new RegExp(`\\b(?:${ANZEIGEFELDER})="([^"]*)"`, "g"),
     ))
       melden(treffer[1]);
 
-    // 4. Felder in Objekten: `label: "…"` und `label: \`…\``.
+    // fields in objects: `label: "…"` and `label: \`…\``
     for (const treffer of zeile.matchAll(
       new RegExp(
         `\\b(?:${ANZEIGEFELDER}):\\s*(["'\`])((?:(?!\\1)[^\\\\])*)\\1`,
@@ -179,9 +175,9 @@ export function pruefen(datei) {
     ))
       melden(treffer[2]);
 
-    // 5. Zweige einer Bedingung, die Prettier auf eigene Zeilen setzt:
-    //    `? "Zeitsynchron hinterlegt"`. Der Zeilenanfang ist entscheidend,
-    //    sonst schlüge jedes Objektfeld `schluessel: "wert"` mit an.
+    // branches of a condition prettier puts on their own lines:
+    // `? "Zeitsynchron hinterlegt"`. the start of the line is decisive,
+    // otherwise every object field `key: "value"` would fire along
     const zweig = zeile.match(/^\s*[?:]\s*"([^"]*)"/);
     if (zweig) melden(zweig[1]);
   });
@@ -190,10 +186,10 @@ export function pruefen(datei) {
 }
 
 /**
- * Alle Fundstellen unter einem Verzeichnis, als `datei:zeile  text`.
+ * every finding under a directory, as `file:line  text`.
  *
- * Auch vom Test in `src/lib/deckung.test.ts` benutzt: Der Sucher soll bei
- * jedem Testlauf mitlaufen, nicht erst, wenn jemand an ihn denkt.
+ * used by the test in `src/lib/deckung.test.ts` as well: the finder is to run
+ * along with every test run, not only when somebody thinks of it.
  */
 export function ungehuellteStellen(wurzel = "src") {
   const alle = [];
@@ -206,7 +202,7 @@ export function ungehuellteStellen(wurzel = "src") {
   return alle;
 }
 
-// Nur beim unmittelbaren Aufruf berichten, nicht beim Einbinden aus dem Test.
+// report on a direct call only, not when imported from the test
 if (
   process.argv[1] &&
   import.meta.url.endsWith(process.argv[1].split("/").pop())

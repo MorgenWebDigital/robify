@@ -1,24 +1,21 @@
 #!/usr/bin/env node
-/**
- * Umschließt sichtbare deutsche Texte einer Datei mit `t(...)`.
- *
- * Zwei Muster werden erfasst:
- *
- *   - Textknoten in JSX, also alles zwischen `>` und `<`. Auch über mehrere
- *     Zeilen: Der Umbruch wird zu einem Leerzeichen zusammengezogen, wie es
- *     der Browser ohnehin täte. Das ist der wichtigste Punkt, ein
- *     zeilenweiser Ansatz zerschnitte lange Absätze in Fragmente, und
- *     Satzfetzen lassen sich nicht übersetzen.
- *   - Zeichenketten hinter bekannten Merkmalen (`label=`, `title=` …) und in
- *     Objektfeldern (`label: "…"`).
- *
- * Bewusst nicht erfasst: Zeichenketten in Vergleichen, Schlüssel von
- * Einstellungen und alles in Kommentaren. Darum wird ausschließlich innerhalb
- * von JSX und an klar benannten Feldern gesucht, nicht an beliebigen
- * Zeichenketten.
- *
- * Aufruf: `node scripts/umschliessen.mjs src/pages/Foo.tsx [--pruefen]`
- */
+// umschliessen.mjs — wraps the visible german texts of a file in `t(...)`.
+//
+// two patterns are caught:
+//
+//   - text nodes in jsx, so everything between `>` and `<`. across several
+//     lines too: the break is folded into a space, as the browser would do
+//     anyway. that is the most important point, a line-by-line approach would
+//     cut long paragraphs into fragments, and fragments of a sentence cannot
+//     be translated.
+//   - strings behind known attributes (`label=`, `title=` and so on) and in
+//     object fields (`label: "…"`).
+//
+// deliberately not caught: strings in comparisons, keys of settings and
+// everything in comments. the search therefore runs inside jsx and at clearly
+// named fields alone, not at arbitrary strings.
+//
+// call: `node scripts/umschliessen.mjs src/pages/Foo.tsx [--pruefen]`
 import { readFileSync, writeFileSync } from "node:fs";
 
 const datei = process.argv[2];
@@ -28,7 +25,7 @@ if (!datei) {
   process.exit(1);
 }
 
-/** Merkmale, deren Wert auf dem Bildschirm erscheint. */
+/** attributes whose value appears on the screen. */
 const MERKMALE = [
   "label",
   "hint",
@@ -46,11 +43,11 @@ const MERKMALE = [
 let inhalt = readFileSync(datei, "utf8");
 const gefunden = [];
 
-/** Beginnt mit einem Großbuchstaben oder Anführungszeichen und hat Substanz. */
+/** starts with a capital or a quote and carries substance. */
 const istText = (text) =>
   /^[A-ZÄÖÜ„][^]{2,}$/.test(text) && /[a-zäöüß]/.test(text);
 
-// ── Textknoten in JSX, auch mehrzeilig ────────────────────────────────────
+// --- text nodes in jsx, multi-line too ---
 inhalt = inhalt.replace(
   />(\s*)([^<>{}]+?)(\s*)</g,
   (treffer, vorn, roh, hinten) => {
@@ -61,7 +58,7 @@ inhalt = inhalt.replace(
   },
 );
 
-// ── Merkmale ──────────────────────────────────────────────────────────────
+// --- attributes ---
 for (const merkmal of MERKMALE) {
   const muster = new RegExp(`(\\b${merkmal}=)"([^"]+)"`, "g");
   inhalt = inhalt.replace(muster, (treffer, kopf, text) => {
@@ -71,7 +68,7 @@ for (const merkmal of MERKMALE) {
   });
 }
 
-// ── Objektfelder wie `label: "Kacheln"` ───────────────────────────────────
+// --- object fields such as `label: "Kacheln"` ---
 inhalt = inhalt.replace(
   /\b(label|title|hint|text):\s*"([^"]+)"/g,
   (treffer, feld, text) => {
@@ -83,7 +80,7 @@ inhalt = inhalt.replace(
 
 const einmalig = [...new Set(gefunden)];
 if (!nurPruefen) {
-  // Einfuhr ergänzen, falls sie fehlt.
+  // add the import where it is missing
   if (einmalig.length > 0 && !/from "[^"]*lib\/i18n"/.test(inhalt)) {
     const tiefe =
       datei.includes("/pages/") || datei.includes("/components/") ? ".." : ".";

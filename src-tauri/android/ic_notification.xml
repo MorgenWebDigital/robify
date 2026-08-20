@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Das Robify-Zeichen als Symbol für die Benachrichtigung.
+    the robify mark as the icon for the notification.
 
-    Android zeichnet das kleine Symbol einer Benachrichtigung nur als Umriss:
-    Die Farbe kommt vom System, übrig bleibt die Alphamaske. Das Startsymbol
-    der App taugt dafür nicht, seine Fläche ist deckend und ergäbe ein weißes
-    Viereck. Diese Fassung ist von Haus aus eine Silhouette — dieselbe
-    Zeichnung wie `icons/robify-logo.svg`, nur in der Schreibweise, die
-    Android für Vektoren kennt: keine Rechtecke, keine Ellipsen, nur Pfade.
+    android draws the small icon of a notification as an outline alone: the
+    colour comes from the system and the alpha mask is what is left. the
+    launcher icon of the app does not do for it, its surface is opaque and
+    would come out as a white square. this version is a silhouette out of the
+    box, the same drawing as `icons/robify-logo.svg`, only in the notation
+    android knows for vectors: no rectangles, no ellipses, paths alone.
 
-    Liegt hier und nicht unter `gen/android`, weil dieses Verzeichnis bei
-    jedem `tauri android init` neu entsteht; hineingelegt wird es von
+    it lives here and not under `gen/android` because that directory is
+    created anew at every `tauri android init`, and it is put in by
     scripts/android-nachruesten.mjs.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
@@ -18,23 +18,23 @@
     android:height="24dp"
     android:viewportWidth="512"
     android:viewportHeight="512">
-    <!-- Rückt die Zeichnung in die Feldmitte und zieht sie auf, wie im SVG. -->
+    <!-- moves the drawing into the middle of the field and scales it up, as in the svg. -->
     <group android:translateX="256" android:translateY="256">
         <group android:scaleX="1.45" android:scaleY="1.45">
             <group android:translateX="-204" android:translateY="-288">
-                <!-- Balken über beiden Hälsen, ansteigend. -->
+                <!-- the beam over both stems, rising. -->
                 <path
                     android:fillColor="#FFFFFFFF"
                     android:pathData="M150,214 L338,166 v52 L150,266 z" />
-                <!-- Hälse, als Pfad statt als Rechteck. -->
+                <!-- the stems, as a path instead of a rectangle. -->
                 <path
                     android:fillColor="#FFFFFFFF"
                     android:pathData="M150,214 h26 v150 h-26 z" />
                 <path
                     android:fillColor="#FFFFFFFF"
                     android:pathData="M312,172.64 h26 v143.36 h-26 z" />
-                <!-- Notenköpfe, gekippt wie in der Notenschrift. Ein Kreis
-                     aus zwei Halbbögen; eine Ellipse kennt das Format nicht. -->
+                <!-- the note heads, tilted as in musical notation. a circle
+                     of two half arcs, the format knows no ellipse. -->
                 <group
                     android:pivotX="120"
                     android:pivotY="366"

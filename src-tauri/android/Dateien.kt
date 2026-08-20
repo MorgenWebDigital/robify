@@ -7,22 +7,22 @@ import java.io.File
 import java.io.FileOutputStream
 
 /**
- * Holt Dateien aus der Dateiauswahl von Android herein.
+ * brings files in from the android file picker.
  *
- * Die Auswahl gibt keinen Pfad zurück, sondern eine Adresse der Form
- * `content://com.android.externalstorage.documents/document/primary%3A…`.
- * Dahinter steht nicht zwingend eine Datei: Es kann ebenso ein Eintrag in
- * einer Cloud sein, den erst der Anbieter herunterlädt. Nur der
- * ContentResolver weiß, wie er an die Bytes kommt.
+ * the picker returns no path but an address of the form
+ * `content://com.android.externalstorage.documents/document/primary%3A…`. a
+ * file does not necessarily stand behind it: it can just as well be an entry
+ * in a cloud the provider downloads first. only the content resolver knows
+ * how to get at the bytes.
  *
- * Der Rust-Teil kennt nur Pfade. Also wird hier kopiert, und zwar in den
- * Ordner, den der Nutzer ohnehin für eigene Musik hat; danach ist es eine
- * gewöhnliche Datei, die eingelesen wird wie jede andere.
+ * the rust side knows paths alone. so it is copied here, into the folder the
+ * user has for their own music anyway, and afterwards it is an ordinary file
+ * read like any other.
  */
 object Dateien {
     /**
-     * Kopiert die Adresse in den Zielordner und gibt den Pfad der Kopie
-     * zurück. Eine leere Antwort heißt: hat nicht geklappt.
+     * copies the address into the target folder and returns the path of the
+     * copy. an empty answer means it did not work.
      */
     @JvmStatic
     fun holen(
@@ -44,11 +44,11 @@ object Dateien {
         }.getOrElse { "" }
 
     /**
-     * Der Name, den die Quelle selbst angibt.
+     * the name the source gives itself.
      *
-     * Der letzte Abschnitt der Adresse taugt nicht immer: Bei einer Cloud
-     * steht dort eine Kennung wie `acc=1;doc=42`. Die Spalte `DISPLAY_NAME`
-     * liefert den Namen, den auch die Dateiauswahl anzeigt.
+     * the last segment of the address does not always do: with a cloud an id
+     * such as `acc=1;doc=42` stands there. the column `DISPLAY_NAME` delivers
+     * the name the file picker shows too.
      */
     private fun anzeigename(
         kontext: Context,
@@ -67,10 +67,10 @@ object Dateien {
     }
 
     /**
-     * Ein Name, der im Zielordner noch frei ist.
+     * a name still free in the target folder.
      *
-     * Zweimal dieselbe Datei zu wählen soll die erste nicht überschreiben —
-     * es könnten zwei verschiedene Aufnahmen gleichen Namens sein.
+     * choosing the same file twice is not to overwrite the first, they could
+     * be two different recordings of the same name.
      */
     private fun freierName(
         ordner: File,

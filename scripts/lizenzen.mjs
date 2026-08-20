@@ -1,19 +1,17 @@
 #!/usr/bin/env node
-/**
- * Sammelt die Lizenzangaben aller Abhängigkeiten nach `public/lizenzen.json`.
- *
- * MIT und Apache-2.0, zusammen fast der gesamte Baum, verlangen beide, dass
- * Urheberrechtsvermerk und Lizenztext mitgeliefert werden, sobald man eine
- * Binärdatei weitergibt. Diese Datei erfüllt genau das; die Einstellungsseite
- * zeigt sie an.
- *
- * Erfasst wird nur, was tatsächlich im Programm landet: bei Rust die normalen
- * Abhängigkeiten (`cargo tree -e normal`, also ohne dev- und build-Kisten),
- * bei npm der Produktivbaum ohne devDependencies. Bauwerkzeuge wie Vite oder
- * lightningcss geben nichts an den Nutzer weiter und gehören darum nicht hinein.
- *
- * Aufruf: `npm run lizenzen`
- */
+// lizenzen.mjs — collects the licence details of every dependency into
+// `public/lizenzen.json`.
+//
+// mit and apache-2.0, together almost the whole tree, both demand that
+// copyright notice and licence text ship along as soon as a binary is passed
+// on. this file does exactly that, and the settings page displays it.
+//
+// only what actually ends up in the program is covered: for rust the normal
+// dependencies (`cargo tree -e normal`, so without dev and build crates), for
+// npm the production tree without devDependencies. build tools such as vite or
+// lightningcss pass nothing on to the user and therefore do not belong in it.
+//
+// call: `npm run lizenzen`
 import { execFileSync } from "node:child_process";
 import {
   existsSync,
@@ -28,7 +26,7 @@ import { fileURLToPath } from "node:url";
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const ZIEL = join(WURZEL, "public", "lizenzen.json");
 
-/** Dateinamen, unter denen Projekte ihren Lizenztext ablegen. */
+/** the filenames projects store their licence text under. */
 const LIZENZDATEI = /^(LICEN[CS]E|COPYING|NOTICE|UNLICEN[CS]E)([-._].*)?$/i;
 
 function rufe(befehl, argumente, cwd) {
@@ -40,11 +38,11 @@ function rufe(befehl, argumente, cwd) {
 }
 
 /**
- * Liest die Lizenztexte aus einem Paketordner.
+ * reads the licence texts out of a package folder.
  *
- * Manche Projekte legen mehrere ab (LICENSE-MIT und LICENSE-APACHE bei der
- * Doppellizenz); dann gehören beide dazu, denn welche von beiden gilt, sucht
- * sich der Nutzer aus.
+ * some projects store several of them (LICENSE-MIT and LICENSE-APACHE under a
+ * dual licence), and both belong to it then, as which of the two applies is
+ * for the user to pick.
  */
 function texteAus(ordner) {
   if (!ordner || !existsSync(ordner)) return [];
@@ -53,21 +51,21 @@ function texteAus(ordner) {
     if (!LIZENZDATEI.test(name)) continue;
     try {
       const inhalt = readFileSync(join(ordner, name), "utf8").trim();
-      // Verweise statt Text (»siehe LICENSE«) helfen niemandem.
+      // pointers instead of text ("see LICENSE") help nobody
       if (inhalt.length > 120) treffer.push(inhalt);
     } catch {
-      /* Ordner statt Datei, oder nicht lesbar: überspringen. */
+      /* a folder instead of a file, or unreadable: skip it. */
     }
   }
   return treffer;
 }
 
-// ------------------------------------------------------------------ Rust
+// --- rust ---
 
 function rustPakete() {
   const tauri = join(WURZEL, "src-tauri");
 
-  // Was wirklich mitgelinkt wird: normale Kanten, ohne dev und build.
+  // what is really linked in: normal edges, without dev and build
   const baum = rufe(
     "cargo",
     ["tree", "-e", "normal", "--prefix", "none", "--format", "{p}"],
@@ -78,7 +76,7 @@ function rustPakete() {
       .split("\n")
       .map((zeile) => zeile.trim().replace(/ \(\*\)$/, ""))
       .filter(Boolean)
-      // "name v1.2.3" oder "name v1.2.3 (/pfad)" → "name v1.2.3"
+      // "name v1.2.3" or "name v1.2.3 (/path)" becomes "name v1.2.3"
       .map((zeile) => zeile.split(" ").slice(0, 2).join(" ")),
   );
 
@@ -94,7 +92,7 @@ function rustPakete() {
   for (const paket of metadaten.packages) {
     const schluessel = `${paket.name} v${paket.version}`;
     if (!ausgeliefert.has(schluessel)) continue;
-    if (paket.name === "robify") continue; // das eigene Werk
+    if (paket.name === "robify") continue; // our own work
 
     pakete.push({
       name: paket.name,
@@ -112,7 +110,7 @@ function rustPakete() {
   return pakete;
 }
 
-// ------------------------------------------------------------------- npm
+// --- npm ---
 
 function npmPakete() {
   let baum;
@@ -121,17 +119,17 @@ function npmPakete() {
       rufe("npm", ["ls", "--omit=dev", "--all", "--json"], WURZEL),
     );
   } catch (fehler) {
-    // `npm ls` endet mit Code 1, sobald irgendetwas fehlt; die Ausgabe ist
-    // trotzdem brauchbar.
+    // `npm ls` ends with code 1 as soon as anything is missing, and the
+    // output is usable all the same
     baum = JSON.parse(fehler.stdout || "{}");
   }
 
   const gefunden = new Map();
   const laufe = (knoten) => {
     for (const [name, wert] of Object.entries(knoten.dependencies ?? {})) {
-      // Nicht aufgelöste Knoten (unerfüllte Gegenstücke, ausgelassene
-      // Wahlabhängigkeiten) haben keine Version und liegen auch nicht auf der
-      // Platte, die werden nicht mitgeliefert und gehören nicht in die Liste.
+      // unresolved nodes (unmet peers, skipped optional dependencies) carry
+      // no version and do not lie on disk either, they do not ship along and
+      // do not belong in the list
       if (!wert.version) continue;
       const schluessel = `${name}@${wert.version}`;
       if (!gefunden.has(schluessel)) {
@@ -165,7 +163,7 @@ function npmPakete() {
       const repo = beschreibung.repository;
       quelle = typeof repo === "string" ? repo : (repo?.url ?? null);
     } catch {
-      /* ohne package.json bleibt es bei den Vorgaben */
+      /* without a package.json the defaults stand */
     }
 
     pakete.push({
@@ -180,14 +178,15 @@ function npmPakete() {
   return pakete;
 }
 
-// ---------------------------------------------------------------- Ablage
+// --- writing it out ---
 
 const alle = [...rustPakete(), ...npmPakete()].sort(
   (a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version),
 );
 
-// Gleiche Lizenztexte wiederholen sich hundertfach. Einmal ablegen, überall
-// darauf verweisen: Das drückt die Datei von mehreren Megabyte auf ein Zehntel.
+// identical licence texts repeat themselves a hundred times over. stored
+// once and pointed at everywhere, that presses the file from several megabytes
+// down to a tenth
 const texte = [];
 const nummer = new Map();
 for (const paket of alle) {
@@ -218,8 +217,8 @@ console.log(
 console.log(`  Rust: ${alle.filter((p) => p.herkunft === "Rust").length}`);
 console.log(`  npm:  ${alle.filter((p) => p.herkunft === "npm").length}`);
 if (ohneText.length > 0) {
-  // Kein Beinbruch: Die SPDX-Angabe steht trotzdem da. Aber es ist der Punkt,
-  // an dem man von Hand nachsehen sollte, bevor man ausliefert.
+  // no great harm: the spdx value stands there all the same. but it is the
+  // point at which to look by hand before shipping
   console.log(`  ohne mitgelieferten Lizenztext: ${ohneText.length}`);
   for (const p of ohneText.slice(0, 10))
     console.log(`    ${p.name} ${p.version} (${p.lizenz})`);

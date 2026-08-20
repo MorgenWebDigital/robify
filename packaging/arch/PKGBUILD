@@ -1,12 +1,12 @@
 # Maintainer: MorgenWebDigital - Rettungsreifen
 #
-# Tauri kann kein Arch-Paket erzeugen, deshalb bauen wir das
-# .pkg.tar.zst hier selbst aus dem Quellbaum.
+# tauri cannot produce an arch package, so the .pkg.tar.zst is built here
+# from the source tree.
 #
-# Verwendung (aus diesem Verzeichnis):
+# use, from this directory:
 #   makepkg -f
-# Ergebnis: robify-<version>-<rel>-<arch>.pkg.tar.zst
-# Installation: sudo pacman -U robify-*.pkg.tar.zst
+# result: robify-<version>-<rel>-<arch>.pkg.tar.zst
+# install: sudo pacman -U robify-*.pkg.tar.zst
 
 pkgname=robify
 pkgver=0.1.0
@@ -23,7 +23,7 @@ optdepends=(
 makedepends=('rust' 'cargo' 'nodejs' 'npm' 'pkgconf' 'git')
 options=('!lto' '!strip')
 
-# Quellbaum liegt zwei Ebenen über diesem PKGBUILD.
+# the source tree lies two levels above this pkgbuild
 _projectdir="$(realpath "${startdir}/../..")"
 
 build() {

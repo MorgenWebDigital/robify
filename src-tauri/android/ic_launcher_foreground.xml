@@ -1,29 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    Die Vorderseite des Startsymbols.
+    the foreground of the launcher icon.
 
-    Dieselbe Zeichnung wie `icons/robify-logo.svg`, in der Bauweise der Knöpfe
-    in der App: eine Fläche mit einem Verlauf von hell nach dunkel und darunter
-    eine harte Kante, die das Zeichen von der Fläche abhebt. Ein weicher
-    Schatten ginge nicht, Vektoren in Android kennen keinen; die Tiefe kommt
-    deshalb daher, dass die Zeichnung zweimal dasteht, die untere um 2.4
-    Einheiten versetzt und dunkler.
+    the same drawing as `icons/robify-logo.svg`, in the build of the buttons
+    in the app: a surface with a gradient from light to dark and a hard edge
+    below it that lifts the mark off the surface. a soft shadow would not
+    work, vectors in android know none, so the depth comes from the drawing
+    standing there twice, the lower one offset by 2.4 units and darker.
 
-    Der Hintergrund ist durchsichtig. Die weiße Scheibe darunter machte aus dem
-    Zeichen eine Marke auf einem Teller; ohne sie steht es frei auf dem
-    Startbildschirm, wie die Symbole daneben auch.
+    the background is transparent. the white disc under it turned the mark
+    into a badge on a plate, and without it the mark stands free on the home
+    screen, as the icons next to it do.
 
-    Android schneidet ein Startsymbol in die Form, die der Nutzer eingestellt
-    hat. Sicher sichtbar bleibt nur der innere Kreis von 72 der 108 Einheiten;
-    die Zeichnung ist auf ihren Mittelpunkt bezogen und so weit verkleinert,
-    dass auch die versetzte Kante darin bleibt.
+    android cuts a launcher icon into the shape the user has set. only the
+    inner circle of 72 of the 108 units stays reliably visible, and the
+    drawing is centred on its middle and scaled down far enough for the offset
+    edge to stay inside it too.
 
-    Die Koordinaten stehen ausgerechnet da statt in ineinander gelegten
-    Gruppen: Verschachtelt kamen die Notenköpfe als Punkte heraus und der
-    Balken als Fläche.
+    the coordinates stand calculated out instead of in nested groups: nested,
+    the note heads came out as dots and the beam as a slab.
 
-    Liegt hier und nicht unter `gen/android`, weil dieses Verzeichnis bei jedem
-    `tauri android init` neu entsteht; hineingelegt wird es von
+    it lives here and not under `gen/android` because that directory is
+    created anew at every `tauri android init`, and it is put in by
     scripts/android-nachruesten.mjs.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
@@ -32,7 +30,7 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Die Kante darunter, dieselbe Zeichnung versetzt. -->
+    <!-- the edge below it, the same drawing offset. -->
     <path
         android:fillColor="#FF6E6E78"
         android:pathData="M44.918,44.072 L76.757,35.943 L76.757,44.75 L44.918,52.879 z" />
@@ -49,8 +47,8 @@
         android:fillColor="#FF6E6E78"
         android:pathData="M58.997,64.697 a8.807,6.774 -20 1,0 16.551,-6.024 a8.807,6.774 -20 1,0 -16.551,6.024 z" />
 
-    <!-- Die Fläche darüber, mit Verlauf von oben nach unten. -->
-    <!-- Balken über beiden Hälsen, ansteigend. -->
+    <!-- the surface over it, with a gradient from top to bottom. -->
+    <!-- the beam over both stems, rising. -->
     <path android:pathData="M44.918,41.672 L76.757,33.543 L76.757,42.35 L44.918,50.479 z">
         <aapt:attr name="android:fillColor">
             <gradient
@@ -61,7 +59,7 @@
                 android:endColor="#FF9C9CA8" />
         </aapt:attr>
     </path>
-    <!-- Linker Hals. -->
+    <!-- the left stem. -->
     <path android:pathData="M44.918,41.672 L49.321,41.672 L49.321,67.076 L44.918,67.076 z">
         <aapt:attr name="android:fillColor">
             <gradient
@@ -72,7 +70,7 @@
                 android:endColor="#FF9C9CA8" />
         </aapt:attr>
     </path>
-    <!-- Rechter Hals. -->
+    <!-- the right stem. -->
     <path android:pathData="M72.354,34.668 L76.757,34.668 L76.757,58.947 L72.354,58.947 z">
         <aapt:attr name="android:fillColor">
             <gradient
@@ -83,7 +81,7 @@
                 android:endColor="#FF9C9CA8" />
         </aapt:attr>
     </path>
-    <!-- Linker Notenkopf, gekippt wie in der Notenschrift. -->
+    <!-- the left note head, tilted as in musical notation. -->
     <path android:pathData="M31.561,70.427 a8.807,6.774 -20 1,0 16.551,-6.024 a8.807,6.774 -20 1,0 -16.551,6.024 z">
         <aapt:attr name="android:fillColor">
             <gradient
@@ -94,7 +92,7 @@
                 android:endColor="#FF9C9CA8" />
         </aapt:attr>
     </path>
-    <!-- Rechter Notenkopf. -->
+    <!-- the right note head. -->
     <path android:pathData="M58.997,62.297 a8.807,6.774 -20 1,0 16.551,-6.024 a8.807,6.774 -20 1,0 -16.551,6.024 z">
         <aapt:attr name="android:fillColor">
             <gradient

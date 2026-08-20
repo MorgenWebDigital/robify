@@ -1,6 +1,6 @@
 node_modules/
 dist/
-# Wird bei jedem Bau aus den Abhängigkeiten erzeugt (npm run lizenzen).
+# generated from the dependencies at every build (npm run lizenzen)
 public/lizenzen.json
 dist-ssr/
 *.local
@@ -19,5 +19,5 @@ src-tauri/gen/apple/
 *.keystore
 key.properties
 
-# Beiseitegelegtes: gehört nicht ins Veröffentlichte.
+# set aside: does not belong in what is published
 Archive/

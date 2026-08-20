@@ -1,36 +1,36 @@
 @import "tailwindcss";
 
-/* ── MorgenWeb-Design ──────────────────────────────────────────────────────
-   Übernommen aus dem Comunicate-Projekt: macOS-naher Minimalismus. Grauer
-   Canvas, weiße Karten mit Haarlinien-Rand, klare Tiefenstaffelung
-   bg < surface < sunken, zurückhaltende Schatten.
+/* --- morgenweb design ---
 
-   Das Layout bleibt, wie es war (Seitenleiste, Inhaltsfläche, Player-Leiste
-   unten), nur die Oberfläche wechselt. Möglich wird das durch die Zuordnung
-   weiter unten: Robifys Farbklassen (`ink-*`, `mute`, `fg`) zeigen auf diese
-   Merkmale, sodass sich das ganze Programm über diesen einen Block dreht.
+   minimalism close to macos: a grey canvas, white cards with a hairline
+   border, a clear depth order bg < surface < sunken, restrained shadows.
 
-   Der Akzent bleibt Robifys eigener und ist in den Einstellungen wählbar,
-   er trägt die Wiedergabe-Bedienung und die Fortschrittsbalken. */
+   the layout stays as it was (sidebar, content area, player bar at the
+   bottom), only the surface changes. the mapping further down makes that
+   possible: robify's colour classes (`ink-*`, `mute`, `fg`) point at these
+   properties, so the whole program turns on this one block.
+
+   the accent stays robify's own and is selectable in the settings, it carries
+   the playback controls and the progress bars. */
 
 :root {
-  /* Drei Stufen, von außen nach innen heller:
+  /* three steps, lighter from the outside in:
 
-       Gehäuse  #e0e0e5   Fensterrahmen, Titelleiste, und die Armaturen
-       Insel    #e9e9ec   Hauptbereich, Seitenleiste, Player, Lyrics
-       Karte    #ffffff   der eigentliche Inhalt
+       case    #e0e0e5   window frame, title bar and the controls
+       island  #e9e9ec   main area, sidebar, player, lyrics
+       card    #ffffff   the actual content
 
-     Der Blick wird damit nach innen gezogen: Was am hellsten steht, ist das,
-     worum es geht. Gehäuse und Bedienteile teilen sich absichtlich einen Ton,
-     beides ist Apparat, nicht Inhalt. */
+     the eye is drawn inwards by it: what stands lightest is what it is about.
+     case and controls deliberately share one tone, both are apparatus and not
+     content. */
   --bg: #e9e9ec;
   --canvas: #e0e0e5;
   --surface: #ffffff;
-  /* Knöpfe, Pillen, Auswahlfelder, der laufende Eintrag. Derselbe Ton wie die
-     Rillen darunter: gleiches Material, nur andersherum gewölbt. */
+  /* buttons, pills, select fields, the running entry. the same tone as the
+     grooves below: the same material, only curved the other way. */
   --control: #e0e0e5;
-  /* Rillen liegen *in* den Inseln und müssen darum unter deren Ton bleiben,
-     sonst verschwinden Suchfelder und Bildlaufleiste im Untergrund. */
+  /* grooves lie inside the islands and therefore have to stay below their
+     tone, otherwise search fields and scrollbar disappear into the ground. */
   --surface-sunken: #dfdfe3;
   --border: #dcdce0;
   --border-strong: #c9c9ce;
@@ -39,15 +39,15 @@
   --text-muted: #656569;
   --text-faint: #9a9a9f;
 
-  /* Abdunklung hinter Dialogen. Auf hellem Grund genügt ein Hauch. */
+  /* the scrim behind dialogs. on a light ground a breath is enough. */
   --scrim: rgba(0, 0, 0, 0.28);
-  /* Höhe der Navigation am unteren Rand. Steht hier, weil drei Regeln sie
-     brauchen: die Leiste selbst, das Blatt darüber und der Rahmen, der ihr
-     Platz freihält. */
+  /* the height of the navigation at the bottom edge. it stands here because
+     three rules need it: the bar itself, the sheet above it and the frame that
+     keeps room clear for it. */
   --unterleiste-hoehe: 3.25rem;
 
-  /* Zustände. Als Merkmale, weil dieselbe Warnung auf weißem und auf
-     schwarzem Grund verschiedene Töne braucht, um lesbar zu bleiben. */
+  /* states. as properties, because the same warning needs different tones on
+     a white and on a black ground to stay readable. */
   --success: #2ba64f;
   --success-soft: #e4f6ea;
   --danger: #e5484d;
@@ -58,10 +58,10 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.1);
 
-  /* Wird aus den Einstellungen überschrieben. */
+  /* overwritten from the settings. */
   --accent: #a8a8b3;
   --accent-soft: color-mix(in srgb, var(--accent) 18%, transparent);
-  /* Auf dem hellen Grau trägt ein dunkles Zeichen. */
+  /* on the light grey a dark mark carries. */
   --accent-ink: #16161a;
 
   color-scheme: light dark;
@@ -69,7 +69,7 @@
   text-rendering: optimizeLegibility;
 }
 
-/* Dunkel, wenn das System dunkel steht, außer der Nutzer erzwingt „Hell“. */
+/* dark where the system stands dark, unless the user forces light. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0f0f11;
@@ -98,7 +98,7 @@
   }
 }
 
-/* Erzwungenes Dunkel auf hellem Desktop. Werte synchron zum Block darüber. */
+/* forced dark on a light desktop. the values stay in step with the block above. */
 :root[data-theme="dark"] {
   --bg: #0f0f11;
   --canvas: #0b0b0d;
@@ -125,12 +125,12 @@
   --shadow-md: 0 16px 40px rgba(0, 0, 0, 0.6);
 }
 
-/* Robifys Farbklassen auf die Merkmale oben legen. `inline` sorgt dafür, dass
-   die Hilfsklassen direkt auf die Merkmale zeigen und dem Themenwechsel
-   folgen, statt den Wert einmalig einzufrieren. */
+/* lays robify's colour classes onto the properties above. `inline` makes the
+   utility classes point at the properties directly and follow a theme change,
+   instead of freezing the value once. */
 @theme inline {
-  /* SF Pro zuerst: Die MorgenWeb-Typografie hängt daran, unter Linux gibt es
-     kein `-apple-system` als Brücke. */
+  /* sf pro first: the morgenweb typography hangs on it, and under linux there
+     is no `-apple-system` as a bridge. */
   --font-sans:
     "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Inter",
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -143,9 +143,9 @@
   --color-ink-600: var(--border-strong);
   --color-ink-500: var(--text-faint);
 
-  /* Das Gehäuse: Fensterhintergrund, Titelleiste, die Rille der Bildlaufleiste
-     und der Grund hinter der Vollbildansicht. Seitenleiste und Player tragen
-     dagegen den Inselton (`ink-950`), sie liegen auf dem Gehäuse, nicht darin. */
+  /* the case: window background, title bar, the groove of the scrollbar and
+     the ground behind the full screen view. sidebar and player carry the island
+     tone (`ink-950`) instead, they lie on the case and not in it. */
   --color-frame: var(--canvas);
 
   --color-mute: var(--text-muted);
@@ -161,10 +161,10 @@
   --radius-card: 12px;
 }
 
-/* In `base`, nicht schichtenlos: Ungeschichtete Regeln schlagen in Tailwind 4
-   jede Hilfsklasse, egal wie genau sie ist. Stand `min-width: 0` hier frei,
-   wirkte kein einziges `min-w-*` mehr, und Menüs quetschten sich auf
-   Zeichenbreite zusammen. */
+/* in `base` and not unlayered: in tailwind 4 unlayered rules beat every
+   utility class however specific it is. with `min-width: 0` standing free
+   here, not a single `min-w-*` took effect any more and menus squeezed
+   themselves to the width of one character. */
 @layer base {
   * {
     min-width: 0;
@@ -172,56 +172,50 @@
   }
 }
 
-/*
- * Auf Berührungsgeräten gibt es kein Überfahren.
+/* on touch devices there is no hovering.
  *
- * In der App erscheinen mehrere Bedienelemente erst, wenn der Zeiger auf ihrer
- * Zeile steht: die drei Punkte an einem Titel, das Papierkorbzeichen in der
- * Warteschlange, das Abspieldreieck auf einem Cover. Mit dem Finger sind die
- * schlicht nicht erreichbar, sie blieben unsichtbar und unantastbar.
+ * several controls in the app appear only once the pointer stands on their
+ * row: the three dots on a track, the trash mark in the queue, the play
+ * triangle on a cover. with a finger those are plainly unreachable, they would
+ * stay invisible and untouchable.
  *
- * Angesprochen wird hier die von Tailwind erzeugte Klasse selbst, statt an
- * einem Dutzend Stellen im Quelltext eine zweite Schreibweise zu ergänzen.
- * `hover: none` trifft genau die Geräte, um die es geht, und lässt Mausbetrieb
- * unberührt, auch am Telefon mit angestecktem Zeigegerät.
- */
+ * what is addressed here is the class tailwind generates, instead of adding a
+ * second spelling in a dozen places in the source. `hover: none` hits exactly
+ * the devices in question and leaves mouse operation untouched, on a phone
+ * with an attached pointing device too. */
 @media (hover: none) {
   .group-hover\:opacity-100 {
     opacity: 1;
   }
 
-  /* Dasselbe für den kleinen Sprung, den das Abspieldreieck beim Zeigen
-     macht: Sichtbar war es durch die Regel darüber schon, es stand aber
-     weiterhin acht Punkte tiefer, bündig mit der Unterkante des Covers. */
+  /* the same for the small jump the play triangle makes on hover: the rule
+     above made it visible already, but it still stood eight points lower,
+     flush with the bottom edge of the cover. */
   .group-hover\:translate-y-0 {
     --tw-translate-y: 0px;
     translate: var(--tw-translate-x) var(--tw-translate-y);
   }
 }
 
-/*
- * Was dem System gehört, bleibt frei.
+/* what belongs to the system stays clear.
  *
- * Oben die Statusleiste, unten die Gestenleiste; `viewport-fit=cover` in der
- * `index.html` lässt die App bis unter beide reichen, und ohne diese
- * Polsterung stünde die Uhr des Systems in unserer Titelzeile. Am unteren Rand
- * kommt die Navigation dazu, die fest am Fenster hängt und deshalb keinen
- * Platz im Fluss beansprucht.
+ * the status bar at the top, the gesture bar at the bottom.
+ * `viewport-fit=cover` in `index.html` lets the app reach under both, and
+ * without this padding the clock of the system would stand in our title row.
+ * at the bottom edge the navigation comes on top of it, which hangs off the
+ * window and therefore claims no room in the flow.
  *
- * Ab der Breite eines Fensters am Rechner entfällt beides: Dort gibt es weder
- * Kerbe noch Gestenleiste noch eine Leiste unten.
- */
+ * from the width of a desktop window on, both are dropped: there is neither a
+ * notch nor a gesture bar nor a bar at the bottom there. */
 .app-rahmen {
   padding-top: env(safe-area-inset-top);
-  /*
-   * Unten wird freigehalten, was gerade mehr Platz braucht: die Leiste mit
-   * der Navigation oder die Tastatur.
+  /* at the bottom, whatever needs more room is kept clear: the bar with the
+   * navigation or the keyboard.
    *
-   * Sie addieren sich nicht. Fährt die Tastatur aus, liegt die Navigation
-   * ohnehin dahinter, und beides zusammengerechnet ließe den Player eine
-   * Leistenhöhe über der Tastatur schweben. `--tastatur` ist null, solange
-   * keine ausgefahren ist; dann bleibt es beim Maß der Leiste.
-   */
+   * they do not add up. does the keyboard slide out, the navigation lies
+   * behind it anyway, and the two added together would leave the player
+   * hovering one bar height above the keyboard. `--tastatur` is zero while
+   * none is out, and the measure of the bar then stands. */
   padding-bottom: max(
     calc(var(--unterleiste-hoehe) + env(safe-area-inset-bottom)),
     var(--tastatur, 0px)
@@ -241,12 +235,12 @@ body,
   height: 100%;
 }
 
-/* Der Rahmen des Fensters. Trägt denselben Ton wie Seitenleiste und Player,
-   nur dadurch heben sich die abgerundeten Flächen darin ab.
+/* the frame of the window. it carries the same tone as sidebar and player,
+   and only through that do the rounded surfaces inside it stand out.
 
-   Runde Fensterecken gab es hier schon einmal. Sie brauchen ein durchsichtiges
-   Fenster (`transparent: true`), und damit blieb WebKitGTK auf diesem System
-   komplett schwarz, nicht einmal das JavaScript lief an. Deshalb eckig. */
+   rounded window corners were here once. they need a transparent window
+   (`transparent: true`), and with that webkitgtk stayed completely black on
+   this system, not even the javascript started. hence square. */
 #root {
   background: var(--canvas);
   overflow: hidden;
@@ -278,12 +272,11 @@ h4 {
   letter-spacing: -0.01em;
 }
 
-/* Schlanke Scrollbars, damit Listen ruhiger wirken.
-   Zwei ineinanderliegende Pillen: die dunkle Rille als Spur und der Griff
-   darin. Beide werden über einen durchsichtigen Rand auf ihre Breite
-   gebracht, gefärbt wird nur der Kern (`background-clip: content-box`).
-   Rille 12 px, Griff 6 px, es bleiben also 3 px Rille links und rechts vom
-   Griff sichtbar. */
+/* slim scrollbars so lists look calmer.
+   two pills inside each other: the dark groove as the track and the handle in
+   it. both are brought to their width through a transparent border, and only
+   the core is coloured (`background-clip: content-box`). groove 12 px, handle
+   6 px, so 3 px of groove stay visible left and right of the handle. */
 ::-webkit-scrollbar {
   width: 18px;
   height: 18px;
@@ -291,9 +284,9 @@ h4 {
 ::-webkit-scrollbar-track {
   background: var(--canvas);
   border-radius: 999px;
-  /* Oben und unten 6 px, damit die Rille nicht bis an die Enden der Fläche
-     läuft. Derselbe Wert wie der Rand des Griffs, so beginnen beide auf
-     gleicher Höhe. */
+  /* 6 px at the top and bottom so the groove does not run to the ends of the
+     surface. the same value as the border of the handle, so both start at the
+     same height. */
   border: 6px solid transparent;
   border-left-width: 3px;
   border-right-width: 3px;
@@ -313,66 +306,57 @@ h4 {
   background: transparent;
 }
 
-/*
- * Am Finger gibt es nichts zu greifen.
+/* with a finger there is nothing to grab.
  *
- * Die Leiste oben ist als Griff für die Maus gebaut, 18 Pixel breit. Auf
- * einem Telefon zieht sie niemand — gerollt wird über die Fläche selbst —,
- * dem Inhalt nimmt sie die Breite aber trotzdem: Im Songtext blieben von
- * 371 Pixeln 354 übrig, ein leerer Streifen am Rand.
+ * the bar above is built as a handle for the mouse, 18 pixels wide. on a
+ * phone nobody drags it, scrolling happens over the surface itself, and it
+ * takes the width from the content all the same: in the lyrics 354 of 371
+ * pixels were left, an empty strip at the edge.
  *
- * Chromium legt gestaltete Leisten immer neben den Inhalt, nie darüber. Wer
- * sie schmal will, bekommt einen schmalen Streifen; wer keinen Streifen will,
- * muss sie ganz weglassen. Dass es weitergeht, sagen ohnehin die weichen
- * Übergänge an den Rändern.
- */
+ * chromium always lays styled bars next to the content, never over it.
+ * whoever wants them narrow gets a narrow strip, whoever wants no strip has
+ * to leave them out entirely. that it goes on is said by the soft fades at the
+ * edges anyway. */
 @media (hover: none) and (pointer: coarse) {
   ::-webkit-scrollbar {
     width: 0;
     height: 0;
   }
 
-  /*
-   * Ein Daumen trifft gröber als ein Zeiger.
+  /* a thumb hits more coarsely than a pointer.
    *
-   * Die Schalter in einer Leiste maßen 28 Punkte im Quadrat — Ansicht und
-   * Kachelgröße bei den Playlists, Zeitraum und Blättern im Rückblick,
-   * Erscheinungsbild in den Einstellungen. Sie füllen jetzt die Leiste bis
-   * auf deren Rand aus; die Leiste selbst wächst dabei nicht, neben ihr
-   * stehende Knöpfe bleiben also auf gleicher Höhe.
-   */
+   * the switches in a bar measured 28 points square: view and tile size at
+   * the playlists, period and paging in the review, appearance in the
+   * settings. they now fill the bar up to its border, and the bar itself does
+   * not grow in doing so, so buttons standing next to it keep the same
+   * height. */
   .pill-bar > .pill-btn {
     height: calc(2.25rem - 2px);
     min-width: calc(2.25rem - 2px);
-    /* Enger an der Schrift: Vier Möglichkeiten mit ausgeschriebenen Namen —
-       „Alles“, „Letzter Monat“, „Letztes Jahr“, „Aus“ — füllten im Rückblick
-       jeden der 338 Bildpunkte bis zum Rand aus. Die Reihe sah gestopft aus,
-       und in einer Sprache mit längeren Wörtern liefe sie hinaus. */
+    /* closer to the type: four options with written-out names filled every one
+       of the 338 pixels in the review up to the edge. the row looked stuffed,
+       and in a language with longer words it would run out. */
     padding-inline: 0.625rem;
   }
 
-  /*
-   * Auswahlfelder ebenso: Sechsunddreißig Punkte sind für einen Zeiger
-   * reichlich und für einen Daumen knapp. Sie stehen einzeln unter ihrer
-   * Beschriftung, nichts daneben verrutscht dadurch.
-   */
+  /* select fields likewise: thirty-six points are plenty for a pointer and
+   * tight for a thumb. they stand alone under their label, so nothing next to
+   * them slips. */
   .pill-select {
     height: 3rem;
   }
 
-  /*
-   * Ein Kreuzchen mit einer Zeile daneben ist zwanzig Punkte hoch. Die Zeile
-   * daneben zählt zwar mit, weil das Kästchen in seiner Beschriftung steckt,
-   * zwischen zwei solchen Zeilen liegen aber nur acht Punkte — wer knapp
-   * daneben tippt, setzt den falschen Haken.
-   */
+  /* a checkbox with a row next to it is twenty points high. the row does
+   * count along because the box sits inside its label, but only eight points
+   * lie between two such rows, and whoever taps slightly off ticks the wrong
+   * one. */
   label:has(> .check-box) {
     min-height: 2.25rem;
   }
 }
 
-/* Karte: weiße Fläche, Haarlinie, weicher Schatten, das Grundelement des
-   MorgenWeb-Designs. */
+/* the card: a white surface, a hairline, a soft shadow. the base element of
+   the morgenweb design. */
 @utility surface {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -385,9 +369,9 @@ h4 {
   color: var(--accent-ink);
 }
 
-/* Einheitliche Icon-Schaltfläche: quadratisch, zentriert, gleicher Radius,
-   gleiche Polsterung, gleicher Hover, ersetzt die vorher uneinheitlichen
-   `rounded-md/lg p-1/1.5/2 hover:…`-Varianten überall in der App. */
+/* a uniform icon button: square, centred, the same radius, the same padding,
+   the same hover. it replaces the previously inconsistent
+   `rounded-md/lg p-1/1.5/2 hover:…` variants all over the app. */
 @utility icon-btn {
   display: grid;
   place-items: center;
@@ -403,8 +387,8 @@ h4 {
   }
 }
 
-/* Neutrale Textschaltfläche. Die betonten und die randlosen Fassungen sind
-   inzwischen Pillen (`pill-btn`); hier blieb die schlichte Form. */
+/* a neutral text button. the emphasised and the borderless versions are
+   pills (`pill-btn`) by now, and the plain form stayed here. */
 @utility btn {
   display: inline-flex;
   align-items: center;
@@ -430,12 +414,12 @@ h4 {
   }
 }
 
-/* Umschaltleiste im Stil der Wrapped-Seite: runde Kapsel mit Haarlinie, die
-   Schalter sitzen darin. */
-/* Schalterreihe. Die *Leiste* trägt das Knopfmaß, nicht der Schalter darin:
-   Sie steht neben gewöhnlichen Knöpfen, und was der Nutzer als ein Bedienteil
-   sieht, ist die Leiste. Gäbe man dem Schalter innen 2.25rem, käme die Leiste
-   mit Rand und Polsterung auf 2.9rem und überragte alles daneben. */
+/* a switch bar in the style of the review page: a round capsule with a
+   hairline, the switches sitting inside it. */
+/* the switch row. the bar carries the button measure, not the switch inside
+   it: the bar stands next to ordinary buttons, and what the user sees as one
+   control is the bar. giving the switch inside 2.25rem, the bar would come to
+   2.9rem with border and padding and tower over everything next to it. */
 @utility pill-bar {
   display: inline-flex;
   align-items: center;
@@ -443,30 +427,27 @@ h4 {
   gap: 0.25rem;
   border: 1px solid var(--border);
   border-radius: 9999px;
-  /* Nur seitlich; oben und unten zentriert die feste Höhe. */
+  /* sideways only, the fixed height centres it top and bottom. */
   padding: 0 0.25rem;
 }
 
-/* Schalter mit plastischem Aufbau, einfarbig: Die Fläche bleibt ein einziger
-   Ton, die Tiefe kommt allein von einer harten Unterkante (wie bei einer
-   Taste) und dem Schlagschatten darunter. Beim Drücken fährt die Taste auf
-   die Unterkante herunter.
-   Größe kommt von außen (`h-8 w-8` bzw. `h-8 px-3.5`), damit runde Symbol-
-   und breite Textschalter dieselbe Optik teilen.
-   `is-raised` ist für Knöpfe ohne Ein/Aus-Zustand, die stehen immer oben. */
-/*
- * Reihe von Handlungsknöpfen unter einer Überschrift.
+/* a switch with a moulded build, in one colour: the surface stays a single
+   tone and the depth comes from a hard bottom edge alone (as on a key) and
+   the drop shadow under it. on a press the key sinks onto its bottom edge.
+   the size comes from outside (`h-8 w-8` or `h-8 px-3.5`) so round icon
+   switches and wide text switches share the same look.
+   `is-raised` is for buttons without an on/off state, those always stand
+   up. */
+/* a row of action buttons under a heading.
  *
- * Wird der Platz knapp, weil die Warteschlange ausfährt oder das Fenster
- * schmaler wird, sollen die Knöpfe enger werden statt in eine zweite Reihe zu
- * rutschen: Ein Umbruch verschiebt alles darunter und sieht aus, als wäre die
- * Seite kaputt.
+ * does the room get tight because the queue slides out or the window grows
+ * narrower, the buttons are to grow narrower instead of sliding into a second
+ * row: a wrap shifts everything below it and looks as if the page were
+ * broken.
  *
- * `container-type: inline-size` macht die Reihe selbst zum Maßstab. Nicht die
- * Fensterbreite entscheidet also, sondern der Platz, der hier tatsächlich
- * übrig ist, und der hängt ebenso an der Seitenleiste wie an der
- * Warteschlange.
- */
+ * `container-type: inline-size` makes the row itself the yardstick. it is
+ * therefore not the window width that decides but the room actually left
+ * here, and that hangs on the sidebar as much as on the queue. */
 @utility aktionsreihe {
   container-type: inline-size;
   display: flex;
@@ -480,9 +461,9 @@ h4 {
   font-weight: 600;
   white-space: nowrap;
 
-  /* Drei Stufen, damit der Sprung nicht auf einmal kommt. Die erste greift
-     schon früh: In der Bibliothek stehen fünf Teile in einer Reihe, dort wird
-     es eng, lange bevor eine Knopfreihe unter einer Überschrift eng wird. */
+  /* three steps so the jump does not come all at once. the first takes hold
+     early: five parts stand in one row in the library, and it gets tight there
+     long before a button row under a heading does. */
   @container (max-width: 48rem) {
     padding-inline: 0.8rem;
     font-size: 0.8125rem;
@@ -500,26 +481,22 @@ h4 {
     gap: 0.25rem;
   }
 
-  /* Das Zeichen behält seine Größe. Schrumpfte es mit, sähe der Knopf beim
-     Engerwerden nicht kleiner aus, sondern verzogen. */
+  /* the icon keeps its size. shrinking along, the button would not look
+     smaller while narrowing but warped. */
   & > svg {
     flex-shrink: 0;
   }
 }
 
-/*
- * Darf zusammenschrumpfen, wenn es eng wird, und kürzt dann seine Beschriftung.
+/* may shrink when it gets tight, and shortens its label then.
  *
- * Nur die nachrangigen Knöpfe tragen das. „Abspielen“ und „Zufällig“ behalten
- * ihre Breite: Sie sind kurz und die eigentliche Handlung der Seite.
- */
-/*
- * Suchleiste und Aufklappfeld in einer Aktionsreihe.
+ * only the secondary buttons carry this. play and shuffle keep their width:
+ * they are short and the actual action of the page. */
+/* a search bar and a dropdown in an action row.
  *
- * Sie tragen von Haus aus eine Mindestbreite, damit sie nicht auf Briefmarken
- * schrumpfen. Wird der Platz knapp, ist eine schmale Leiste aber besser als
- * eine zweite Zeile, darum sinkt die Mindestbreite mit.
- */
+ * they carry a minimum width out of the box so they do not shrink to postage
+ * stamps. does the room get tight, a narrow bar beats a second row though, so
+ * the minimum width sinks along. */
 @utility aktionsfeld {
   min-width: 14rem;
 
@@ -532,23 +509,20 @@ h4 {
   }
 }
 
-/*
- * Fällt bei Enge auf sein Zeichen zusammen, als runder Knopf.
+/* collapses onto its icon when it gets tight, as a round button.
  *
- * Für Handgriffe, deren Zeichen für sich spricht: ein Ordner steht für
- * Importieren, ein Pfeil im Kreis für Aktualisieren, das Dreieck für
- * Abspielen. Beschriftung zu kürzen wäre hier schlechter als sie ganz
- * wegzulassen, „Aktual…“ sagt weniger als das Zeichen allein.
+ * for handles whose icon speaks for itself: a folder stands for importing, an
+ * arrow in a circle for refreshing, the triangle for playing. shortening the
+ * label would be worse here than leaving it out entirely, a truncated word
+ * says less than the icon alone.
  *
- * Die Breite wird gleich der Höhe gesetzt; die runde Kante bringt `pill-btn`
- * ohnehin mit, daraus wird also ein Kreis. Damit steht der Knopf auch still:
- * Vorher wanderte „Von vorn hören“ bei jeder Änderung der Beschriftung ein
- * Stück zur Seite.
+ * the width is set equal to the height, and `pill-btn` brings the round edge
+ * anyway, so a circle comes out of it. that also keeps the button still:
+ * before, the play button wandered sideways at every change of its label.
  *
- * Der Name für Vorleseprogramme kommt dann aus `title` am Knopf. Ein
- * `display: none` nimmt die Beschriftung auch aus dem Baum für
- * Vorleseprogramme, ohne `title` bliebe der Knopf also namenlos.
- */
+ * the name for screen readers then comes from `title` on the button. a
+ * `display: none` takes the label out of their tree as well, so without
+ * `title` the button would be nameless. */
 @utility aktionsknopf-kurz {
   @container (max-width: 48rem) {
     width: 2.25rem;
@@ -565,18 +539,15 @@ h4 {
   }
 }
 
-/*
- * Immer nur das Zeichen, in jeder Fensterbreite.
+/* the icon alone, at every window width.
  *
- * `aktionsknopf-kurz` fällt erst bei Enge zusammen; auf einem breiten
- * Bildschirm stehen dort ausgeschriebene Knöpfe. Für eine Reihe von
- * Werkzeugen ist das zu viel Text: „Aktualisieren“, „Importieren“ und „Von
- * vorn hören“ nebeneinander lesen sich wie eine Ansage, während Pfeil, Ordner
- * und Dreieck für sich sprechen.
+ * `aktionsknopf-kurz` collapses only when it gets tight, and written-out
+ * buttons stand there on a wide screen. for a row of tools that is too much
+ * text: refresh, import and play-from-the-top next to each other read like an
+ * announcement, while arrow, folder and triangle speak for themselves.
  *
- * Der Name für Vorleseprogramme kommt aus `title` am Knopf; ein
- * `display: none` nimmt die Beschriftung auch aus deren Baum.
- */
+ * the name for screen readers comes from `title` on the button, and a
+ * `display: none` takes the label out of their tree as well. */
 @utility aktionsknopf-symbol {
   width: 2.25rem;
   padding-inline: 0;
@@ -591,30 +562,27 @@ h4 {
   }
 }
 
-/*
- * Die Suche ist ein Knopf, der sich beim Benutzen öffnet.
+/* the search is a button that opens while it is used.
  *
- * `search-field` bringt die runde Kante und die Höhe mit; auf 2.25rem Breite
- * wird daraus ein Kreis in der Größe der Knöpfe daneben. Tippt man hinein,
- * fährt das Feld aus — ohne zweites Antippen und ohne einen Umschalter, der
- * irgendwo hängen bleiben kann.
+ * `search-field` brings the round edge and the height along, and at 2.25rem
+ * width a circle the size of the buttons next to it comes out of that.
+ * tapping into it, the field slides out, without a second tap and without a
+ * toggle that can get stuck somewhere.
  *
- * Bewusst ohne Container-Abfrage, anders als bei `aktionsknopf-kurz`. Der
- * Maßstab dort ist die Reihe selbst, und ein Feld mit fester Breite kann sie
- * über die Schwelle schieben: Dann schaltet sich genau die Regel ab, die es
- * schmal machen sollte. Das ließ den Kreis am Rand abgeschnitten stehen und
- * die Seite waagerecht rollen. Immer schmal kennt diesen Rückkopplungsweg
- * nicht.
+ * deliberately without a container query, unlike `aktionsknopf-kurz`. the
+ * yardstick there is the row itself, and a field of fixed width can push it
+ * over the threshold: exactly the rule that was to make it narrow then
+ * switches off. that left the circle standing cut off at the edge and made
+ * the page scroll sideways. always narrow does not know this feedback path.
  *
- * Steht etwas darin, bleibt es offen. Sonst verschwände die laufende Suche
- * aus dem Blick, und die Liste wäre gefiltert, ohne dass man sähe wonach.
- */
+ * where something stands in it, it stays open. otherwise the running search
+ * would vanish from view and the list would be filtered without one seeing by
+ * what. */
 @utility suchfeld-kurz {
   min-width: 0;
-  /* Breite doppelt gesetzt: `flex-basis` gilt nur, solange das Feld auch
-     wirklich in einer Flex-Reihe steht, `width` immer. Ohne die zweite
-     Angabe blieb es bei der Eigenbreite eines Eingabefeldes, rund 170px,
-     und lief über den Rand hinaus. */
+  /* the width is set twice: `flex-basis` applies only while the field really
+     stands in a flex row, `width` always. without the second value the natural
+     width of an input field stood, around 170px, and it ran over the edge. */
   width: 2.25rem;
   flex: 0 0 2.25rem;
   transition:
@@ -628,43 +596,42 @@ h4 {
     flex: 0 1 16rem;
   }
 
-  /* Zusammengefallen rückt das Zeichen in die Mitte des Kreises. Über
-     `inset-inline` und `margin-inline`, nicht über eine Verschiebung: Die
-     gilt in beide Leserichtungen, eine halbe Breite nach links nicht. */
+  /* collapsed, the icon moves into the middle of the circle. through
+     `inset-inline` and `margin-inline` and not through a translation: those
+     hold in both reading directions, half a width to the left does not. */
   &:not(:focus-within):not(:has(input:not(:placeholder-shown))) > svg {
     inset-inline: 0;
     margin-inline: auto;
   }
 
-  /* Ohne Polsterung, solange es ein Kreis ist.
-     Bei `border-box` kann eine Box nicht schmaler werden als ihre eigene
-     Polsterung: 40px vorn für das Zeichen, 16px hinten, dazu die Rahmen —
-     macht 58px Untergrenze. Die 2.25rem waren damit physisch unmöglich, und
-     das Feld stand über den Fensterrand hinaus. Zu sehen ist ohnehin nichts,
-     der Platzhalter ist verborgen und Text steht keiner darin. */
+  /* without padding while it is a circle.
+     under `border-box` a box cannot grow narrower than its own padding: 40px
+     in front for the icon, 16px behind, plus the borders, which makes a lower
+     bound of 58px. the 2.25rem were physically impossible with that, and the
+     field stood out over the window edge. there is nothing to see anyway, the
+     placeholder is hidden and no text stands in it. */
   &:not(:focus-within):not(:has(input:not(:placeholder-shown))) > input {
     padding-inline: 0;
 
-    /* Der Platzhalter schob sich vorher gegen die Polsterung aus dem Bild.
-       Ohne sie stand er mitten im Kreis und lag über der Lupe. */
+    /* the placeholder used to push itself out of view against the padding.
+       without it, it stood in the middle of the circle and lay over the
+       magnifier. */
     &::placeholder {
       color: transparent;
     }
   }
 
-  /*
-   * Als Kreis trägt sie dieselbe Taste wie ihre Nachbarn.
+  /* as a circle it carries the same key as its neighbours.
    *
-   * `search-field` ist eine eingelassene Rille — richtig, solange man
-   * hineinschreibt, aber neben vier erhabenen Knöpfen sah der Kreis aus wie
-   * ein Loch in der Reihe. Zusammengefallen ist die Suche kein Feld mehr,
-   * sondern ein Knopf, und sieht auch so aus: Fläche aus `--control`, harte
-   * Kante darunter, zwei Pixel nach oben.
+   * `search-field` is a sunken groove, which is right while one writes into
+   * it, but next to four raised buttons the circle looked like a hole in the
+   * row. collapsed, the search is no field any more but a button, and it
+   * looks like one: a surface of `--control`, a hard edge below, two pixels
+   * up.
    *
-   * Die Hebung sitzt am Rahmen, nicht am Feld: Das Zeichen liegt darüber und
-   * bliebe sonst zurück. Beim Drücken fährt die Taste auf ihre Kante herunter,
-   * wie bei `pill-btn` auch.
-   */
+   * the lift sits on the wrapper and not on the field: the icon lies over it
+   * and would stay behind otherwise. on a press the key sinks onto its edge,
+   * as with `pill-btn` too. */
   &:not(:focus-within):not(:has(input:not(:placeholder-shown))) {
     transform: translateY(-2px);
 
@@ -690,31 +657,27 @@ h4 {
   }
 }
 
-/*
- * „Mehr anzeigen“ am Ende der letzten sichtbaren Zeile.
+/* a show-more button at the end of the last visible line.
  *
- * Vorher stand es in einer eigenen Zeile darunter. Auf dem Telefon kostete
- * das eine von wenigen: Von der Beschreibung blieben vier Zeilen Text und
- * eine Zeile Knopf. Jetzt sitzt es dort, wo der Text abbricht, direkt hinter
- * den Auslassungspunkten — sichtbar sind gut zweieinhalb Zeilen.
+ * it used to stand in a row of its own below. on a phone that cost one of
+ * few: four lines of text and one line of button were left of the
+ * description. now it sits where the text breaks off, right behind the
+ * ellipsis, and a good two and a half lines are visible.
  *
- * Der Verlauf davor lässt den Text darunter verschwinden, statt ihn hart
- * abzuschneiden. Er läuft in die Seitenfarbe, nicht in eine Fläche: Die
- * Beschreibung steht frei auf der Seite.
- */
-/*
- * Kachel in der Hauptfarbe, für den Songtext unter der Zeitleiste.
+ * the gradient in front of it lets the text below disappear instead of
+ * cutting it off hard. it runs into the page colour and not into a surface:
+ * the description stands free on the page. */
+/* a tile in the main colour, for the lyrics under the timeline.
  *
- * Nicht ein Farbton, sondern zwei: Der Akzent wird zweimal verschieden stark
- * in die Fläche gemischt und läuft schräg von der einen in die andere Ecke.
- * Ein flacher Akzentblock läse sich als Hauptaktion — davon gibt es hier
- * schon eine, den Abspielknopf. Die Mischung trägt die Farbe, ohne sie zu
- * behaupten, und nimmt den Akzent des Nutzers an, welcher es auch ist.
+ * not one tone but two: the accent is mixed into the surface twice at
+ * different strengths and runs diagonally from one corner into the other. a
+ * flat accent block would read as a main action, and there is one of those
+ * here already, the play button. the mixture carries the colour without
+ * claiming it, and takes on the accent of the user, whichever it is.
  *
- * Die Schrift bleibt die gewöhnliche: Auf einer nur angemischten Fläche liest
- * sie sich besser als eine eigens aufgehellte, und sie folgt dem Erscheinungs-
- * bild mit.
- */
+ * the type stays the ordinary one: on a merely blended surface it reads
+ * better than one lightened on purpose, and it follows the appearance
+ * along. */
 @utility kachel-akzent {
   border-radius: 1rem;
   color: var(--text);
@@ -730,8 +693,8 @@ h4 {
     transform 0.12s ease,
     box-shadow 0.12s ease;
 
-  /* Acht Zeilen Vorschau: genug, um mitzulesen, ohne dass die Kachel zur
-     Textfläche wird. Der ganze Text steht ein Antippen weiter. */
+  /* eight lines of preview: enough to read along without the tile becoming a
+     text surface. the whole text stands one tap further. */
   & > span:last-child {
     display: -webkit-box;
     -webkit-box-orient: vertical;
@@ -746,16 +709,14 @@ h4 {
   }
 }
 
-/*
- * Umblättern zwischen zwei Titeln.
+/* turning the page between two tracks.
  *
- * Der Inhalt geht in die Richtung des Wischens hinaus und kommt von der
- * anderen Seite zurück — dieselbe Bewegung wie beim Blättern in einem Buch.
- * Der Titelwechsel geschieht dabei irgendwo in der Mitte; genau dort ist die
- * Fläche durchsichtig, und der Wechsel bleibt unsichtbar.
+ * the content leaves in the direction of the swipe and comes back from the
+ * other side, the same movement as turning a page in a book. the track change
+ * happens somewhere in the middle, and exactly there the surface is
+ * transparent, so the change stays invisible.
  *
- * Kurz gehalten: Eine Geste soll sich beantwortet anfühlen, nicht abgewartet.
- */
+ * kept short: a gesture is to feel answered, not waited out. */
 @keyframes blaettern-vor {
   0% {
     transform: translateX(0);
@@ -810,7 +771,7 @@ h4 {
   background: linear-gradient(to right, transparent, var(--bg) 2rem);
 }
 
-/* Verläufe kennen keine Leserichtung, der Text darunter schon. */
+/* gradients know no reading direction, the text below them does. */
 [dir="rtl"] .mehr-anzeigen {
   background: linear-gradient(to left, transparent, var(--bg) 2rem);
 }
@@ -847,23 +808,23 @@ h4 {
     transform: translateY(-2px);
   }
 
-  /* Ausgewählt in einer Schalterreihe, Erscheinungsbild, Rückblick, Ansicht
-     und Kachelgröße.
+  /* selected in a switch row: appearance, review, view and tile size.
      
-     Die Erhebung allein sagte nur „dieser Knopf steht heraus“, und das tun in
-     der App auch gewöhnliche Knöpfe. Erst die Farbe sagt „dieser gilt“. Damit
-     spricht die Schalterreihe dieselbe Sprache wie die Navigation und die
-     Knöpfe der Player-Leiste: neutrale Fläche, Akzent auf dem Zeichen.
+     the lift alone said only that this button stands out, and ordinary
+     buttons do that in the app too. only the colour says that this one
+     applies. with it the switch row speaks the same language as the
+     navigation and the buttons of the player bar: a neutral surface, the
+     accent on the icon.
 
-     Steht vor den Fassungen für Akzent und Warnung; die sind genauer und
-     behalten darum ihre eigene Schriftfarbe. */
+     stands before the versions for accent and warning, those are more
+     specific and therefore keep their own type colour. */
   &[aria-pressed="true"] {
     color: var(--accent);
   }
 
-  /* Akzentfassung für die Hauptaktion, gleiche Bauweise, Markenfarbe.
-     Die Auswahl ist absichtlich enger als `.pill-btn.is-raised`, sonst
-     gewönne dort die neutrale Fläche. */
+  /* the accent version for the main action, the same build, the brand colour.
+     the selector is deliberately narrower than `.pill-btn.is-raised`,
+     otherwise the neutral surface would win there. */
   &.is-accent[aria-pressed="true"],
   &.is-accent.is-raised {
     background: var(--accent);
@@ -877,11 +838,10 @@ h4 {
     filter: brightness(1.05);
   }
 
-  /* Hebt sich erst unter dem Zeiger, statt dauerhaft erhaben zu stehen.
-     Für Knöpfe, die in jeder Zeile einer langen Liste mitlaufen: Dutzende
-     ständig herausstehender Tasten machen die Liste unruhig, und weil sie
-     ohnehin erst beim Überfahren erscheinen, kommt die Erhebung genau dann,
-     wenn man sie treffen will. */
+  /* lifts under the pointer only, instead of standing raised permanently.
+     for buttons running along in every row of a long list: dozens of keys
+     standing out permanently make the list restless, and since they appear on
+     hover anyway, the lift comes exactly when one wants to hit them. */
   &.is-lift:hover,
   &.is-lift:focus-visible {
     color: var(--text);
@@ -897,15 +857,15 @@ h4 {
     box-shadow: 0 0 0 0 transparent;
   }
 
-  /* Eingeschaltet: Wiederholen, Zufall, Sleeptimer, Warteschlange, Lyrics.
-     Die Taste bleibt neutral, nur das Zeichen darauf trägt den Akzent, ein
-     ganzes Feld in Akzentfarbe läse sich als Hauptaktion, und davon kann es
-     in einer Leiste nicht sechs geben. */
+  /* switched on: repeat, shuffle, sleep timer, queue, lyrics.
+     the key stays neutral and only the icon on it carries the accent. a whole
+     field in the accent colour would read as a main action, and there cannot
+     be six of those in one bar. */
   &.is-on {
     color: var(--accent);
   }
 
-  /* Warnfassung für Schaltflächen, die etwas unwiderruflich wegnehmen. */
+  /* the warning version for buttons that take something away irrevocably. */
   &.is-danger[aria-pressed="true"],
   &.is-danger.is-raised {
     background: var(--danger);
@@ -919,7 +879,7 @@ h4 {
     filter: brightness(1.05);
   }
 
-  /* Gedrückt: Die Taste fährt auf ihre Unterkante herunter. */
+  /* pressed: the key sinks onto its bottom edge. */
   &:active:not(:disabled) {
     transform: translateY(0);
     box-shadow: 0 0 0 0 transparent;
@@ -931,16 +891,17 @@ h4 {
   }
 }
 
-/* Auswahlfeld in derselben Bauweise wie `pill-btn`: einfarbige Fläche, harte
-   Unterkante, sinkt beim Drücken darauf ab. Das Systemaussehen ist abgeschaltet
-   (`appearance: none`), der Pfeil kommt als eigenes Zeichen daneben und folgt
-   deshalb der Textfarbe. Rechts ist Platz dafür freigehalten. */
+/* a select field in the same build as `pill-btn`: a single-colour surface, a
+   hard bottom edge, sinking onto it when pressed. the system look is switched
+   off (`appearance: none`), the arrow comes as an icon of its own next to it
+   and therefore follows the type colour. room is kept clear for it on the
+   right. */
 @utility pill-select {
   appearance: none;
-  /* Flex, nicht der Vorgabewert: Solange der Knopf ein Zeilenkasten war,
-     rutschte ein Zeichen davor, die Flagge etwa, in eine eigene Zeile und
-     schob die Beschriftung darunter. Ein Flex-Behälter stellt beides
-     nebeneinander und zentriert es senkrecht. */
+  /* flex and not the default: while the button was an inline box, an icon in
+     front of it, a flag for instance, slid into a row of its own and pushed
+     the label below. a flex container puts both next to each other and centres
+     them vertically. */
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -966,8 +927,8 @@ h4 {
     box-shadow: 0 0 0 0 transparent;
   }
 
-  /* Die aufgeklappte Liste zeichnet das System; sie soll wenigstens die
-     Farben der App tragen. */
+  /* the unfolded list is drawn by the system, and it is at least to carry the
+     colours of the app. */
   & option {
     background: var(--control);
     color: var(--text);
@@ -975,37 +936,35 @@ h4 {
   }
 }
 
-/* Die Inhaltsfläche liegt im Rahmen wie eine ausgefräste Mulde: Schatten
-   innen an der Oberkante, wo das Licht nicht hinkommt, und eine helle Linie
-   unterhalb, wo es wieder auftrifft. Dieselbe Bauweise wie beim Suchfeld, nur
-   über die ganze Fläche. */
+/* the content surface lies in the frame like a milled-out hollow: a shadow
+   inside at the top edge where the light does not reach, and a light line
+   below where it strikes again. the same build as on the search field, only
+   across the whole surface. */
 @utility sunken-panel {
   box-shadow:
-    /* Vertiefung ringsum, sehr flach gehalten. */
+    /* a hollow all around, kept very shallow. */
     inset 0 0 14px rgba(0, 0, 0, 0.16),
-    /* Oben eine Spur mehr, sonst sähe die Mulde flach aus. */ inset 0 2px
+    /* a touch more at the top, otherwise the hollow would look flat. */ inset 0 2px
       4px -1px rgba(0, 0, 0, 0.12),
-    /* Kante an allen vier Seiten. Dunkler als der Rahmen, dadurch liest sie
-       sich als Schattenfuge zwischen Rahmen und Fläche. */
+    /* an edge on all four sides. darker than the frame, which makes it read as
+       a shadow joint between frame and surface. */
       0 0 0 1px color-mix(in srgb, var(--canvas) 76%, #000);
 }
 
-/* Eintrag in der Seitenleiste. Der gewählte steht plastisch heraus, gleiche
-   Bauweise wie `pill-btn`, nur mit dem weicheren Radius der Leiste: einfarbige
-   Fläche, harte Unterkante, beim Drücken sinkt er darauf ab. */
-/*
- * Navigation am unteren Rand, nur am Telefon.
+/* an entry in the sidebar. the selected one stands out in relief, the same
+   build as `pill-btn`, only with the softer radius of the bar: a
+   single-colour surface, a hard bottom edge, sinking onto it when pressed. */
+/* the navigation at the bottom edge, on a phone only.
  *
- * Sie liegt fest am Fenster und trägt den sicheren Bereich als Polsterung:
- * Auf Geräten mit Gestenleiste säßen die Ziele sonst genau darunter, und
- * jeder zweite Griff wäre ein Wisch nach Hause statt ein Seitenwechsel.
- */
+ * it hangs off the window and carries the safe area as padding: on devices
+ * with a gesture bar the targets would otherwise sit right under it, and every
+ * second reach would be a swipe home instead of a page change. */
 @utility unterleiste {
   position: fixed;
   inset-inline: 0;
-  /* Bleibt unten stehen, auch wenn die Tastatur sie verdeckt: Wer tippt,
-     wechselt nicht die Seite, und der Player über der Tastatur ist der, den
-     man dabei noch bedienen will. */
+  /* stays standing at the bottom even where the keyboard covers it: whoever
+     types does not change the page, and the player above the keyboard is the
+     one still to be operated while doing so. */
   bottom: 0;
   z-index: 30;
   display: flex;
@@ -1022,9 +981,9 @@ h4 {
   align-items: center;
   justify-content: center;
   gap: 0.2rem;
-  /* Elf Millimeter Höhe: Unter etwa vierundvierzig Punkten trifft ein Daumen
-     nicht mehr zuverlässig, und daneben zu greifen heißt hier, auf einer
-     anderen Seite zu landen. */
+  /* eleven millimetres high: below about forty-four points a thumb no longer
+     hits reliably, and grasping next to it means landing on a different page
+     here. */
   min-height: var(--unterleiste-hoehe);
   padding: 0.4rem 0.25rem;
   font-size: 0.6875rem;
@@ -1036,13 +995,11 @@ h4 {
   }
 }
 
-/*
- * Das Blatt hinter „Mehr“.
+/* the sheet behind the more button.
  *
- * Steigt vom unteren Rand auf, also von dort, wo der Knopf steht, und endet
- * über der Leiste statt am Bildschirmrand: Die Leiste bleibt sichtbar, damit
- * erkennbar ist, woraus das Blatt gekommen ist.
- */
+ * it rises from the bottom edge, from where the button stands, and ends above
+ * the bar instead of at the screen edge: the bar stays visible so it is
+ * recognisable what the sheet came out of. */
 @utility unterleiste-blatt {
   position: fixed;
   inset-inline: 0;
@@ -1070,10 +1027,10 @@ h4 {
     color: var(--text);
   }
 
-  /* Die geöffnete Seite steht erhaben, in der neutralen Tastenfarbe, wie
-     jeder andere Knopf. Nur Schrift und Zeichen tragen den Akzent: Das
-     genügt zum Finden und lässt die Leiste ruhig. Eine ganze Fläche in
-     Akzentfarbe wäre eine Hauptaktion, und davon gibt es hier keine. */
+  /* the open page stands raised, in the neutral key colour, like every other
+     button. only type and icon carry the accent: that is enough for finding it
+     and leaves the bar calm. a whole surface in the accent colour would be a
+     main action, and there is none of those here. */
   &.is-active {
     color: var(--accent);
     background: var(--control);
@@ -1093,8 +1050,8 @@ h4 {
   }
 }
 
-/* Zeile, die gerade läuft: steht plastisch aus der Liste heraus, gleiche
-   Bauweise wie Knöpfe und Navigationseinträge. */
+/* the row currently running: it stands out of the list in relief, the same
+   build as buttons and navigation entries. */
 @utility raised-row {
   background: var(--control);
   box-shadow:
@@ -1103,17 +1060,16 @@ h4 {
   transform: translateY(-2px);
 }
 
-/* Ankreuzkästchen in der Bauweise der Knöpfe.
+/* a checkbox in the build of the buttons.
  *
- * Das systemeigene Kästchen zeichnet GTK, und dorthin reicht kein CSS, es
- * blieb der einzige Bedienteil ohne Tiefe. `appearance: none` nimmt die
- * Zeichnung an sich; der Haken darunter ist ein gedrehtes Winkelstück aus
- * zwei Rändern, kein Bild. So folgt er der Schriftfarbe und bleibt bei jeder
- * Größe scharf.
+ * the native box is drawn by gtk and no css reaches in there, so it stayed
+ * the only control without depth. `appearance: none` takes the drawing over,
+ * and the tick below is a rotated corner piece made of two borders, not an
+ * image. that way it follows the type colour and stays sharp at any size.
  *
- * Angekreuzt trägt es den Akzent, wie jeder eingeschaltete Zustand der App.
- * Die Hakenfarbe wird gerechnet (`--accent-ink`), sonst verschwände er auf
- * Indigo. */
+ * ticked it carries the accent, like every switched-on state of the app. the
+ * tick colour is calculated (`--accent-ink`), otherwise it would disappear on
+ * indigo. */
 @utility check-box {
   appearance: none;
   flex-shrink: 0;
@@ -1121,10 +1077,10 @@ h4 {
   width: 1.15rem;
   border-radius: 0.4rem;
   background: var(--control);
-  /* Die Haarlinie zuerst: Ein Kästchen in Tastenfarbe steht meist auf einer
-     weißen Karte, und dort ist der Unterschied zu klein, um es leer überhaupt
-     zu erkennen. Die Kontur macht aus einem Hauch von Grau ein sichtbares
-     Feld, ohne die Erhebung anzutasten, die darunter bleibt. */
+  /* the hairline first: a box in the key colour usually stands on a white
+     card, and the difference is too small there to recognise it when empty at
+     all. the outline turns a breath of grey into a visible field without
+     touching the lift, which stays below it. */
   box-shadow:
     0 0 0 1px var(--border-strong),
     0 2px 0 0 color-mix(in srgb, var(--control) 72%, #000),
@@ -1137,8 +1093,8 @@ h4 {
     box-shadow 0.12s ease,
     background 0.12s ease;
 
-  /* Angekreuzt braucht es die Kontur nicht mehr, die Akzentfläche trägt
-     sich selbst, und eine Linie darum wirkte wie ein zweiter Rand. */
+  /* ticked it needs the outline no more, the accent surface carries itself and
+     a line around it looked like a second border. */
   &:checked {
     background: var(--accent);
     box-shadow:
@@ -1156,8 +1112,8 @@ h4 {
     transform: rotate(45deg);
   }
 
-  /* Gedrückt fährt es auf seine Unterkante herunter, wie die Tasten. Die
-     Kontur bleibt, sonst verschwände das leere Feld für einen Moment ganz. */
+  /* pressed it sinks onto its bottom edge, like the keys. the outline stays,
+     otherwise the empty field would disappear entirely for a moment. */
   &:active {
     transform: translateY(0);
     box-shadow: 0 0 0 1px var(--border-strong);
@@ -1168,12 +1124,13 @@ h4 {
   }
 }
 
-/* Farbfeld zur Akzentwahl, gebaut wie die Knöpfe: harte Unterkante im eigenen
-   Ton, darunter ein weicher Schlagschatten.
+/* a colour swatch for picking the accent, built like the buttons: a hard
+   bottom edge in its own tone, a soft drop shadow under it.
 
-   Die Farbe kommt von außen über `--feld`, statt schlicht als `background`.
-   Nur so kann die Kante mitfärben, sie ist eine abgedunkelte Fassung der
-   Fläche, und `color-mix` braucht dafür einen Wert, den es lesen kann. */
+   the colour comes from outside through `--feld` instead of plainly as
+   `background`. only that way can the edge take the colour along, it is a
+   darkened version of the surface, and `color-mix` needs a value it can read
+   for that. */
 @utility swatch {
   border-radius: 9999px;
   background: var(--feld);
@@ -1190,11 +1147,11 @@ h4 {
   align-items: center;
   justify-content: center;
 
-  /* Die gewählte Farbe bekommt Ring *und* Haken. Der Ring allein reichte
-     nicht: Neben dem grauen Pluszeichen, das ebenfalls erhaben steht, war
-     nicht auf einen Blick zu sehen, welches Feld nun gilt. Ein Haken sitzt
-     im Feld selbst und lässt keine Frage offen. Kein Wachsen, das verschöbe
-     die Nachbarn. */
+  /* the chosen colour gets a ring and a tick. the ring alone did not do:
+     next to the grey plus sign, which stands raised as well, it was not
+     visible at a glance which swatch applies. a tick sits in the swatch itself
+     and leaves no question open. no growing, that would shift the
+     neighbours. */
   &[aria-pressed="true"] {
     outline: 2px solid var(--text);
     outline-offset: 3px;
@@ -1215,8 +1172,8 @@ h4 {
   }
 }
 
-/* Cover, das aus der Fläche heraussteht. Harte Unterkante im eigenen Ton
-   plus Schlagschatten, wie bei den Knöpfen. */
+/* a cover standing out of the surface. a hard bottom edge in its own tone
+   plus a drop shadow, as on the buttons. */
 @utility raised-cover {
   box-shadow:
     0 2px 0 0 rgba(0, 0, 0, 0.45),
@@ -1225,8 +1182,9 @@ h4 {
   transform: translateY(-2px);
 }
 
-/* Wie `sunken-panel`, nur tiefer. Für große Flächen, auf denen die flache
-   Fassung kaum auffällt, weil sich der Schatten über die Breite verliert. */
+/* like `sunken-panel`, only deeper. for large surfaces on which the shallow
+   version is barely noticeable because the shadow is lost across the
+   width. */
 @utility sunken-deep {
   box-shadow:
     inset 0 0 28px rgba(0, 0, 0, 0.38),
@@ -1234,18 +1192,18 @@ h4 {
     0 0 0 1px color-mix(in srgb, var(--canvas) 76%, #000);
 }
 
-/* Suchfeld als eingelassene Rille, das Gegenstück zu `pill-btn`: dort steht
-   die Fläche heraus, hier liegt sie darunter. Der Schatten oben innen ist der
-   Rand, der Licht wegnimmt; die helle Linie unterhalb des Feldes ist die
-   Kante, auf die das Licht wieder trifft. Ohne diese zweite Linie wirkt das
-   Feld nur dunkel statt vertieft. */
+/* the search field as a sunken groove, the counterpart to `pill-btn`: there
+   the surface stands out, here it lies below. the shadow at the top inside is
+   the edge that takes light away, and the light line below the field is the
+   edge the light strikes again. without that second line the field merely
+   looks dark instead of sunken. */
 @utility search-field {
   width: 100%;
-  /* Feste Höhe statt einer, die sich aus Polsterung und Schriftmetrik ergibt:
-     Neben dem Feld stehen Knöpfe (`h-9`) und Auswahlfelder, beide genau
-     2.25rem. Vorher lag die Leiste je nach Schriftschnitt ein bis drei Pixel
-     daneben, sichtbar als Versatz in jeder Zeile, in der beides nebeneinander
-     steht. Der senkrechte Anteil der Polsterung entfällt damit. */
+  /* a fixed height instead of one coming out of padding and font metrics:
+     buttons (`h-9`) and select fields stand next to the field, both exactly
+     2.25rem. before, the bar lay one to three pixels off depending on the font
+     cut, visible as an offset in every row where both stand side by side. the
+     vertical part of the padding is dropped with it. */
   height: 2.25rem;
   border-radius: 9999px;
   border: 1px solid var(--border);
@@ -1274,7 +1232,7 @@ h4 {
   }
 }
 
-/* Einheitliches Mikro-Label (Versalien-Sektionsüberschriften). */
+/* the uniform micro label: section headings in capitals. */
 @utility eyebrow {
   font-size: 11px;
   font-weight: 600;
@@ -1298,8 +1256,8 @@ input[type="range"] {
   background: transparent;
   cursor: pointer;
 }
-/* Flach gehalten: Die Leisten sind Anzeigen, keine Körper. Der bereits
-   gehörte Teil in Akzentfarbe, der Rest neutral, keine Schatten. */
+/* kept flat: the bars are displays, not bodies. the part already heard in
+   the accent colour, the rest neutral, no shadows. */
 input[type="range"]::-webkit-slider-runnable-track {
   height: 4px;
   border-radius: 999px;
@@ -1312,11 +1270,12 @@ input[type="range"]::-webkit-slider-runnable-track {
   );
 }
 
-/* Von rechts nach links füllt sich die Leiste von der anderen Seite.
+/* from right to left the bar fills from the other side.
  *
- * Den Regler selbst spiegelt der Browser bei `dir="rtl"`, den Verlauf darunter
- * nicht: `to right` bleibt `to right`. Ohne diese Zeile stünde der Griff links
- * und die Akzentfläche rechts, also getrennt voneinander. */
+ * the browser mirrors the slider itself under `dir="rtl"` but not the gradient
+ * below it: `to right` stays `to right`. without this line the handle would
+ * stand on the left and the accent surface on the right, so apart from each
+ * other. */
 [dir="rtl"] input[type="range"]::-webkit-slider-runnable-track {
   background: linear-gradient(
     to left,
@@ -1341,48 +1300,47 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   opacity: 1;
 }
 
-/* ── Lyrics als räumliche Fläche ───────────────────────────────────────────
-   Der Text soll nach hinten wegkippen statt flach auf dem Bildschirm zu
-   liegen: Der Rahmen gibt die Fluchtpunkttiefe vor, die innere Fläche neigt
-   sich um wenige Grad. Oben und unten läuft sie weich aus, damit die Kanten
-   nicht abgeschnitten wirken.
+/* --- lyrics as a spatial surface ---
 
-   Die aktive Zeile wird davon ausgenommen, sie kommt nach vorn, damit sie
-   trotz der Neigung gut lesbar bleibt. */
+   the text is to tip away to the back instead of lying flat on the screen:
+   the frame sets the vanishing depth, the inner surface tilts by a few
+   degrees. it fades out softly at the top and bottom so the edges do not look
+   cut off.
+
+   the active line is exempt from it, it comes forward so it stays well
+   readable despite the tilt. */
 @utility lyrics-stage {
   perspective: 900px;
   perspective-origin: 50% 40%;
-  /* Die hervorgehobene Zeile steht vor der Fläche und ragt dabei etwas über
-     deren Rand hinaus. Ohne diese Zeile rechnet der Browser daraus einen
-     waagerechten Rollbalken. Senkrecht wird weiter gerollt. */
+  /* the highlighted line stands in front of the surface and reaches a little
+     over its edge in doing so. without this line the browser turns that into a
+     horizontal scrollbar. vertical scrolling carries on. */
   overflow-x: hidden;
 }
 
 @utility lyrics-plane {
-  /* Luft für die Zeile, die sich heraushebt: Sie wird dabei gut fünf Prozent
-     breiter und stieße sonst an den Rand. */
+  /* air for the line lifting itself out: it grows a good five percent wider in
+     doing so and would hit the edge otherwise. */
   padding-inline: 4%;
 
-  /* Ohne Neigung.
+  /* without a tilt.
    *
-   * Hier stand `rotateX(12deg)`, und es kippte die ganze Liste, nicht den
-   * sichtbaren Ausschnitt. Je weiter eine Zeile vom oberen Rand entfernt ist,
-   * desto näher kommt sie durch die Perspektive — nachgemessen war die Fläche
-   * eines langen Textes 1326 Pixel breit in einem 354 Pixel schmalen Rahmen,
-   * fast das Vierfache. Sichtbar wurde das als angeschnittene Zeilen: „ld you“
-   * statt „Told you“, „pe to God“ statt „Hope to God“.
+   * `rotateX(12deg)` stood here, and it tipped the whole list, not the
+   * visible section. the further a line lies from the top edge, the closer
+   * perspective brings it: measured, the surface of a long text was 1326
+   * pixels wide inside a frame 354 pixels narrow, almost four times as much.
+   * it became visible as clipped lines, half words instead of whole ones.
    *
-   * Auf dem Rechner war es dasselbe, nur fällt es in der breiten Spalte erst
-   * weiter unten auf. Ein kleinerer Winkel verschöbe das Problem bloß, denn
-   * die Verzerrung wächst mit der Länge des Textes und die ist nicht
-   * begrenzt.
+   * on a desktop it was the same, it only shows further down in the wide
+   * column. a smaller angle would merely postpone the problem, as the
+   * distortion grows with the length of the text and that is not bounded.
    *
-   * Der Raum bleibt: Die gerade gesungene Zeile hebt sich weiter heraus, und
-   * das ist begrenzt — 46 Pixel bei 900 Pixel Tiefe, also fünf Prozent. */
+   * the space stays: the line being sung still lifts itself out, and that is
+   * bounded, 46 pixels at 900 pixels of depth, so five percent. */
   transform-style: preserve-3d;
-  /* Nur ein Hauch an den Enden: Der Verlauf soll das Abschneiden mildern,
-     nicht ganze Zeilen schlucken. Vorher fraß er oben 14 % und unten 22 % der
-     Höhe, also gut zwei Zeilen. */
+  /* only a breath at the ends: the fade is to soften the cut, not to swallow
+     whole lines. before it ate 14 % of the height at the top and 22 % at the
+     bottom, a good two lines. */
   mask-image: linear-gradient(
     to bottom,
     transparent 0%,
@@ -1392,24 +1350,24 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   );
 }
 
-/* Die gerade gesungene Zeile hebt sich aus der Ebene heraus. */
+/* the line being sung lifts itself out of the plane. */
 @utility lyrics-active {
   transform: translateZ(46px);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* Das Umblättern entfällt; der Titel wechselt dann ohne Bewegung. */
+  /* the page turn is dropped, and the track then changes without animation. */
   .blaettert-vor,
   .blaettert-zurueck {
     animation: none;
   }
 
-  /* Nur noch die hervorgehobene Zeile: Die Fläche selbst trägt keine
-     Verwandlung mehr, siehe `lyrics-plane`. */
+  /* the highlighted line alone now: the surface itself carries no transform
+     any more, see `lyrics-plane`. */
   .lyrics-active {
     transform: none;
   }
-  /* Unterkante und Schatten bleiben, nur das Anheben entfällt. */
+  /* bottom edge and shadow stay, only the lift is dropped. */
   .pill-btn,
   .pill-btn[aria-pressed="true"],
   .pill-btn.is-raised {
@@ -1417,16 +1375,16 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   }
 }
 
-/* Dialoge, Menüs, Meldungen.
+/* dialogs, menus, messages.
  *
- * Deckkraft und Bewegung laufen getrennt und verschieden lang. Liefen sie
- * gemeinsam, wäre das Fenster erst zu sehen, wenn es fast angekommen ist,
- * der Rest wirkt dann wie ein Sprung. So ist es früh da und gleitet die
- * letzte Strecke sichtbar aus.
+ * opacity and movement run separately and for different lengths. running
+ * together, the window would only be visible once it has almost arrived, and
+ * the rest then looks like a jump. this way it is there early and visibly
+ * glides out the last stretch.
  *
- * Der Hauch Verkleinerung macht das Aufgehen ablesbar: Etwas kommt auf den
- * Betrachter zu, statt bloß heller zu werden. Weniger als zwei Prozent,
- * mehr wirkte wie ein Aufpoppen. */
+ * the breath of scaling makes the opening readable: something comes towards
+ * the viewer instead of merely growing brighter. less than two percent, more
+ * looked like a pop. */
 @keyframes rise-deckkraft {
   from {
     opacity: 0;
@@ -1451,9 +1409,9 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
     rise-weg 380ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
-/* Die Abdunklung dahinter. Sie schnappte bisher ohne jede Bewegung ein,
-   ein harter Schnitt unmittelbar vor einer weichen Bewegung, und genau der
-   ließ das Ganze plötzlich wirken. */
+/* the scrim behind it. it used to snap in without any animation, a hard cut
+   right before a soft movement, and exactly that made the whole thing look
+   abrupt. */
 @keyframes schleier {
   from {
     opacity: 0;
@@ -1467,8 +1425,8 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   animation: schleier 260ms ease-out both;
 }
 
-/* Rückweg: schneller als der Hinweg, wie überall. Was man wegschickt, soll
-   nicht warten lassen. */
+/* the way back: faster than the way in, as everywhere. what one sends away
+   is not to keep one waiting. */
 @keyframes verblassen {
   from {
     opacity: 1;
@@ -1482,14 +1440,14 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   animation: verblassen 160ms ease-in both;
 }
 
-/* Der Inhalt eines Dialogs, versetzt zum Fenster selbst.
+/* the content of a dialog, offset against the window itself.
  *
- * Erst kommt die Fläche, dann füllt sie sich. Das trennt zwei Vorgänge, die
- * sonst gleichzeitig ablaufen und sich gegenseitig verdecken, man sieht, wo
- * das Fenster aufgeht, bevor man liest, was darin steht.
+ * the surface comes first, then it fills. that separates two processes which
+ * would otherwise run at the same time and cover each other: one sees where
+ * the window opens before reading what stands in it.
  *
- * `both` ist hier entscheidend: Ohne diese Angabe stünde der Inhalt während
- * der Wartezeit schon sichtbar da, und der Versatz fiele weg. */
+ * `both` is decisive here: without it the content would stand visible during
+ * the wait already and the offset would fall away. */
 @keyframes inhalt-deckkraft {
   from {
     opacity: 0;
@@ -1514,11 +1472,10 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
     inhalt-weg 400ms cubic-bezier(0.32, 0.72, 0, 1) 120ms both;
 }
 
-/* Seitenwechsel. Ohne Verkleinerung, anders als bei den Dialogen: Eine Seite
-   kommt nicht auf einen zu, sie löst die vorige ab. Bewegt werden
-   ausschließlich Deckkraft und Verschiebung, alles andere zwänge den Browser,
-   das Bild bei jedem Einzelbild neu zu berechnen, und genau davon kommt das
-   Ruckeln. */
+/* a page change. without scaling, unlike the dialogs: a page does not come
+   towards one, it replaces the previous one. opacity and translation alone are
+   animated, anything else would force the browser to recompute the picture on
+   every frame, and exactly that is where the stutter comes from. */
 @keyframes seiten-deckkraft {
   from {
     opacity: 0;
@@ -1543,23 +1500,21 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
     seiten-weg 420ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
-/* Seitenbereiche fahren von rechts ein, statt von unten aufzusteigen: Sie
-   kommen ja auch von dort.
+/* side panels slide in from the right instead of rising from the bottom:
+   that is where they come from after all.
  *
- * Mitanimiert wird die Breite, nicht nur die Verschiebung. Ohne das stünde
- * die Fläche sofort in voller Breite da, der Hauptbereich spränge schmaler,
- * und nur ihr Inhalt käme nachgeglitten, der Sprung ist genau das, was man
- * sieht. Breite kostet zwar eine Neuberechnung je Einzelbild, betrifft aber
- * nur diese eine Fläche. Der Inhalt darin hat eine feste Breite und wird
- * dabei nicht umgebrochen. */
-/*
- * Die Warteschlange liegt als eigene Insel im Fensterrahmen, wie der
- * Seiteninhalt daneben. Ihre Breite umfasst darum nicht nur die 20rem Inhalt,
- * sondern auch den Rand rechts (0.75rem) und das eine Pixel links, das die
- * Kante der Insel braucht: Die Hülle beschneidet, was übersteht, sonst liefe
- * der Inhalt beim Einfahren über den Rand hinaus, und ohne dieses Pixel
- * schnitte sie die linke Kante gleich mit ab.
- */
+ * the width is animated along, not the translation alone. without that the
+ * surface would stand at full width at once, the main area would jump
+ * narrower, and only its content would come gliding after, and the jump is
+ * exactly what one sees. width does cost a recomputation per frame but
+ * concerns this one surface only. the content inside has a fixed width and is
+ * not reflowed in doing so. */
+/* the queue lies in the window frame as an island of its own, like the page
+ * content next to it. its width therefore covers not only the 20rem of
+ * content but the margin on the right (0.75rem) and the one pixel on the left
+ * the edge of the island needs: the wrapper clips what sticks out, otherwise
+ * the content would run over the edge while sliding in, and without that pixel
+ * it would clip the left edge along with it. */
 @keyframes einfahren {
   from {
     width: 0;
@@ -1577,15 +1532,15 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   animation: einfahren 340ms cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
-/* Die Vollbildansicht mit Cover und Lyrics.
+/* the full screen view with cover and lyrics.
  *
- * Sie wird aus der Player-Leiste am unteren Rand geöffnet und kommt darum von
- * dort, mit deutlich mehr Weg als ein Dialog, weil sie das ganze Fenster
- * einnimmt. Der Hauch Verkleinerung bleibt klein: Auf voller Fläche fällt ein
- * Prozent schon auf.
+ * it is opened from the player bar at the bottom edge and therefore comes
+ * from there, with markedly more distance than a dialog because it takes the
+ * whole window. the breath of scaling stays small: on a full surface one
+ * percent is noticeable already.
  *
- * Deckkraft und Bewegung wieder getrennt, damit man die Fläche früh sieht und
- * sie danach sichtbar zur Ruhe kommt. */
+ * opacity and movement separated again, so the surface is seen early and
+ * visibly comes to rest afterwards. */
 @keyframes vollbild-deckkraft {
   from {
     opacity: 0;
@@ -1595,9 +1550,9 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   }
 }
 
-/* Ohne Verkleinerung, wie beim Rückweg: Auf voller Fläche mit Cover, Lyrics
-   und Schatten kostet jede Skalierung ein vollständiges Neuzeichnen je
-   Einzelbild. Der Weg allein trägt die Bewegung genauso. */
+/* without scaling, as on the way back: on a full surface with cover, lyrics
+   and shadows every scale costs a complete repaint per frame. the distance
+   alone carries the movement just as well. */
 @keyframes vollbild-weg {
   from {
     transform: translateY(28px);
@@ -1614,19 +1569,19 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   will-change: transform, opacity;
 }
 
-/* Rückweg: die Fläche fährt vollständig nach unten aus dem Bild.
+/* the way back: the surface slides fully out of view downwards.
  *
- * Ohne jede Änderung der Deckkraft, das ist der Kern. Eine halbdurchsichtige
- * Fläche zwingt den Browser, den ganzen Inhalt zunächst abseits zu zeichnen
- * und dann überblendet aufzutragen. Beim Aufgehen fällt das nicht ins Gewicht,
- * weil der Inhalt gestaffelt nachkommt und die teuren Teile noch fehlen; beim
- * Schließen steht alles fertig da, und genau dort wurde es zäh.
+ * without any change of opacity, that is the core. a half-transparent surface
+ * forces the browser to draw the whole content aside first and then composite
+ * it. on opening that does not weigh much because the content comes in
+ * staggered and the expensive parts are still missing, on closing everything
+ * stands finished, and exactly there it grew sluggish.
  *
- * Eine reine Verschiebung schiebt dagegen eine fertig gezeichnete Ebene, ohne
- * einen einzigen Strich zu erneuern. Damit die Fläche am Ende nicht sichtbar
- * verschwindet, fährt sie ganz hinaus: Sie gleitet hinter die Player-Leiste
- * und wird vom Fensterrand abgeschnitten. Beim Aushängen danach ist sie
- * ohnehin nicht mehr zu sehen, auch der Abbau fällt so nicht mehr auf. */
+ * a pure translation on the other hand pushes an already drawn layer without
+ * renewing a single stroke. so the surface does not visibly disappear at the
+ * end, it slides all the way out: it glides behind the player bar and is
+ * clipped by the window edge. at the unmount afterwards it is out of sight
+ * anyway, so the teardown does not show either. */
 @keyframes vollbild-zu {
   from {
     transform: none;
@@ -1641,15 +1596,15 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   will-change: transform;
 }
 
-/* Zweite Staffel, nach `animate-content`. Für Bereiche, die selbst noch
-   nachladen, die Lyrics etwa, und darum zuletzt erscheinen sollen. */
+/* the second stage, after `animate-content`. for areas still loading
+   themselves, the lyrics for instance, which are therefore to appear last. */
 .animate-content-late {
   animation:
     inhalt-deckkraft 200ms ease-out 230ms both,
     inhalt-weg 440ms cubic-bezier(0.32, 0.72, 0, 1) 230ms both;
 }
 
-/* Rückweg, kürzer als der Hinweg. */
+/* the way back, shorter than the way in. */
 @keyframes ausfahren {
   from {
     width: calc(20rem + 0.75rem + 1px);
@@ -1686,10 +1641,11 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   }
 }
 
-/* ── Eigene Titelleiste ─────────────────────────────────────────────────────
-   Das native Fensterband ist aus (`decorations: false`); diese flache 30-px-
-   Leiste im App-Design ersetzt es (siehe components/TitleBar.tsx), wie im
-   Comunicate-Projekt. Zugleich Ziehfläche zum Verschieben des Fensters. */
+/* --- our own title bar ---
+
+   the native window band is off (`decorations: false`), and this flat 30 px
+   bar in the design of the app replaces it (see components/TitleBar.tsx). it
+   is the drag area for moving the window at the same time. */
 .titlebar {
   flex: 0 0 30px;
   height: 30px;

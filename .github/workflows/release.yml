@@ -1,6 +1,6 @@
 name: Release
 
-# Erzeugt alle Installer. Manuell startbar oder über einen Tag wie v0.1.0.
+# builds every installer. startable by hand or through a tag such as v0.1.0.
 on:
   workflow_dispatch:
   push:
@@ -15,19 +15,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # .deb, .rpm, .AppImage
+          # deb, rpm, appimage
           - os: ubuntu-22.04
             label: Linux (deb, rpm, AppImage)
             args: "--bundles deb,rpm,appimage"
-          # .exe (NSIS) und .msi
+          # exe (nsis) and msi
           - os: windows-latest
             label: Windows (exe, msi)
             args: "--bundles nsis,msi"
-          # .dmg für Apple Silicon
+          # dmg for apple silicon
           - os: macos-latest
             label: macOS (Apple Silicon)
             args: "--target aarch64-apple-darwin --bundles dmg,app"
-          # .dmg für Intel-Macs
+          # dmg for intel macs
           - os: macos-latest
             label: macOS (Intel)
             args: "--target x86_64-apple-darwin --bundles dmg,app"
@@ -74,10 +74,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: ${{ matrix.args }}
-          # Entwurf statt Veröffentlichung: Der Lauf sammelt alle Installer an
-          # einer Release-Seite, gibt sie aber nicht frei. So lässt sich vorher
-          # nachsehen, ob wirklich jedes Format dabei ist, denn bei sechs Systemen
-          # scheitert erfahrungsgemäß irgendwann eines still.
+          # a draft instead of a release: the run collects every installer on
+          # one release page without publishing it. that way one can check
+          # beforehand whether every format is really there, as with six
+          # systems one of them fails silently sooner or later
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
           releaseName: Robify ${{ github.ref_name }}
           releaseBody: ${{ github.ref_type == 'tag' && 'Siehe CHANGELOG.md.' || '' }}
@@ -111,7 +111,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Bauberechtigung einrichten
-        # makepkg verweigert den Lauf als root.
+        # makepkg refuses to run as root
         run: |
           useradd -m builder
           chown -R builder:builder .
@@ -161,16 +161,16 @@ jobs:
       - name: Android-Projekt erzeugen
         run: |
           npx tauri android init --ci
-          # Was Tauri nicht anbietet, tragen wir nach; siehe das Skript.
+          # what tauri does not offer is added afterwards, see the script
           node scripts/android-nachruesten.mjs
 
       - name: APK bauen
         run: npx tauri android build --apk
 
-      # Ohne Unterschrift lässt sich eine APK auf keinem Gerät installieren.
-      # `tauri android build` liefert sie unsigniert; Gradle dafür einzurichten
-      # brächte nichts, weil das Projekt unter `gen/` bei jedem Lauf neu
-      # entsteht. `apksigner` arbeitet auf der fertigen Datei.
+      # without a signature an apk cannot be installed on any device.
+      # `tauri android build` delivers it unsigned, and setting gradle up for
+      # it would bring nothing because the project under `gen/` is created
+      # anew at every run. `apksigner` works on the finished file
       - name: APK unterschreiben
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
@@ -206,13 +206,13 @@ jobs:
           path: Robify_*.apk
           if-no-files-found: error
 
-  # ---------------------------------------------------------------- Signatur
+  # --- signing ---
   #
-  # Eigener Lauf am Ende statt in jedem Bau: Die Installer entstehen auf sechs
-  # Systemen, und der private Schlüssel soll nur an einer Stelle liegen, nicht
-  # auf jedem davon. Der Entwurf des Releases trägt zu diesem Zeitpunkt bereits
-  # alle Dateien; sie werden geholt, unterschrieben und die Unterschriften
-  # danebengelegt.
+  # a job of its own at the end instead of in every build: the installers come
+  # into being on six systems, and the private key is to lie in one place, not
+  # on each of them. by this point the draft of the release carries every
+  # file, and they are fetched, signed, and the signatures laid next to
+  # them.
   signieren:
     name: Installer signieren
     needs: [desktop, arch, android]
@@ -229,8 +229,8 @@ jobs:
             exit 1
           fi
           printf '%s' "$PGP_PRIVATE_KEY" | gpg --batch --import
-          # Der Schlüssel stammt von uns selbst; ohne dieses Vertrauen fragt
-          # gpg beim Signieren nach und bliebe im Ablauf ohne Antwort stehen.
+          # the key is our own, and without this trust gpg asks back while
+          # signing and would stand in the workflow without an answer
           gpg --list-secret-keys --with-colons \
             | awk -F: '/^fpr:/{print $10":6:"}' \
             | gpg --batch --import-ownertrust
@@ -250,9 +250,9 @@ jobs:
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
         run: |
           cd signatur
-          # Eine Prüfsummendatei für alles, dazu je Datei eine Unterschrift:
-          # Die Summendatei zeigt auf einen Blick, was zum Release gehört, die
-          # einzelnen Unterschriften erlauben es, nur eine Datei zu prüfen.
+          # one checksum file for everything plus a signature per file: the
+          # checksum file shows at a glance what belongs to the release, and
+          # the individual signatures allow checking one file alone
           sha256sum -- * > SHA256SUMS
 
           signieren() {

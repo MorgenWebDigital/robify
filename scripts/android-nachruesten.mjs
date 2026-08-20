@@ -1,14 +1,13 @@
 #!/usr/bin/env node
-/**
- * Trägt in das erzeugte Android-Projekt nach, was Tauri nicht anbietet.
- *
- * `src-tauri/gen/android` entsteht bei jedem `tauri android init` neu; von
- * Hand geänderte Dateien sind danach fort. Statt sie ins Repository zu legen
- * und mit Tauris Vorlagen zu verheiraten, läuft dieses Skript nach dem
- * Erzeugen und setzt die wenigen Zeilen erneut.
- *
- * Idempotent: Zweimal aufgerufen ändert es beim zweiten Mal nichts.
- */
+// android-nachruesten.mjs — adds to the generated android project what tauri
+// does not offer.
+//
+// `src-tauri/gen/android` is created anew at every `tauri android init`, and
+// files changed by hand are gone afterwards. instead of putting them into the
+// repository and marrying them to tauri's templates, this script runs after
+// the generation and sets the few lines again.
+//
+// idempotent: called twice it changes nothing the second time
 import {
   copyFileSync,
   existsSync,
@@ -25,27 +24,27 @@ const MAIN_ACTIVITY =
   "src-tauri/gen/android/app/src/main/java/de/robify/player/MainActivity.kt";
 const APP_GRADLE = "src-tauri/gen/android/app/build.gradle.kts";
 const PAKET_ORDNER = "src-tauri/gen/android/app/src/main/java/de/robify/player";
-/** Fassung von `youtubedl-android`; bringt yt-dlp und Python selbst mit. */
+/** the version of `youtubedl-android`, it brings yt-dlp and python itself. */
 const YTDLP_FASSUNG = "0.18.1";
-/** Fassung von `commons-io`; die von `youtubedl-android` verlangte 2.5 ist unbrauchbar. */
+/** the version of `commons-io`, the 2.5 demanded by `youtubedl-android` is unusable. */
 const COMMONS_IO_FASSUNG = "2.16.1";
-/** Pfad zum Manifest der App; wird bei jedem `tauri android init` neu erzeugt. */
+/** the path to the manifest of the app, recreated at every `tauri android init`. */
 const MANIFEST = "src-tauri/gen/android/app/src/main/AndroidManifest.xml";
 const DRAWABLE = "src-tauri/gen/android/app/src/main/res/drawable";
 const GRADLE_EIGENSCHAFTEN = "src-tauri/gen/android/gradle.properties";
 const SYMBOLE = "src-tauri/icons/android";
 const RES = "src-tauri/gen/android/app/src/main/res";
-/** Fassung von `androidx.media`; bringt MediaSession und die Medientasten mit. */
+/** the version of `androidx.media`, it brings mediasession and the media keys. */
 const MEDIA_FASSUNG = "1.7.0";
 
 /**
- * Der Zurück-Knopf soll durch die App führen, nicht aus ihr heraus.
+ * the back button is to lead through the app, not out of it.
  *
- * `TauriActivity` setzt `handleBackNavigation = false`; ohne Gegensteuer
- * beendet der erste Druck die App, auch wenn man drei Seiten tief steht.
- * `WryActivity` kann es besser: Es blättert in der WebView zurück, solange
- * dort etwas liegt, und beendet erst danach. Genau das wollen wir, denn die
- * Seitenwechsel der App stehen als Verlauf in der WebView.
+ * `TauriActivity` sets `handleBackNavigation = false`, and without a
+ * counter-measure the first press ends the app even three pages deep.
+ * `WryActivity` does it better: it goes back in the webview while something
+ * lies there and ends only afterwards. that is what is wanted here, as the
+ * page changes of the app stand in the webview as history.
  */
 function zurueckKnopfAnschalten() {
   if (!existsSync(MAIN_ACTIVITY)) {
@@ -84,18 +83,18 @@ function zurueckKnopfAnschalten() {
 }
 
 /**
- * Bindet den Java-Teil der Zertifikatsprüfung ein.
+ * wires in the java part of the certificate check.
  *
- * `rustls-platform-verifier` prüft Zertifikate über den Vertrauensspeicher von
- * Android und ruft dafür in die Java-Laufzeit. Die Klasse dazu liegt als
- * fertiges Maven-Paket in der Kiste `rustls-platform-verifier-android`, muss
- * aber im Gradle-Bau benannt werden. Fehlt sie, startet die App zwar, doch
- * jede HTTPS-Anfrage endet mit `ClassNotFoundException` und die Oberfläche
- * wartet ewig auf eine Antwort.
+ * `rustls-platform-verifier` checks certificates against the android trust
+ * store and calls into the java runtime for it. the class for that lies as a
+ * finished maven package in the crate `rustls-platform-verifier-android` but
+ * has to be named in the gradle build. without it the app does start, but
+ * every https request ends in a `ClassNotFoundException` and the ui waits for
+ * an answer forever.
  *
- * Der Pfad wird bei jedem Lauf frisch von `cargo metadata` erfragt statt fest
- * eingetragen: Er zeigt in den Paketspeicher von Cargo und sieht auf jedem
- * Rechner anders aus, auch auf dem Bauläufer.
+ * the path is asked from `cargo metadata` freshly at every run instead of
+ * being written down: it points into cargo's package store and looks
+ * different on every machine, on the build runner too.
  */
 function zertifikatspruefungEinbinden() {
   if (!existsSync(APP_GRADLE)) {
@@ -147,10 +146,11 @@ function zertifikatspruefungEinbinden() {
       "}",
       "",
       "dependencies {",
-      // Feste Fassung statt `latest.release`: Für eine bewegliche Angabe
-      // bräuchte Gradle eine `maven-metadata.xml`, und die legt die Kiste
-      // nicht bei. `@aar` ist nötig, weil dort ein Android-Archiv liegt und
-      // kein Jar; ohne die Endung sucht Gradle eine Datei, die es nicht gibt.
+      // a fixed version instead of `latest.release`: for a moving value
+      // gradle would need a `maven-metadata.xml`, and the crate does not ship
+      // one. `@aar` is needed because an android archive lies there and not a
+      // jar, and without the extension gradle looks for a file that does not
+      // exist
       `    implementation("rustls:rustls-platform-verifier:${paket.version}@aar")`,
     ].join("\n"),
   );
@@ -160,16 +160,16 @@ function zertifikatspruefungEinbinden() {
 }
 
 /**
- * Bringt yt-dlp aufs Telefon.
+ * brings yt-dlp onto the phone.
  *
- * Das Programm gibt es für Android nicht: Es ist Python, und selbst die
- * Linux-Binärdatei läuft hier nicht, weil Android eine andere C-Bibliothek
- * verwendet. `youtubedl-android` liefert yt-dlp samt Python-Laufzeit als
- * Bibliothek; das kostet rund hundert Megabyte im Paket, ist aber der einzige
- * Weg, denselben Funktionsumfang zu behalten.
+ * the program does not exist for android: it is python, and even the linux
+ * binary does not run here because android uses a different c library.
+ * `youtubedl-android` delivers yt-dlp together with a python runtime as a
+ * library. that costs around a hundred megabytes in the package but is the
+ * only way to keep the same feature set.
  *
- * `ffmpeg` kommt aus demselben Haus und wird zum Umwandeln gebraucht. Ohne es
- * gäbe es nur das Format, das die Quelle liefert.
+ * `ffmpeg` comes from the same house and is needed for converting. without it
+ * only the format the source delivers would exist.
  */
 function ytdlpEinbinden() {
   const inhalt = readFileSync(APP_GRADLE, "utf8");
@@ -189,15 +189,15 @@ function ytdlpEinbinden() {
     console.log("yt-dlp: Abhängigkeiten schon da");
   }
 
-  // Commons-IO auf eine Fassung heben, die es noch gibt.
+  // lift commons-io to a version that still exists.
   //
-  // `youtubedl-android` verlangt commons-io 2.5 von 2016. Dessen `FileUtils`
-  // greift über die Hilfsklasse `Java7Support` auf `java.nio.file` zu, und
-  // genau die landet nicht im fertigen Paket — D8 lässt sie fallen. Solange
-  // niemand `FileUtils` benutzt, fällt das nicht auf; beim Aktualisieren von
-  // yt-dlp tut es das, und die App brach mit `NoClassDefFoundError:
-  // org.apache.commons.io.Java7Support` ab. Neuere Fassungen kommen ohne den
-  // Umweg aus und bieten dieselben Methoden.
+  // `youtubedl-android` demands commons-io 2.5 from 2016. its `FileUtils`
+  // reaches `java.nio.file` through the helper class `Java7Support`, and
+  // exactly that does not end up in the finished package, d8 drops it. while
+  // nobody uses `FileUtils` that goes unnoticed, at a yt-dlp update it does
+  // not, and the app broke off with `NoClassDefFoundError:
+  // org.apache.commons.io.Java7Support`. newer versions get by without the
+  // detour and offer the same methods
   const mitCommons = readFileSync(APP_GRADLE, "utf8");
   if (!mitCommons.includes("commons-io")) {
     writeFileSync(
@@ -219,14 +219,14 @@ function ytdlpEinbinden() {
     console.log("yt-dlp: commons-io angehoben");
   }
 
-  // Native Bibliotheken müssen beim Installieren ausgepackt werden.
+  // native libraries have to be unpacked at install time.
   //
-  // `youtubedl-android` legt seine Python-Laufzeit als `libpython.zip.so` im
-  // Bibliotheksordner ab und liest sie zur Laufzeit als gewöhnliche Datei.
-  // Moderne Android-Pakete lassen die Bibliotheken jedoch im Archiv liegen
-  // und laden sie von dort; dann gibt es die Datei nicht, und die Einrichtung
-  // scheitert mit `FileNotFoundException`. Die ältere Verpackung packt sie
-  // beim Installieren aus.
+  // `youtubedl-android` puts its python runtime into the library folder as
+  // `libpython.zip.so` and reads it at runtime as an ordinary file. modern
+  // android packages leave the libraries in the archive and load them from
+  // there though, and then the file does not exist and the setup fails with a
+  // `FileNotFoundException`. the older packaging unpacks them at install
+  // time
   const mitPackung = readFileSync(APP_GRADLE, "utf8");
   if (!mitPackung.includes("useLegacyPackaging")) {
     writeFileSync(
@@ -246,8 +246,8 @@ function ytdlpEinbinden() {
     console.log("yt-dlp: Bibliotheken werden ausgepackt");
   }
 
-  // Die Brücke liegt im Projekt, nicht in diesem Skript: Sie ist Kotlin und
-  // gehört dorthin, wo man sie liest und ändert.
+  // the bridge lives in the project and not in this script: it is kotlin and
+  // belongs where it is read and changed
   copyFileSync("src-tauri/android/Ytdlp.kt", join(PAKET_ORDNER, "Ytdlp.kt"));
 
   const activity = readFileSync(MAIN_ACTIVITY, "utf8");
@@ -256,9 +256,9 @@ function ytdlpEinbinden() {
     return;
   }
 
-  // Die Bibliothek packt ihre Python-Laufzeit beim ersten Start aus und muss
-  // dafür einmal eingerichtet werden. In einem eigenen Faden, weil das ein
-  // paar Sekunden dauert und den Aufbau der Oberfläche sonst aufhielte.
+  // the library unpacks its python runtime at the first start and has to be
+  // set up once for it. on a thread of its own, because that takes a few
+  // seconds and would hold up the build-up of the ui otherwise
   const mitInit = activity
     .replace(
       "import android.os.Bundle",
@@ -293,17 +293,17 @@ function ytdlpEinbinden() {
 }
 
 /**
- * Trägt den Player des Systems ein.
+ * registers the player of the system.
  *
- * Er besteht aus zwei Dingen, die Android beide angemeldet sehen will:
+ * it consists of two things android wants to see declared:
  *
- * * Ein Vordergrunddienst hält die App am Leben, solange Musik läuft. Ohne
- *   ihn darf Android den Prozess im Hintergrund abräumen, und die Wiedergabe
- *   bricht mitten im Titel ab. Er muss seine Art nennen — `mediaPlayback` —,
- *   sonst lehnt Android 14 den Start ab.
- * * Ein Empfänger für die Medientasten. Über ihn kommen die Knöpfe aus der
- *   Benachrichtigung und vom Sperrbildschirm zurück, ebenso die Tasten von
- *   Kopfhörern und Autoradios.
+ * * a foreground service keeps the app alive while music is running. without
+ *   it android may clear the process away in the background and playback
+ *   breaks off mid-track. it has to name its type, `mediaPlayback`, otherwise
+ *   android 14 refuses the start.
+ * * a receiver for the media keys. the buttons from the notification and from
+ *   the lock screen come back through it, as do the keys of headphones and car
+ *   radios.
  */
 function systemplayerEinbinden() {
   const gradle = readFileSync(APP_GRADLE, "utf8");
@@ -327,14 +327,14 @@ function systemplayerEinbinden() {
     join(PAKET_ORDNER, "Wiedergabe.kt"),
   );
 
-  // Macht aus einer Adresse der Dateiauswahl eine Datei mit Pfad.
+  // turns an address from the file picker into a file with a path
   copyFileSync(
     "src-tauri/android/Dateien.kt",
     join(PAKET_ORDNER, "Dateien.kt"),
   );
 
-  // Das Zeichen für die Benachrichtigung. Ohne es stünde dort das Dreieck des
-  // Systems, dasselbe wie bei jeder anderen App, die Ton abspielt.
+  // the icon for the notification. without it the triangle of the system
+  // would stand there, the same as with every other app that plays audio
   copyFileSync(
     "src-tauri/android/ic_notification.xml",
     join(DRAWABLE, "ic_notification.xml"),
@@ -350,8 +350,8 @@ function systemplayerEinbinden() {
     '<uses-permission android:name="android.permission.INTERNET" />',
     [
       '<uses-permission android:name="android.permission.INTERNET" />',
-      // Ohne diese drei startet der Dienst gar nicht erst, und ab Android 13
-      // bliebe die Anzeige unsichtbar, auch wenn er läuft.
+      // without these three the service does not even start, and from
+      // android 13 on the display would stay invisible even while it runs
       '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
       '    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />',
       '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />',
@@ -384,12 +384,12 @@ function systemplayerEinbinden() {
 }
 
 /**
- * Fragt die Erlaubnis für Benachrichtigungen.
+ * asks for the notification permission.
  *
- * Seit Android 13 muss man sie erbitten. Ohne sie läuft der Vordergrunddienst
- * zwar, seine Anzeige bleibt aber unsichtbar — und genau die ist der Player,
- * um den es geht. Die Frage kommt beim Start und nur einmal; sagt der Nutzer
- * nein, spielt Robify weiter, nur eben ohne Anzeige.
+ * since android 13 it has to be requested. without it the foreground service
+ * does run but its display stays invisible, and that display is the player in
+ * question. the request comes at startup and only once, and where the user
+ * says no, robify keeps playing, only without a display.
  */
 function benachrichtigungenErbitten() {
   const activity = readFileSync(MAIN_ACTIVITY, "utf8");
@@ -419,26 +419,27 @@ function benachrichtigungenErbitten() {
 }
 
 /**
- * Erbittet den Zugriff auf den Gerätespeicher.
+ * requests access to the device storage.
  *
- * Robify legt seine Titel in `Robify` ab und alles Übrige in `.robify`, beide
- * unmittelbar im Gerätespeicher. Dort sind sie im Dateimanager zu sehen und
- * überleben das Entfernen der App — anders als alles unter `Android/data`.
+ * robify puts its tracks into `Robify` and everything else into `.robify`,
+ * both directly in the device storage. they are visible in the file manager
+ * there and survive the removal of the app, unlike everything under
+ * `Android/data`.
  *
- * Seit Android 11 darf das keine App mehr ohne Weiteres. Die nötige Erlaubnis
- * wird nicht in einem Dialog erteilt, sondern auf einer Seite der
- * Systemeinstellungen, die die App aufrufen darf. Gefragt wird einmal je
- * Installation: Wer ablehnt, soll nicht bei jedem Start dieselbe Seite vor
- * sich haben. Robify arbeitet dann in seinem eigenen Ordner weiter.
+ * since android 11 no app may do that just like that. the permission needed
+ * is not granted in a dialog but on a page of the system settings the app may
+ * open. it is asked once per installation: whoever declines is not to face
+ * the same page at every start. robify then carries on working in its own
+ * folder.
  *
- * Erteilt der Nutzer sie, startet die App sich neu. Die Ordner stehen fest,
- * seit der Rust-Teil hochgefahren ist; ihn nachträglich umzuhängen wäre
- * aufwendiger und fehleranfälliger als ein Neustart, den man ohnehin nur
- * einmal im Leben der Installation sieht.
+ * where the user grants it, the app restarts itself. the folders are settled
+ * once the rust side has come up, and rehanging it afterwards would be more
+ * work and more error-prone than a restart one sees only once in the life of
+ * the installation anyway.
  *
- * Auf Android 10 und älter gibt es diese Erlaubnis nicht. Dort bleibt es beim
- * eigenen Ordner der App; der Rust-Teil merkt selbst, dass er im
- * Gerätespeicher nicht schreiben darf, und weicht aus.
+ * on android 10 and older this permission does not exist. the app's own
+ * folder stays there, and the rust side notices by itself that it may not
+ * write in the device storage and gives way.
  */
 function dateizugriffErbitten() {
   const activity = readFileSync(MAIN_ACTIVITY, "utf8");
@@ -537,28 +538,27 @@ function dateizugriffErbitten() {
 }
 
 /**
- * Hält den Speicherhunger des Baus im Zaum.
+ * keeps the memory appetite of the build in check.
  *
- * Gradle startet einen Hintergrunddienst, der zwischen zwei Bauläufen stehen
- * bleibt, und Kotlin einen zweiten daneben. Mit den Vorgabewerten belegten die
- * beiden zusammen über ein Gigabyte, und das auf einem Rechner, auf dem
- * nebenher noch etwas anderes läuft — beim Bauen ging dem Gerät der Speicher
- * aus, samt Auslagerungsdatei.
+ * gradle starts a background daemon that stays between two builds, and kotlin
+ * a second one next to it. with the default values the two together took over
+ * a gigabyte, and that on a machine with something else running alongside:
+ * while building, the machine ran out of memory, swap file included.
  *
- * Anderthalb Gigabyte reichen für ein Projekt dieser Größe bequem; zwei
- * gleichzeitige Arbeiter statt so vieler, wie der Rechner Kerne hat, kosten
- * ein paar Sekunden und sparen ein Vielfaches davon an Speicher.
+ * one and a half gigabytes are comfortably enough for a project of this size,
+ * and two workers at a time instead of as many as the machine has cores cost a
+ * few seconds and save a multiple of that in memory.
  */
 /**
- * Lässt das Fenster schrumpfen, wenn die Tastatur ausfährt.
+ * lets the window shrink when the keyboard slides out.
  *
- * Ohne Angabe entscheidet Android selbst, und es entschied sich fürs
- * Schieben: Die ganze Seite rutschte nach oben, die Titelzeile verschwand
- * unter der Statusleiste. `adjustResize` verkleinert stattdessen das Fenster.
+ * without a value android decides for itself, and it decided on pushing: the
+ * whole page slid up and the title row disappeared under the status bar.
+ * `adjustResize` shrinks the window instead.
  *
- * Die Angabe in der `index.html` (`interactive-widget=resizes-content`) sagt
- * dasselbe noch einmal an die WebView; beide zusammen decken alte wie neue
- * Android-Fassungen ab.
+ * the value in `index.html` (`interactive-widget=resizes-content`) says the
+ * same thing to the webview once more, and the two together cover old and new
+ * android versions alike.
  */
 function tastaturVerhaltenSetzen() {
   const manifest = readFileSync(MANIFEST, "utf8");
@@ -607,17 +607,17 @@ function speicherZuegeln() {
 }
 
 /**
- * Legt unser Zeichen als Startsymbol ein.
+ * puts our mark in as the launcher icon.
  *
- * `tauri icon` erzeugt den ganzen Satz nach `src-tauri/icons/android`, aber
- * `tauri android init` legt `gen/android` mit den Vorgabesymbolen von Tauri an
- * — dem blau-gelben Kreis. Wer die Symbole vor der letzten Neuanlage erzeugt
- * hat, findet sie danach nicht mehr im Bau wieder, und genau so stand auf dem
- * Telefon ein fremdes Zeichen auf dem Startbildschirm.
+ * `tauri icon` generates the whole set into `src-tauri/icons/android`, but
+ * `tauri android init` creates `gen/android` with tauri's default icons, the
+ * blue and yellow circle. whoever generated the icons before the last
+ * regeneration does not find them in the build afterwards, and that is
+ * exactly how a foreign mark stood on the home screen of the phone.
  *
- * Kopiert wird alles, was zum anpassungsfähigen Symbol gehört: die Bilder in
- * allen Auflösungen, die Beschreibung in `mipmap-anydpi-v26` und die Farbe des
- * Hintergrunds.
+ * everything belonging to the adaptive icon is copied: the images in every
+ * resolution, the description in `mipmap-anydpi-v26` and the colour of the
+ * background.
  */
 function startsymbolEinlegen() {
   if (!existsSync(SYMBOLE)) {
@@ -635,10 +635,10 @@ function startsymbolEinlegen() {
       gelegt += 1;
     }
   }
-  // Die Vorderseite als Vektor darüber: Das erzeugte Bild füllt die Fläche
-  // bis zum Rand, und im Kreis stünden die Notenköpfe angeschnitten. Die
-  // Bilddateien bleiben liegen, sie tragen die Fassung für Android 7 und
-  // älter, das noch kein anpassungsfähiges Symbol kennt.
+  // the foreground as a vector over it: the generated image fills the surface
+  // up to the edge, and inside the circle the note heads would stand clipped.
+  // the image files stay, they carry the version for android 7 and older,
+  // which knows no adaptive icon yet
   copyFileSync(
     "src-tauri/android/ic_launcher_foreground.xml",
     join(DRAWABLE, "ic_launcher_foreground.xml"),
@@ -647,14 +647,14 @@ function startsymbolEinlegen() {
     const alt = join(RES, `mipmap-${dichte}`, "ic_launcher_foreground.png");
     if (existsSync(alt)) rmSync(alt);
   }
-  // Und die Fassung von Tauri, die alles überstimmt: Ein `drawable-v24` gilt
-  // auf jedem Gerät ab Android 7 vor dem schlichten `drawable`. Sie blieb
-  // liegen, und auf dem Startbildschirm stand weiter der blau-gelbe Kreis.
+  // and the version from tauri, which outvotes everything: a `drawable-v24`
+  // applies before the plain `drawable` on every device from android 7 on. it
+  // stayed behind, and the blue and yellow circle kept standing on the home
+  // screen.
   //
-  // Überschrieben statt gelöscht: Gradle merkte das Löschen nicht und packte
-  // die Datei aus seinem Zwischenstand weiter ein. Dieselbe Zeichnung in
-  // beiden Ordnern ist ohnehin verlässlicher, als sich darauf zu verlassen,
-  // welcher Ordner gewinnt.
+  // overwritten instead of deleted: gradle did not notice the deletion and
+  // kept packing the file from its cache. the same drawing in both folders is
+  // more reliable anyway than relying on which folder wins
   const v24 = join(RES, "drawable-v24");
   if (existsSync(v24)) {
     copyFileSync(
@@ -674,9 +674,9 @@ function startsymbolEinlegen() {
     ].join("\n"),
   );
 
-  // Der Hintergrund bleibt durchsichtig: Die weiße Scheibe machte aus dem
-  // Zeichen eine Marke auf einem Teller. `tauri icon` legt die Farbe als
-  // `#fff` ab, sie kommt mit den Symbolen mit und wird hier überschrieben.
+  // the background stays transparent: the white disc turned the mark into a
+  // badge on a plate. `tauri icon` stores the colour as `#fff`, it comes along
+  // with the icons and is overwritten here
   writeFileSync(
     join(RES, "values", "ic_launcher_background.xml"),
     [
