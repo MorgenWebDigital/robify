@@ -37,7 +37,13 @@ export function AlbumCard({
   return (
     <Link
       to={`/album/${album.id}`}
-      className="group rounded-xl p-3 transition hover:bg-ink-800"
+      // `block` explicitly: an `a` is inline out of the box. as a direct child
+      // of the grid it is blockified automatically, but on the home page the
+      // tile sits in a wrapper that hides the trailing ones on a narrow
+      // window, and there it stayed inline: the padding did not take hold and
+      // the hover background fell apart into line boxes, a grey strip beside
+      // the cover instead of a surface behind it
+      className="group block rounded-xl p-3 transition hover:bg-ink-800"
     >
       <div className="relative">
         <Cover
@@ -99,7 +105,13 @@ export function MixKachel({
   return (
     <Link
       to={`/mix/${mix.offset}`}
-      className="group rounded-xl p-3 transition hover:bg-ink-800"
+      // `block` explicitly: an `a` is inline out of the box. as a direct child
+      // of the grid it is blockified automatically, but on the home page the
+      // tile sits in a wrapper that hides the trailing ones on a narrow
+      // window, and there it stayed inline: the padding did not take hold and
+      // the hover background fell apart into line boxes, a grey strip beside
+      // the cover instead of a surface behind it
+      className="group block rounded-xl p-3 transition hover:bg-ink-800"
     >
       <div className="relative">
         <PlaylistMosaic
@@ -236,7 +248,7 @@ export function ArtistCard({ artist }: { artist: Artist }) {
   return (
     <Link
       to={`/artist/${artist.id}`}
-      className="group rounded-xl p-3 text-center transition hover:bg-ink-800"
+      className="group block rounded-xl p-3 text-center transition hover:bg-ink-800"
     >
       <ArtistAvatar artist={artist} className="mx-auto aspect-square w-full" />
       <p className="mt-3 truncate text-sm font-medium" title={artist.name}>
@@ -366,16 +378,21 @@ const GRID_COLUMNS = {
   lg: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
 } as const;
 
-// layout for a preview of exactly three tiles next to "view all".
+// layout for the preview row on the home page.
 //
-// like `md`, only three columns on a phone instead of two: two columns left
-// the third tile standing alone in a second row, and that looks like a
+// three columns on a phone instead of the two `md` would give: two columns
+// left the third tile standing alone in a second row, and that looks like a
 // truncated list rather than a selection.
+//
+// six on a desktop, not five. the row fills the width either way, so the
+// number of columns is what sets the size of a cover: at five they came to
+// 184 points and stood as large as on a page of their own. six bring them to
+// 147, which reads as an excerpt again.
 //
 // a value of its own and not a fourth size: `GridSize` also stands in the
 // settings for the tile size of the playlists, and there are only three
 // there
-const VORSCHAU_SPALTEN = "grid-cols-3 lg:grid-cols-5";
+const VORSCHAU_SPALTEN = "grid-cols-3 lg:grid-cols-6";
 
 export type GridSize = keyof typeof GRID_COLUMNS;
 

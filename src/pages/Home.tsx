@@ -20,12 +20,16 @@ import type { Album, Track, WeeklyMixSummary } from "../types";
 /**
  * how many tiles a preview on the home page shows.
  *
- * the home page is an overview, not a list. five fit in one row on a desktop
- * and only three on a phone, where the last two stay hidden instead of
+ * the home page is an overview, not a list. six fit in one row on a desktop
+ * and only three on a phone, where the trailing ones stay hidden instead of
  * starting a second row on their own. below it the next section begins either
  * way.
+ *
+ * six and not five: the row fills the width whatever the count, so a tile
+ * less means a cover larger. at five they stood as large as on a page of
+ * their own.
  */
-const VORSCHAU = 5;
+const VORSCHAU = 6;
 
 /** this many of them are visible on a phone. */
 const VORSCHAU_SCHMAL = 3;
