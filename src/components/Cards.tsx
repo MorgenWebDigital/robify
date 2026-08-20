@@ -410,15 +410,15 @@ export function Grid({
   vorschau?: boolean;
 }) {
   const spalten = vorschau ? VORSCHAU_SPALTEN : GRID_COLUMNS[size];
-  // eight pixels between the tiles.
+  // six pixels between the tiles.
   //
   // every tile carries a hover background of its own, and at the four pixels
   // this once stood at those rectangles almost touched: moving across the grid
   // read as one continuous band with slits in it rather than as one tile
-  // lighting up. eight keep them apart while the covers stay close together,
-  // and with the padding of a tile they add up to a good two dozen points
-  // between one cover and the next.
-  return <div className={`grid gap-2 ${spalten}`}>{children}</div>;
+  // lighting up. six is the least that still keeps them apart, and with the
+  // padding of a tile it leaves a good twenty points between one cover and the
+  // next.
+  return <div className={`grid gap-1.5 ${spalten}`}>{children}</div>;
 }
 
 // a playlist as a row, the same details, only saving space

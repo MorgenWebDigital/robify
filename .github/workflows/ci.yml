@@ -4,7 +4,7 @@
 # every change and therefore has to be fast. only what is needed for checking
 # is built, and on a single system, the six installers come into being at
 # release.
-name: Prüfen
+name: Checks
 
 on:
   push:
@@ -16,17 +16,17 @@ on:
 # a new push to the same branch cancels the previous run. without it, several
 # commits in a row pile up runs whose result interests nobody any more.
 concurrency:
-  group: pruefen-${{ github.ref }}
+  group: checks-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   frontend:
-    name: Oberfläche
+    name: Interface
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
-      - name: Node einrichten
+      - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -34,10 +34,10 @@ jobs:
 
       - run: npm ci
 
-      - name: Typen prüfen
+      - name: Check the types
         run: npx tsc --noEmit
 
-      - name: Formatierung prüfen
+      - name: Check the formatting
         run: npx prettier --check src/ scripts/
 
       # the guards over the translation sit under it: they read the ui and
@@ -46,7 +46,7 @@ jobs:
       - name: Tests
         run: npm test
 
-      - name: Kein ungehüllter deutscher Text
+      - name: No unwrapped German text
         run: node scripts/deutsch-finden.mjs
 
   backend:
@@ -55,12 +55,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Rust einrichten
+      - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
 
-      - name: Rust-Cache
+      - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
@@ -72,7 +72,7 @@ jobs:
 
       # the same list as in the release workflow: without webkitgtk the tauri
       # part cannot even be compiled
-      - name: Systemabhängigkeiten
+      - name: System dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -86,7 +86,7 @@ jobs:
 
       # the build needs the ui as finished files, and they are not generated
       # here, so an empty placeholder is created
-      - name: Platzhalter für die Oberfläche
+      - name: Placeholder for the interface
         run: mkdir -p dist && echo '<!doctype html><title>ci</title>' > dist/index.html
 
       # `cargo fmt --check` deliberately does not run here: the rust part is
@@ -112,25 +112,25 @@ jobs:
   # that costs a few minutes instead of half an hour and still catches every
   # error in this part.
   android:
-    name: Rust für Android
+    name: Rust for Android
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
-      - name: Rust einrichten
+      - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
           targets: aarch64-linux-android
 
-      - name: Rust-Cache
+      - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
           key: android
           cache-on-failure: true
 
-      - name: Platzhalter für die Oberfläche
+      - name: Placeholder for the interface
         run: mkdir -p dist && echo '<!doctype html><title>ci</title>' > dist/index.html
 
       # `aws-lc-sys` compiles c code of its own and looks for a compiler

@@ -8,7 +8,7 @@
 # and not as an artifact: artifacts can be downloaded through the browser
 # alone and only while logged in, while the assets of a release can be reached
 # under a fixed address an updater on the device can poll.
-name: Testgerät
+name: Test device
 
 on:
   push:
@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   apk:
-    name: APK bauen und bereitstellen
+    name: Build and publish the APK
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
@@ -37,7 +37,7 @@ jobs:
       # right at the front, before sdk, ndk and the build: a wrong password
       # used to show only at signing time, so after twenty-five minutes of
       # building. here the insight takes five seconds
-      - name: Schlüssel prüfen
+      - name: Check the key
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -45,7 +45,7 @@ jobs:
         run: |
           for name in KEYSTORE KEYSTORE_PASSWORD KEY_ALIAS; do
             if [ -z "${!name}" ]; then
-              echo "::error::Das Geheimnis ANDROID_$name fehlt. Siehe README, Abschnitt „Testgerät“."
+              echo "::error::The secret ANDROID_$name is missing. See the readme, section \"The test device\"."
               exit 1
             fi
           done
@@ -53,35 +53,35 @@ jobs:
           printf '%s' "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/robify.keystore"
           if ! keytool -list -keystore "$RUNNER_TEMP/robify.keystore" \
                        -storepass "$KEYSTORE_PASSWORD" > "$RUNNER_TEMP/schluessel.txt" 2>&1; then
-            echo "::error::Der Keystore ließ sich nicht öffnen. Meist stimmt ANDROID_KEYSTORE_PASSWORD nicht. Prüfe es mit: keytool -list -keystore robify-release.keystore"
+            echo "::error::The keystore could not be opened. Usually ANDROID_KEYSTORE_PASSWORD is wrong. Check it with: keytool -list -keystore robify-release.keystore"
             grep -v 'password' "$RUNNER_TEMP/schluessel.txt" | head -3
             exit 1
           fi
 
           if ! grep -qi "^$KEY_ALIAS," "$RUNNER_TEMP/schluessel.txt"; then
-            echo "::error::Im Keystore gibt es keinen Eintrag namens „$KEY_ALIAS“. Vorhanden:"
+            echo "::error::The keystore holds no entry called \"$KEY_ALIAS\". Present:"
             grep -i 'PrivateKeyEntry' "$RUNNER_TEMP/schluessel.txt" | cut -d, -f1
             exit 1
           fi
-          echo "Schlüssel „$KEY_ALIAS“ gefunden, Kennwort passt."
+          echo "Key \"$KEY_ALIAS\" found, the password fits."
 
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - name: Android SDK einrichten
+      - name: Set up the Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: NDK installieren
+      - name: Install the NDK
         run: sdkmanager --install "ndk;27.0.12077973"
 
-      - name: Rust mit Android-Zielen
+      - name: Rust with Android targets
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
 
-      - name: Rust-Cache
+      - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
@@ -93,7 +93,7 @@ jobs:
 
       - run: npm ci
 
-      - name: Android-Projekt erzeugen
+      - name: Generate the Android project
         env:
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
         run: |
@@ -101,7 +101,11 @@ jobs:
           # what tauri does not offer is added afterwards, see the script
           node scripts/android-nachruesten.mjs
 
-      - name: APK bauen
+      # one apk for every device instead of `--split-per-abi`: split apart, the
+      # right one of four files has to be picked by hand, and picking wrong
+      # gives an installation that fails without saying why. the universal apk
+      # is about twenty megabytes larger and installs anywhere.
+      - name: Build the APK
         env:
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
         run: npx tauri android build --apk
@@ -110,7 +114,7 @@ jobs:
       # project under `gen/` is created anew at every run, so a signing rule
       # entered there would be gone every time. `apksigner` works on the
       # finished file and is untouched by it
-      - name: APK unterschreiben
+      - name: Sign the APK
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -120,7 +124,7 @@ jobs:
           werkzeuge="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
           roh="$(find src-tauri/gen/android -name '*-release-unsigned.apk' | head -1)"
           if [ -z "$roh" ]; then
-            echo "::error::Keine unsignierte APK gefunden."
+            echo "::error::No unsigned APK found."
             exit 1
           fi
 
@@ -138,7 +142,7 @@ jobs:
       # a fixed tag instead of a new release per push: the updater on the
       # device polls the same address every time, and the list of releases
       # stays clear
-      - name: Vorabversion aktualisieren
+      - name: Update the pre-release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -146,7 +150,7 @@ jobs:
           gh release delete testgeraet --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
           gh release create testgeraet robify.apk \
             --repo "$GITHUB_REPOSITORY" \
-            --title "Testgerät ($kurz)" \
-            --notes "Automatisch gebaut aus $kurz. Nicht für den allgemeinen Gebrauch gedacht." \
+            --title "Test device ($kurz)" \
+            --notes "Built automatically from $kurz. Not meant for general use." \
             --prerelease \
             --target "$GITHUB_SHA"
