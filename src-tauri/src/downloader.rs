@@ -1127,7 +1127,7 @@ async fn search_once(
 // chosen, which drops remixes, live versions and videos with an intro.
 
 /// suffixes hinting at a different version.
-const VERSION_MARKERS: [&str; 34] = [
+const VERSION_MARKERS: [&str; 44] = [
     "remix",
     "rmx",
     "live",
@@ -1169,23 +1169,42 @@ const VERSION_MARKERS: [&str; 34] = [
     "flvto",
     "y2mate",
     "320kbps",
+    // versions that stand under a word of their own without being called a
+    // remix. "mix" alone stays out: it turns up in enough proper titles
+    "extended",
+    "extended mix",
+    "club mix",
+    "radio mix",
+    "dj mix",
+    "dub",
+    "chopped",
+    "screwed",
+    "reprise",
+    "medley",
 ];
 
-/// deduction for hints at a different version that do not appear in the
-/// track searched for. whoever searches for a remix still gets it.
+/// the version markers a title carries that the search did not ask for.
 ///
-/// the comparison runs word by word: "edit" must not fire on "editor".
-fn version_penalty(candidate_title: &str, wanted_title: &str) -> f64 {
+/// the comparison runs word by word: "edit" must not fire on "editor". and
+/// whoever searches for a remix still gets it — a marker standing in the
+/// search counts for nothing.
+fn fremde_fassungen(candidate_title: &str, wanted_title: &str) -> Vec<&'static str> {
     let candidate = crate::online::normalize_words(candidate_title);
     let wanted = crate::online::normalize_words(wanted_title);
     VERSION_MARKERS
         .iter()
+        .copied()
         .filter(|marker| {
             crate::online::contains_word_sequence(&candidate, marker)
                 && !crate::online::contains_word_sequence(&wanted, marker)
         })
-        .count() as f64
-        * 25.0
+        .collect()
+}
+
+/// deduction for hints at a different version that do not appear in the
+/// track searched for.
+fn version_penalty(candidate_title: &str, wanted_title: &str) -> f64 {
+    fremde_fassungen(candidate_title, wanted_title).len() as f64 * 25.0
 }
 
 /// how far a hit lies from what was searched for, in text. 0.0 means every
@@ -1374,12 +1393,20 @@ fn rank_candidates(
 
     if ranked.is_empty() {
         // no hit held up to the length check. then at least order by textual
-        // closeness instead of taking the first one blindly
+        // closeness instead of taking the first one blindly.
+        //
+        // the version deduction belongs here as well, and its absence was a
+        // hole: exactly where the length check lets nothing through, the
+        // original is missing from the list, and a remix stood first without
+        // anything speaking against it
         ranked = found
             .iter()
             .map(|candidate| {
                 (
-                    coverage_penalty(query, candidate) + absage_abzug(&candidate.url),
+                    coverage_penalty(query, candidate)
+                        + version_penalty(&candidate.title, expected_title)
+                        + preview_penalty(candidate)
+                        + absage_abzug(&candidate.url),
                     candidate,
                 )
             })
@@ -2223,13 +2250,34 @@ async fn download_inner<R: Runtime>(
     // without a cover the metadata search found nothing either, which was
     // the case with every misgrasp observed
     let unbestaetigt = metadata.cover_base64.is_none();
-    let warning = intent_warning(options.intent.as_deref(), &metadata, unbestaetigt).map(|text| {
-        if unbestaetigt {
+    let mut warnungen: Vec<String> = Vec::new();
+
+    if let Some(text) = intent_warning(options.intent.as_deref(), &metadata, unbestaetigt) {
+        warnungen.push(if unbestaetigt {
             format!("{text} Auch online war dazu nichts zu finden.")
         } else {
             text
-        }
-    });
+        });
+    }
+
+    // the picking pushes a foreign version far down, but it cannot conjure
+    // the original where no source offers it. what stays is to say so:
+    // otherwise a remix lands in the library under the name of the original,
+    // and nothing points at it any more
+    if let Some(marker) = options
+        .intent
+        .as_deref()
+        .map(|absicht| fremde_fassungen(&metadata.title, absicht))
+        .and_then(|treffer| treffer.first().copied())
+    {
+        warnungen.push(format!(
+            "Das Geladene ist eine abweichende Fassung („{marker}“ steht im Titel, in deiner Suche nicht): \
+             „{}“. Prüfe die Angaben oder wähle einen anderen Treffer.",
+            metadata.title
+        ));
+    }
+
+    let warning = (!warnungen.is_empty()).then(|| warnungen.join(" "));
 
     Ok(DownloadOutcome {
         job_id: job_id.to_string(),
@@ -2521,7 +2569,8 @@ mod tests {
         abzug_bei, apply_source_metadata, blocked_message, consensus_duration_ms,
         coverage_penalty, explain_failure,
         ist_youtube, is_collection_url, plans_with_fallbacks, rank_candidates, score_candidate,
-        sort_by_relevance, version_penalty, SearchResult, TrackMetadata, ABSAGE_ABZUG,
+        fremde_fassungen, sort_by_relevance, version_penalty, SearchResult, TrackMetadata,
+        ABSAGE_ABZUG,
     };
 
     /// a hit with an address the source can be recognised by.
@@ -2676,6 +2725,42 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
         // a byte count holding 429 must trigger nothing either
         let stderr = "ERROR: [generic] xyz: Kaputt nach 4291 Bytes\n";
         assert!(!explain_failure(stderr).contains("vorübergehend gesperrt"));
+    }
+
+    // the length check throws every hit out where the given running time
+    // fits none of them. what is ordered then is ordered by text alone, and
+    // without the version deduction a remix stood first — exactly where the
+    // original is missing from the list and nothing else speaks against it
+    #[test]
+    fn auch_ohne_passende_laenge_verliert_der_remix() {
+        let treffer = vec![
+            treffer_bei("Yeat - Breathe (Sped Up Remix)", 130, "youtube:a"),
+            treffer_bei("Yeat - Breathe", 128, "youtube:b"),
+        ];
+        // ten minutes: no hit survives the check
+        let reihe = rank_candidates(&treffer, "Yeat Breathe", Some(600_000), "Breathe");
+        assert_eq!(reihe.first().map(String::as_str), Some("youtube:b"));
+    }
+
+    #[test]
+    fn eine_fremde_fassung_wird_benannt() {
+        let treffer = fremde_fassungen("Breathe (Slowed + Reverb)", "Breathe");
+        assert!(treffer.contains(&"slowed"));
+        assert!(treffer.contains(&"reverb"));
+    }
+
+    // whoever searches for a remix is to get one without a warning
+    #[test]
+    fn was_in_der_suche_steht_gilt_nicht_als_fremd() {
+        assert!(fremde_fassungen("Breathe (XY Remix)", "Breathe Remix").is_empty());
+    }
+
+    // the new markers must not fire on ordinary words
+    #[test]
+    fn merkmale_treffen_nur_ganze_woerter() {
+        assert!(fremde_fassungen("Dubstep Anthem", "Dubstep Anthem").is_empty());
+        assert!(fremde_fassungen("Dubstep Anthem", "Anthem").is_empty());
+        assert!(!fremde_fassungen("Anthem (Dub)", "Anthem").is_empty());
     }
 
     #[test]
