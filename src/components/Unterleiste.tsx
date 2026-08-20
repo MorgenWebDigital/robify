@@ -111,10 +111,16 @@ export function Unterleiste() {
           <span className="relative">
             <DotsIcon size={22} />
             {neues && (
+              // a ring in the colour of the bar around it: without it the dot
+              // sits on the sign and reads as a part of it. with the ring it
+              // floats above and is seen without being looked for
               <span
                 aria-hidden="true"
-                className="absolute -end-0.5 -top-0.5 h-2 w-2 rounded-full"
-                style={{ background: "var(--accent)" }}
+                className="absolute -end-1 -top-1 h-2.5 w-2.5 rounded-full"
+                style={{
+                  background: "var(--accent)",
+                  boxShadow: "0 0 0 2px var(--canvas)",
+                }}
               />
             )}
           </span>
