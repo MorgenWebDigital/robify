@@ -109,11 +109,29 @@ jobs:
 
       - run: npm ci
 
+      # chaquopy runs pip while building and wants an interpreter of exactly
+      # the target version for it. 3.11 and no newer one: below that chaquopy
+      # drops armeabi-v7a and x86, and every 32-bit device would lose the app
+      - name: Set up Python for the build
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # the javascript runtime yt-dlp needs for youtube. small, but it is
+      # compiled for four architectures, so it is kept between runs
+      - name: Cache QuickJS
+        uses: actions/cache@v4
+        with:
+          path: src-tauri/android/quickjs
+          key: quickjs-${{ runner.os }}-${{ hashFiles('scripts/quickjs-bauen.mjs') }}
+
       - name: Generate the Android project
         env:
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
         run: |
           npx tauri android init --ci
+          # the javascript runtime first, the retrofit script lays it in
+          node scripts/quickjs-bauen.mjs
           # what tauri does not offer is added afterwards, see the script
           node scripts/android-nachruesten.mjs
 

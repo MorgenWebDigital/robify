@@ -1,173 +1,134 @@
 package de.robify.player
 
 import android.content.Context
-import com.yausername.youtubedl_android.YoutubeDL
-import com.yausername.youtubedl_android.YoutubeDLRequest
+import com.chaquo.python.Python
+import com.chaquo.python.android.AndroidPlatform
 import org.json.JSONObject
 import java.io.File
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * the bridge to yt-dlp on android.
  *
- * on a desktop robify starts yt-dlp as a program of its own and reads its
- * output. on android that program does not exist: it is written in python,
- * and even the linux binary does not run here because android uses a
- * different c library.
- *
- * `youtubedl-android` brings yt-dlp together with a python runtime as a
- * library. its interface takes the same switches as the program, so the rust
- * side can pass its calls on unchanged, only the way there differs.
+ * yt-dlp is python, and python lives in this app as a library rather than as
+ * a program. so nothing is started here: the interpreter runs in the process
+ * and `robify_ytdlp.py` makes the call look like one from the outside — exit
+ * code, output, error text, packed into json, exactly as the rust side has
+ * always read it.
  *
  * the methods are `@JvmStatic` so the rust side reaches them over jni without
  * a detour through an instance.
  */
 object Ytdlp {
     /**
-     * progress per running job, in percent.
+     * the javascript runtime yt-dlp needs for youtube.
      *
-     * a callback into rust would be the straighter way but would demand a
-     * native method of its own there and a thread attached to the java
-     * runtime. a table the rust side polls gets by without that: it asks on a
-     * tick anyway to supply the ui.
+     * since yt-dlp 2025.11.12 the n-parameter challenge is unsolvable without
+     * one, and formats fall away. deno, node and bun do not exist on android;
+     * quickjs is built along and lies in the library folder, because android
+     * marks executable only what is called `lib*.so` and lies there.
      */
-    private val fortschritte = ConcurrentHashMap<String, Float>()
+    private fun jsLaufzeit(kontext: Context): List<String> {
+        val qjs = File(kontext.applicationInfo.nativeLibraryDir, "libqjs.so")
+        if (!qjs.exists()) return emptyList()
+        return listOf("--js-runtimes", "quickjs:${qjs.absolutePath}")
+    }
 
     /**
-     * runs yt-dlp with the switches handed over and waits for the end.
+     * the application, without anybody handing it over.
      *
-     * returns json: `code`, `out`, `err`. the rust side therefore sees the
-     * same as with a program of its own, and the evaluation there stays as it
-     * is.
+     * the rust side calls these methods from a thread of its own and has no
+     * activity at hand. the same route is taken in `android.rs` to reach the
+     * context out of `JNI_OnLoad`.
      */
+    private fun anwendung(): Context {
+        val klasse = Class.forName("android.app.ActivityThread")
+        return klasse.getMethod("currentApplication").invoke(null) as Context
+    }
+
+    /** the interpreter, started on first use. */
+    @Synchronized
+    private fun python(): Python {
+        if (!Python.isStarted()) {
+            Python.start(AndroidPlatform(anwendung()))
+        }
+        return Python.getInstance()
+    }
+
+    private fun modul() = python().getModule("robify_ytdlp")
+
+    private fun fehlerAntwort(fehler: Throwable): String =
+        JSONObject().apply {
+            put("code", -1)
+            put("out", "")
+            put("err", fehler.message ?: fehler.toString())
+        }.toString()
+
     @JvmStatic
     fun ausfuehren(id: String, args: Array<String>): String {
-        val antwort = JSONObject()
-        try {
-            // `addCommands` passes the list on unchanged. `addOption` would
-            // not: it puts every entry into a map as a key, and a value that
-            // occurred before falls out in doing so. `--extractor-retries 3
-            // --retry-sleep 3` therefore became `--extractor-retries 3
-            // --retry-sleep`, and yt-dlp read the next switch as the sleep
-            // time: "invalid http retry sleep expression '--progress'"
-            val auftrag = YoutubeDLRequest(emptyList()).addCommands(args.toList())
-
-            fortschritte[id] = 0f
-            val ergebnis = YoutubeDL.getInstance().execute(auftrag, id) { prozent, _, _ ->
-                fortschritte[id] = prozent
-            }
-
-            antwort.put("code", ergebnis.exitCode)
-            antwort.put("out", ergebnis.out)
-            antwort.put("err", ergebnis.err)
+        return try {
+            val kontext = anwendung()
+            val alle = args.toMutableList()
+            alle.addAll(jsLaufzeit(kontext))
+            modul().callAttr("lauf", id, alle.toTypedArray()).toString()
         } catch (fehler: Throwable) {
-            // a failure comes back as an answer as well, not as an exception
-            // through jni: a thrown exception would have to be collected by
-            // the rust side on purpose, and forgetting that crashes the app
-            antwort.put("code", -1)
-            antwort.put("out", "")
-            antwort.put("err", fehler.message ?: fehler.toString())
-        } finally {
-            fortschritte.remove(id)
+            fehlerAntwort(fehler)
         }
-        return antwort.toString()
     }
 
     /**
-     * runs the bundled ffmpeg.
+     * conversion is not on offer here.
      *
-     * yt-dlp gets ffmpeg handed to it by the library through
-     * `--ffmpeg-location` and can convert with it. robify also converts once
-     * itself though: where a source offers the track in a format alone that
-     * the player does not know, the finished file is converted afterwards.
-     * there is no way through yt-dlp for that.
-     *
-     * the program lies in the library folder of the app as `libffmpeg.so`,
-     * one of the few places android still allows execution in. the
-     * environment is the same one `youtubedl-android` sets when it starts
-     * ffmpeg for yt-dlp, and without it the program would not find its own
-     * libraries.
+     * it would take ffmpeg, and the only maintained build for android stands
+     * under the gpl, which does not go together with robify's licence. audio
+     * is downloaded in a format that plays as it is; cover and tags robify
+     * writes itself.
      */
     @JvmStatic
-    fun umwandeln(kontext: Context, args: Array<String>): String {
-        val antwort = JSONObject()
-        try {
-            val binOrdner = File(kontext.applicationInfo.nativeLibraryDir)
-            val pakete = File(File(kontext.noBackupFilesDir, "youtubedl-android"), "packages")
-            val python = File(pakete, "python")
-            val ffmpeg = File(pakete, "ffmpeg")
-
-            val befehl = ArrayList<String>()
-            befehl.add(File(binOrdner, "libffmpeg.so").absolutePath)
-            befehl.addAll(args)
-
-            val bau = ProcessBuilder(befehl)
-            bau.environment().apply {
-                put(
-                    "LD_LIBRARY_PATH",
-                    "${python.absolutePath}/usr/lib:${ffmpeg.absolutePath}/usr/lib",
-                )
-                put("PATH", "${System.getenv("PATH")}:${binOrdner.absolutePath}")
-                put("HOME", kontext.cacheDir.absolutePath)
-                put("TMPDIR", kontext.cacheDir.absolutePath)
-            }
-            // both streams in one: reading them one after another, one
-            // blocks while the other fills up and the call never returns.
-            // ffmpeg writes its messages to stderr alone anyway
-            bau.redirectErrorStream(true)
-
-            val prozess = bau.start()
-            val ausgabe = prozess.inputStream.bufferedReader().use { it.readText() }
-            val code = prozess.waitFor()
-
-            antwort.put("code", code)
-            antwort.put("out", "")
-            antwort.put("err", ausgabe)
-        } catch (fehler: Throwable) {
-            antwort.put("code", -1)
-            antwort.put("out", "")
-            antwort.put("err", fehler.message ?: fehler.toString())
-        }
-        return antwort.toString()
-    }
+    fun umwandeln(kontext: Context, args: Array<String>): String =
+        JSONObject().apply {
+            put("code", -1)
+            put("out", "")
+            put(
+                "err",
+                "Umwandeln ist auf Android nicht möglich. " +
+                    "Der Titel bleibt in seinem ursprünglichen Format.",
+            )
+        }.toString()
 
     /**
-     * fetches the newest version of yt-dlp and lays it over the bundled one.
+     * yt-dlp comes with the app and is renewed with it.
      *
-     * the library brings yt-dlp along but in the state it had when it was
-     * released, here november 2025 while july 2026 already stands above.
-     * youtube keeps changing its player and turns old versions away, and that
-     * is exactly where the 403s on the phone came from. on a desktop one
-     * helps oneself with `yt-dlp -U`, and here this is the way.
-     *
-     * the version that applies afterwards comes back.
+     * it is installed at build time into the app's own python, so there is
+     * nothing to fetch at runtime. the answer names the version in place.
      */
     @JvmStatic
     fun aktualisieren(kontext: Context): String {
-        val antwort = JSONObject()
-        try {
-            YoutubeDL.getInstance()
-                .updateYoutubeDL(kontext, YoutubeDL.UpdateChannel._STABLE)
-            antwort.put("code", 0)
-            antwort.put("out", YoutubeDL.getInstance().version(kontext) ?: "")
-            antwort.put("err", "")
+        return try {
+            JSONObject().apply {
+                put("code", 0)
+                put("out", modul().callAttr("fassung").toString())
+                put("err", "")
+            }.toString()
         } catch (fehler: Throwable) {
-            antwort.put("code", -1)
-            antwort.put("out", "")
-            antwort.put("err", fehler.message ?: fehler.toString())
+            fehlerAntwort(fehler)
         }
-        return antwort.toString()
     }
 
     /** progress of a job in percent, or -1 where it is not running. */
     @JvmStatic
-    fun fortschritt(id: String): Float = fortschritte[id] ?: -1f
+    fun fortschritt(id: String): Float {
+        return try {
+            modul().callAttr("fortschritt", id).toFloat()
+        } catch (_: Throwable) {
+            -1f
+        }
+    }
 
     /** cancels a running job. */
     @JvmStatic
     fun abbrechen(id: String) {
         try {
-            YoutubeDL.getInstance().destroyProcessById(id)
+            modul().callAttr("abbrechen", id)
         } catch (_: Throwable) {
             // a job that no longer exists is no error
         }

@@ -25,10 +25,15 @@ const MAIN_ACTIVITY =
 const APP_GRADLE = "src-tauri/gen/android/app/build.gradle.kts";
 const PROGUARD = "src-tauri/gen/android/app/robify-regeln.pro";
 const PAKET_ORDNER = "src-tauri/gen/android/app/src/main/java/de/robify/player";
-/** the version of `youtubedl-android`, it brings yt-dlp and python itself. */
-const YTDLP_FASSUNG = "0.18.1";
-/** the version of `commons-io`, the 2.5 demanded by `youtubedl-android` is unusable. */
-const COMMONS_IO_FASSUNG = "2.16.1";
+/** the version of the chaquopy gradle plugin, it brings python into the app. */
+const CHAQUOPY_FASSUNG = "17.0.0";
+/**
+ * the python robify runs on the phone.
+ *
+ * deliberately not the newest: chaquopy carries `armeabi-v7a` and `x86` up to
+ * 3.11 only, and with a newer one every 32-bit device would lose the app.
+ */
+const PYTHON_FASSUNG = "3.11";
 /** the path to the manifest of the app, recreated at every `tauri android init`. */
 const MANIFEST = "src-tauri/gen/android/app/src/main/AndroidManifest.xml";
 const DRAWABLE = "src-tauri/gen/android/app/src/main/res/drawable";
@@ -37,6 +42,16 @@ const SYMBOLE = "src-tauri/icons/android";
 const RES = "src-tauri/gen/android/app/src/main/res";
 /** the version of `androidx.media`, it brings mediasession and the media keys. */
 const MEDIA_FASSUNG = "1.7.0";
+/** the build file of the whole project, not of the app. */
+const WURZEL_GRADLE = "src-tauri/gen/android/build.gradle.kts";
+/** where the python of the app lives. */
+const PYTHON_ORDNER = "src-tauri/gen/android/app/src/main/python";
+/** where the native libraries of the app lie, one folder per architecture. */
+const JNI_ORDNER = "src-tauri/gen/android/app/src/main/jniLibs";
+/** the javascript runtime, built by scripts/quickjs-bauen.mjs. */
+const QUICKJS_ORDNER = "src-tauri/android/quickjs";
+/** the four architectures the universal apk carries. */
+const ARCHITEKTUREN = ["arm64-v8a", "armeabi-v7a", "x86", "x86_64"];
 
 /**
  * the back button is to lead through the app, not out of it.
@@ -161,78 +176,163 @@ function zertifikatspruefungEinbinden() {
 }
 
 /**
- * brings yt-dlp onto the phone.
+ * the python that runs pip while building.
  *
- * the program does not exist for android: it is python, and even the linux
- * binary does not run here because android uses a different c library.
- * `youtubedl-android` delivers yt-dlp together with a python runtime as a
- * library. that costs around a hundred megabytes in the package but is the
- * only way to keep the same feature set.
- *
- * `ffmpeg` comes from the same house and is needed for converting. without it
- * only the format the source delivers would exist.
+ * chaquopy installs the packages on the build machine and needs an
+ * interpreter of exactly the target version for it. fedora carries 3.13, so
+ * looking on the path alone is not enough.
  */
-function ytdlpEinbinden() {
-  const inhalt = readFileSync(APP_GRADLE, "utf8");
-  if (!inhalt.includes("youtubedl-android")) {
-    const mit = inhalt.replace(
-      "dependencies {",
-      [
-        "dependencies {",
-        "    // yt-dlp samt Python-Laufzeit, siehe scripts/android-nachruesten.mjs.",
-        `    implementation("io.github.junkfood02.youtubedl-android:library:${YTDLP_FASSUNG}")`,
-        `    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:${YTDLP_FASSUNG}")`,
-      ].join("\n"),
+function bauPythonFinden() {
+  const kandidaten = [];
+
+  // whatever lies on the path — this is the case in the workflows, where
+  // `actions/setup-python` puts it there
+  try {
+    kandidaten.push(
+      execFileSync("which", [`python${PYTHON_FASSUNG}`], {
+        encoding: "utf8",
+      }).trim(),
     );
-    writeFileSync(APP_GRADLE, mit);
-    console.log("yt-dlp: Abhängigkeiten eingetragen");
-  } else {
-    console.log("yt-dlp: Abhängigkeiten schon da");
+  } catch {
+    // not on the path, that is the normal case on a workstation
   }
 
-  // lift commons-io to a version that still exists.
-  //
-  // `youtubedl-android` demands commons-io 2.5 from 2016. its `FileUtils`
-  // reaches `java.nio.file` through the helper class `Java7Support`, and
-  // exactly that does not end up in the finished package, d8 drops it. while
-  // nobody uses `FileUtils` that goes unnoticed, at a yt-dlp update it does
-  // not, and the app broke off with `NoClassDefFoundError:
-  // org.apache.commons.io.Java7Support`. newer versions get by without the
-  // detour and offer the same methods
-  const mitCommons = readFileSync(APP_GRADLE, "utf8");
-  if (!mitCommons.includes("commons-io")) {
+  // uv keeps standalone builds and needs no root rights for them
+  try {
+    kandidaten.push(
+      execFileSync("uv", ["python", "find", PYTHON_FASSUNG], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "ignore"],
+      }).trim(),
+    );
+  } catch {
+    // no uv, or no such version installed
+  }
+
+  const gefunden = kandidaten.find((pfad) => pfad && existsSync(pfad));
+  if (gefunden) return gefunden;
+
+  console.error(
+    `::error::Kein Python ${PYTHON_FASSUNG} zum Bauen gefunden. ` +
+      `Einrichten mit "uv python install ${PYTHON_FASSUNG}" ` +
+      "oder über die Paketverwaltung des Systems.",
+  );
+  process.exit(1);
+}
+
+/**
+ * brings python into the app.
+ *
+ * yt-dlp is python, and the program does not exist for android — even the
+ * linux binary does not run here, android uses a different c library. what is
+ * needed is an interpreter inside the app, and chaquopy delivers exactly
+ * that: it puts the runtime into the package and installs the wanted packages
+ * with pip while building.
+ *
+ * the way over `youtubedl-android` stood here before. it did the same, but
+ * under the gpl, and that does not go together with robify's licence: the gpl
+ * forbids further restrictions, and non-commercial is one. chaquopy is mit,
+ * yt-dlp is public domain, quickjs is mit.
+ */
+function chaquopyEinbinden() {
+  const wurzel = readFileSync(WURZEL_GRADLE, "utf8");
+  if (!wurzel.includes("com.chaquo.python")) {
     writeFileSync(
-      APP_GRADLE,
-      mitCommons.replace(
-        "dependencies {",
-        [
-          "configurations.configureEach {",
-          "    resolutionStrategy {",
-          "        // Siehe scripts/android-nachruesten.mjs.",
-          `        force("commons-io:commons-io:${COMMONS_IO_FASSUNG}")`,
-          "    }",
-          "}",
-          "",
-          "dependencies {",
-        ].join("\n"),
+      WURZEL_GRADLE,
+      wurzel.replace(
+        /(classpath\("org\.jetbrains\.kotlin:kotlin-gradle-plugin:[^"]+"\))/,
+        `$1\n        classpath("com.chaquo.python:gradle:${CHAQUOPY_FASSUNG}")`,
       ),
     );
-    console.log("yt-dlp: commons-io angehoben");
+    console.log("Chaquopy: in den Wurzelbau eingetragen");
   }
 
+  const inhalt = readFileSync(APP_GRADLE, "utf8");
+  if (inhalt.includes("com.chaquo.python")) {
+    console.log("Chaquopy: schon eingerichtet");
+    return;
+  }
+
+  const bauPython = bauPythonFinden();
+  const mit = inhalt
+    .replace(
+      '    id("rust")\n}',
+      '    id("rust")\n    id("com.chaquo.python")\n}',
+    )
+    .replace(
+      "android {",
+      [
+        "// Python samt yt-dlp, siehe scripts/android-nachruesten.mjs.",
+        "chaquopy {",
+        "    defaultConfig {",
+        `        version = "${PYTHON_FASSUNG}"`,
+        `        buildPython("${bauPython}")`,
+        "        pip {",
+        "            // Die Gruppe „default“ bringt yt-dlp-ejs mit, ohne das",
+        "            // YouTube seit 2025.11.12 unvollständig bleibt.",
+        '            install("yt-dlp[default]")',
+        "        }",
+        "    }",
+        "}",
+        "",
+        "android {",
+      ].join("\n"),
+    );
+  writeFileSync(APP_GRADLE, mit);
+  console.log(`Chaquopy: eingerichtet, baut mit ${bauPython}`);
+}
+
+/**
+ * lays the javascript runtime beside the other native libraries.
+ *
+ * since yt-dlp 2025.11.12 youtube cannot be served without one: the
+ * n-parameter challenge stays unsolved and formats fall away. deno, node and
+ * bun do not exist on android, quickjs does — `scripts/quickjs-bauen.mjs`
+ * builds it.
+ *
+ * the name `libqjs.so` is no whim: android unpacks and marks executable only
+ * what is called that and lies in the library folder.
+ */
+function quickjsEinlegen() {
+  if (!existsSync(QUICKJS_ORDNER)) {
+    console.error(
+      '::error::QuickJS fehlt. Erst "node scripts/quickjs-bauen.mjs" ausführen.',
+    );
+    process.exit(1);
+  }
+
+  let gelegt = 0;
+  for (const abi of ARCHITEKTUREN) {
+    const quelle = join(QUICKJS_ORDNER, abi, "libqjs.so");
+    if (!existsSync(quelle)) {
+      console.error(`::error::QuickJS fehlt für ${abi}.`);
+      process.exit(1);
+    }
+    const ordner = join(JNI_ORDNER, abi);
+    mkdirSync(ordner, { recursive: true });
+    copyFileSync(quelle, join(ordner, "libqjs.so"));
+    gelegt += 1;
+  }
+  console.log(`QuickJS: für ${gelegt} Architekturen eingelegt`);
+}
+
+/**
+ * brings yt-dlp onto the phone.
+ *
+ * the bridge and the python beside it live in the project and not in this
+ * script: they are read and changed there.
+ */
+function ytdlpEinbinden() {
   // native libraries have to be unpacked at install time.
   //
-  // `youtubedl-android` puts its python runtime into the library folder as
-  // `libpython.zip.so` and reads it at runtime as an ordinary file. modern
-  // android packages leave the libraries in the archive and load them from
-  // there though, and then the file does not exist and the setup fails with a
-  // `FileNotFoundException`. the older packaging unpacks them at install
-  // time
-  const mitPackung = readFileSync(APP_GRADLE, "utf8");
-  if (!mitPackung.includes("useLegacyPackaging")) {
+  // quickjs is started as a program, and that only works from a folder on the
+  // disk. modern android packaging leaves the libraries inside the archive
+  // and loads them from there; then there is no file to start
+  const inhalt = readFileSync(APP_GRADLE, "utf8");
+  if (!inhalt.includes("useLegacyPackaging")) {
     writeFileSync(
       APP_GRADLE,
-      mitPackung.replace(
+      inhalt.replace(
         "    buildTypes {",
         [
           "    packaging {",
@@ -247,49 +347,59 @@ function ytdlpEinbinden() {
     console.log("yt-dlp: Bibliotheken werden ausgepackt");
   }
 
-  // the bridge lives in the project and not in this script: it is kotlin and
-  // belongs where it is read and changed
   copyFileSync("src-tauri/android/Ytdlp.kt", join(PAKET_ORDNER, "Ytdlp.kt"));
 
+  mkdirSync(PYTHON_ORDNER, { recursive: true });
+  for (const datei of readdirSync("src-tauri/android/python")) {
+    if (datei.endsWith(".py")) {
+      copyFileSync(
+        join("src-tauri/android/python", datei),
+        join(PYTHON_ORDNER, datei),
+      );
+    }
+  }
+  console.log("yt-dlp: Brücke und Python-Teil kopiert");
+
   const activity = readFileSync(MAIN_ACTIVITY, "utf8");
-  if (activity.includes("YoutubeDL.getInstance().init")) {
+  if (activity.includes("Python.start")) {
     console.log("yt-dlp: Einrichtung schon in der Activity");
     return;
   }
 
-  // the library unpacks its python runtime at the first start and has to be
-  // set up once for it. on a thread of its own, because that takes a few
-  // seconds and would hold up the build-up of the ui otherwise
-  const mitInit = activity
+  // the interpreter is started once and stays for the life of the process.
+  // on a thread of its own: the first start unpacks the runtime and takes a
+  // moment, and the interface must not wait for it.
+  //
+  // `Ytdlp` starts it too where a download comes first, so nothing depends on
+  // the order — this only takes the wait out of the first download
+  const mitStart = activity
     .replace(
       "import android.os.Bundle",
-      [
-        "import android.os.Bundle",
-        "import android.util.Log",
-        "import com.yausername.ffmpeg.FFmpeg",
-        "import com.yausername.youtubedl_android.YoutubeDL",
-      ].join("\n"),
+      ["import android.os.Bundle", "import android.util.Log"].join("\n"),
     )
     .replace(
       "    super.onCreate(savedInstanceState)",
       [
         "    super.onCreate(savedInstanceState)",
         "",
-        "    // Packt beim ersten Start die Python-Laufzeit aus; das dauert",
-        "    // einige Sekunden und darf die Oberfläche nicht aufhalten.",
+        "    // Startet den Python-Teil im Voraus; beim ersten Mal wird dabei",
+        "    // die Laufzeit ausgepackt, und das darf nicht warten lassen.",
         "    Thread {",
         "      try {",
-        "        YoutubeDL.getInstance().init(this)",
-        "        FFmpeg.getInstance().init(this)",
-        '        Log.i("Robify", "yt-dlp und ffmpeg bereit")',
+        "        if (!com.chaquo.python.Python.isStarted()) {",
+        "          com.chaquo.python.Python.start(",
+        "            com.chaquo.python.android.AndroidPlatform(this)",
+        "          )",
+        "        }",
+        '        Log.i("Robify", "Python bereit")',
         "      } catch (fehler: Throwable) {",
-        '        Log.e("Robify", "yt-dlp nicht eingerichtet", fehler)',
+        '        Log.e("Robify", "Python nicht eingerichtet", fehler)',
         "      }",
         "    }.start()",
       ].join("\n"),
     );
 
-  writeFileSync(MAIN_ACTIVITY, mitInit);
+  writeFileSync(MAIN_ACTIVITY, mitStart);
   console.log("yt-dlp: Einrichtung in die Activity getragen");
 }
 
@@ -593,6 +703,12 @@ function brueckenSchuetzen() {
       "-keep class org.rustls.platformverifier.** { *; }",
       "-keepclassmembers class org.rustls.platformverifier.** { *; }",
       "",
+      "# chaquopy reaches its own classes out of the python runtime, likewise",
+      "# by their name. without this yt-dlp starts in the debug build and not",
+      "# in the release one, and that difference shows only on a device.",
+      "-keep class com.chaquo.python.** { *; }",
+      "-keepclassmembers class com.chaquo.python.** { *; }",
+      "",
       "# what is declared in kotlin and implemented in rust",
       "-keepclasseswithmembernames class * {",
       "    native <methods>;",
@@ -634,7 +750,7 @@ function speicherZuegeln() {
     alt
       .replace(
         "org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8",
-        "org.gradle.jvmargs=-Xmx1536m -Dfile.encoding=UTF-8",
+        "org.gradle.jvmargs=-Xmx3072m -Dfile.encoding=UTF-8",
       )
       .trimEnd(),
     "",
@@ -738,6 +854,8 @@ function startsymbolEinlegen() {
 
 zurueckKnopfAnschalten();
 zertifikatspruefungEinbinden();
+chaquopyEinbinden();
+quickjsEinlegen();
 ytdlpEinbinden();
 systemplayerEinbinden();
 benachrichtigungenErbitten();

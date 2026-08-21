@@ -669,11 +669,15 @@ pub async fn eigenes_holen(tools_dir: &Path) -> Result<PathBuf> {
 }
 
 pub fn ffmpeg_available() -> bool {
-    // on android ffmpeg ships as a library and is set up at startup, it never
-    // stands in the search path there. without this exception the ui reported
-    // ffmpeg missing although it stands ready
+    // android goes without it.
+    //
+    // the only maintained build for android stands under the gpl, and that
+    // does not go together with robify's licence. little is lost: the format
+    // is chosen so that it plays as it is, cover and tags robify writes
+    // itself, and only converting to mp3 or flac falls away. the interface
+    // says so, the sentence is translated
     if cfg!(target_os = "android") {
-        return true;
+        return false;
     }
     which::which("ffmpeg").is_ok()
 }
@@ -685,9 +689,11 @@ pub fn ffmpeg_available() -> bool {
 /// refused with "403 Forbidden". deno is yt-dlp's default, and node comes
 /// with this project anyway.
 pub fn js_runtime() -> Option<&'static str> {
-    // android brings neither of these runtimes and none can be installed
-    // there. the warning would stand forever without anybody being able to
-    // act on it, and yt-dlp falls back to its older route then
+    // none of these programs exists on android, and none can be installed
+    // there afterwards. quickjs is built along and lies among the libraries
+    // of the app; which path that is only the java side knows, so the bridge
+    // in `de.robify.player.Ytdlp` appends `--js-runtimes` itself. nothing is
+    // missing here, and there is nothing to search for either
     if cfg!(target_os = "android") {
         return None;
     }
@@ -1631,9 +1637,10 @@ fn blocked_message(has_js_runtime: bool) -> String {
     // on android both pieces of advice the other two sentences give lead
     // nowhere: a javascript runtime cannot be installed afterwards, and
     // `yt-dlp -U` does not exist because yt-dlp is no file there but sits in
-    // the library. nothing is missing either: that same library brings
-    // quickjs and hands it to yt-dlp through `--js-runtimes`. so only the
-    // throttling is left, and the advice to try elsewhere
+    // the app. nothing is missing either: quickjs is built along and the
+    // bridge hands it to yt-dlp through `--js-runtimes`, and yt-dlp is
+    // renewed with the app. so only the throttling is left, and the advice
+    // to try elsewhere
     if cfg!(target_os = "android") {
         return fehler!(
             "Die Quelle hat den Zugriff abgelehnt (403). Das kann an zu vielen Abrufen kurz hintereinander liegen. Warte ein paar Minuten oder versuche einen anderen Treffer; oft liegt derselbe Titel auch bei SoundCloud oder Bandcamp."
@@ -2163,7 +2170,14 @@ async fn download_inner<R: Runtime>(
     if options.embed_thumbnail && ffmpeg_available() && supports_thumbnail_embedding(ytdlp).await {
         args.push("--embed-thumbnail".into());
     }
-    args.push("--embed-metadata".into());
+    // the tags too are written by ffmpeg, and yt-dlp breaks the download off
+    // where it is missing: "ffmpeg wird für dieses Format benötigt". on
+    // android that hit every single download, and there is nothing lost by
+    // leaving it out — title, artist, album and cover robify writes itself
+    // at import, out of what the metadata search found
+    if ffmpeg_available() {
+        args.push("--embed-metadata".into());
+    }
     args.push(options.url.clone());
     args.extend(js_runtime_args(ytdlp).await);
 
@@ -2767,6 +2781,30 @@ mod tests {
             coverage_penalty("Michael Jackson Billie Jean", &mit_beiwerk),
             0.0
         );
+    }
+
+    /// what only ffmpeg can do must not be asked for where it is missing.
+    ///
+    /// on android it is missing on purpose, and `--embed-metadata` broke off
+    /// every download there: yt-dlp writes the tags with ffmpeg and refuses
+    /// without it. the same holds for `-x` and `--embed-thumbnail`
+    #[test]
+    fn ohne_ffmpeg_wird_nichts_verlangt_was_ffmpeg_braucht() {
+        // measured rather than claimed: the flags are read out of the source
+        // itself, so a new one cannot be added past this test
+        let quelle = include_str!("downloader.rs");
+        for schalter in ["--embed-metadata", "--embed-thumbnail", "--audio-format"] {
+            let stelle = quelle
+                .find(&format!("args.push(\"{schalter}\".into())"))
+                .unwrap_or_else(|| panic!("{schalter} nicht mehr im Quelltext"));
+            // in the thousand characters before it `ffmpeg_available` has to
+            // stand — that is the guard
+            let davor = &quelle[stelle.saturating_sub(1000)..stelle];
+            assert!(
+                davor.contains("ffmpeg_available()"),
+                "{schalter} wird ohne Prüfung auf ffmpeg übergeben"
+            );
+        }
     }
 
     #[test]

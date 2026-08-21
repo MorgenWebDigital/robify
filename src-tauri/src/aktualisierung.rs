@@ -166,6 +166,15 @@ pub async fn pruefen(ytdlp_jetzt: Option<String>) -> Aktualisierungen {
         }
     };
 
+    // on android yt-dlp is no file of its own: it is installed into the app
+    // while building and comes along with every new version of it. a hint
+    // that something newer stands on github would be true and useless — the
+    // update of the app is the only way to it, and that one is already
+    // reported above
+    if cfg!(target_os = "android") {
+        return Aktualisierungen { app, ytdlp: None };
+    }
+
     // without a version of its own there is nothing to compare: yt-dlp is
     // missing entirely then, and the downloader already says so
     let ytdlp = match (ytdlp_jetzt, neueste_marke(YTDLP_LAGER).await) {

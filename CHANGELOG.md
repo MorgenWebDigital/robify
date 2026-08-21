@@ -5,6 +5,23 @@ the versions follow [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- android carries its own python instead of `youtubedl-android`. that library
+  and its ffmpeg stand under the gpl-3.0, which forbids further restrictions —
+  a non-commercial clause is one, so the apk could not have been passed on
+  under robify's licence. in their place stand chaquopy (mit), yt-dlp
+  (unlicense) installed by pip, and quickjs (mit) as the javascript runtime
+  youtube demands. the apk shrinks by more than half.
+- the licence list covers the android build too, and refuses to run as soon as
+  a dependency appears in it that nobody has looked at
+
+### Removed
+
+- converting to mp3 or flac on android. it took ffmpeg, and the only
+  maintained build for android is gpl. the format is chosen so that it plays
+  as it is, cover and tags robify writes itself
+
 ## [0.1.0] – not released yet
 
 The first version.

@@ -255,6 +255,19 @@ npm run android:dev      # test on a device or emulator
 npm run android:build    # build the apk
 ```
 
+Two things are built alongside and are looked for by the retrofit script:
+
+```bash
+uv python install 3.11              # chaquopy runs pip with it
+node scripts/quickjs-bauen.mjs      # the javascript runtime, once per version
+```
+
+Python 3.11 and not something newer: chaquopy carries `armeabi-v7a` and `x86`
+up to that version only, and with a newer one every 32-bit device would lose
+the app. Any python 3.11 does — from the package manager, from `uv`, from
+anywhere on the path. `npm run android:build` calls the quickjs build itself;
+it does nothing when the version in place already matches.
+
 The apk ends up under `src-tauri/gen/android/app/build/outputs/apk/`. For a
 release in the play store it still has to be signed.
 
@@ -535,10 +548,19 @@ and the apk are untouched by it.
 
 ### Third-party libraries
 
-Robify ships with around 400 third-party packages (rust and npm, without build
-tools). Overwhelmingly mit and apache-2.0, plus mpl-2.0 for symphonia and a few
-smaller ones. There is no gpl, agpl, lgpl or sspl in the tree, so nothing
-forces the disclosure of source code of our own.
+Robify ships with around 400 third-party packages (rust, npm and, for the apk,
+what gradle and pip add). Overwhelmingly mit and apache-2.0, plus mpl-2.0 for
+symphonia and a few smaller ones. There is no gpl, agpl, lgpl or sspl in the
+tree, so nothing forces the disclosure of source code of our own.
+
+That holds for the android build as well, and it did not always. Until the
+python runtime was exchanged the apk carried `youtubedl-android` and its
+ffmpeg, both gpl-3.0, and the gpl forbids further restrictions — a
+non-commercial clause is one. The apk could not have been passed on that way.
+In its place stand chaquopy (mit) with a python of its own, yt-dlp (unlicense)
+installed into it by pip, and quickjs (mit) as the javascript runtime youtube
+demands. Converting to mp3 or flac fell away with ffmpeg; the format is chosen
+so that it plays as it is.
 
 All three expressly allow the whole to be passed on under different terms, so
 the licence of robify may be stricter than theirs. Mpl-2.0 acts on the files of
@@ -548,7 +570,9 @@ and their source has to stay open.
 Mit and apache-2.0 both demand that copyright notice and licence text ship
 along. `scripts/lizenzen.mjs` takes care of that: it collects the details from
 `cargo tree -e normal` and from the npm production tree into
-`public/lizenzen.json`, which the app displays under settings, legal.
+`public/lizenzen.json`, which the app displays under settings, legal. What the
+apk adds beyond that stands written out in the same script, and it refuses to
+run as soon as the android build file names a dependency nobody has looked at.
 
 ```bash
 # runs with every `npm run build` anyway

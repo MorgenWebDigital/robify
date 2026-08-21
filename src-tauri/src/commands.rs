@@ -1319,9 +1319,11 @@ pub struct DownloaderStatus {
     pub js_runtime: Option<String>,
     /// whether anything can be done about this missing runtime at all.
     ///
-    /// on android it cannot: neither node nor deno exists there, and they
-    /// cannot be installed either. a warning nobody can act on is not a
-    /// warning but noise.
+    /// on android nothing is missing and nothing could be done either:
+    /// quickjs is built into the app and the bridge hands it to yt-dlp, while
+    /// node and deno do not exist there and cannot be installed. `js_runtime`
+    /// stays empty all the same — it looks for a program on the path, and
+    /// there is none. a warning out of that would be wrong twice over.
     pub js_runtime_relevant: bool,
     pub active_jobs: Vec<String>,
 }

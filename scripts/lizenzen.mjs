@@ -178,9 +178,133 @@ function npmPakete() {
   return pakete;
 }
 
+// --- android ---
+//
+// the gradle tree is not walked here, and deliberately not: it exists only
+// after `tauri android init`, and reading it would mean starting gradle. what
+// is in it is few and stable, so it stands written out — and a check below
+// makes sure nothing new slips in unnoticed.
+
+/** what the apk carries beyond rust and npm. */
+const ANDROID_PAKETE = [
+  {
+    name: "Chaquopy",
+    version: "17.0.0",
+    lizenz: "MIT",
+    quelle: "https://github.com/chaquo/chaquopy",
+    text: "chaquopy.txt",
+    hinweis: "Bringt die Python-Laufzeit in die App.",
+  },
+  {
+    name: "CPython",
+    version: "3.11",
+    lizenz: "PSF-2.0",
+    quelle: "https://www.python.org/",
+    hinweis: "Als Laufzeit von Chaquopy mitgeliefert.",
+  },
+  {
+    name: "yt-dlp",
+    version: "aus yt-dlp[default]",
+    lizenz: "Unlicense",
+    quelle: "https://github.com/yt-dlp/yt-dlp",
+    text: "yt-dlp.txt",
+    hinweis: "Lädt die Titel; wird beim Bauen in die App installiert.",
+  },
+  {
+    name: "yt-dlp-ejs",
+    version: "aus yt-dlp[default]",
+    lizenz: "Unlicense",
+    quelle: "https://github.com/yt-dlp/ejs",
+    hinweis: "Führt die JavaScript-Prüfungen von YouTube aus.",
+  },
+  {
+    name: "quickjs-ng",
+    version: "0.16.2",
+    lizenz: "MIT",
+    quelle: "https://github.com/quickjs-ng/quickjs",
+    text: "quickjs.txt",
+    hinweis: "Die JavaScript-Laufzeit, die yt-dlp dafür braucht.",
+  },
+  {
+    name: "androidx.media",
+    version: "1.7.0",
+    lizenz: "Apache-2.0",
+    quelle: "https://developer.android.com/jetpack/androidx",
+    hinweis: "MediaSession und Medientasten.",
+  },
+];
+
+/**
+ * every gradle dependency of the app has to stand in the list above.
+ *
+ * without this the list would silently fall behind: the build file is written
+ * anew at every `tauri android init`, and what tauri adds there changes with
+ * its versions. a name nobody has looked at is the case to notice.
+ */
+const ANDROID_BEKANNT = [
+  "com.chaquo.python",
+  "androidx.media",
+  "rustls:rustls-platform-verifier",
+  "androidx.webkit",
+  "androidx.appcompat",
+  "androidx.activity",
+  "com.google.android.material",
+  "androidx.lifecycle",
+  // test only, they do not ship
+  "junit:junit",
+  "androidx.test",
+];
+
+function androidPruefen() {
+  const bau = join(
+    WURZEL,
+    "src-tauri",
+    "gen",
+    "android",
+    "app",
+    "build.gradle.kts",
+  );
+  if (!existsSync(bau)) return;
+
+  const unbekannt = readFileSync(bau, "utf8")
+    .split("\n")
+    .map((zeile) => zeile.match(/implementation\("([^"]+)"\)/)?.[1])
+    .filter(Boolean)
+    .filter(
+      (kennung) =>
+        !ANDROID_BEKANNT.some((bekannt) => kennung.startsWith(bekannt)),
+    );
+
+  if (unbekannt.length > 0) {
+    console.error(
+      "::error::Neue Android-Abhängigkeit ohne Lizenzangabe: " +
+        unbekannt.join(", ") +
+        "\n  Eintragen in ANDROID_PAKETE in scripts/lizenzen.mjs.",
+    );
+    process.exit(1);
+  }
+}
+
+function androidPakete() {
+  androidPruefen();
+  const ordner = join(WURZEL, "src-tauri", "android", "lizenzen");
+  return ANDROID_PAKETE.map((paket) => {
+    const datei = paket.text ? join(ordner, paket.text) : null;
+    return {
+      name: paket.name,
+      version: paket.version,
+      lizenz: paket.lizenz,
+      quelle: paket.quelle,
+      hinweis: paket.hinweis,
+      herkunft: "Android",
+      texte: datei && existsSync(datei) ? [readFileSync(datei, "utf8")] : [],
+    };
+  });
+}
+
 // --- writing it out ---
 
-const alle = [...rustPakete(), ...npmPakete()].sort(
+const alle = [...rustPakete(), ...npmPakete(), ...androidPakete()].sort(
   (a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version),
 );
 
@@ -216,6 +340,9 @@ console.log(
 );
 console.log(`  Rust: ${alle.filter((p) => p.herkunft === "Rust").length}`);
 console.log(`  npm:  ${alle.filter((p) => p.herkunft === "npm").length}`);
+console.log(
+  `  Android: ${alle.filter((p) => p.herkunft === "Android").length}`,
+);
 if (ohneText.length > 0) {
   // no great harm: the spdx value stands there all the same. but it is the
   // point at which to look by hand before shipping

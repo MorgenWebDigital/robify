@@ -15,6 +15,9 @@ src-tauri/WixTools/
 
 # Android
 src-tauri/gen/android/
+# von scripts/quickjs-bauen.mjs erzeugt
+src-tauri/android/quickjs/
+src-tauri/android/.quickjs-bau/
 src-tauri/gen/apple/
 *.keystore
 key.properties
