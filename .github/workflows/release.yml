@@ -371,9 +371,9 @@ jobs:
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
         run: |
           cd signatur
-          # one checksum file for everything plus a signature per file: the
-          # checksum file shows at a glance what belongs to the release, and
-          # the individual signatures allow checking one file alone
+          # one checksum file for everything, and only that one is signed.
+          # whoever verifies it holds the hash of every file in a form that
+          # cannot be forged, and can check any single one against it
           sha256sum -- * > SHA256SUMS
 
           signieren() {
@@ -386,21 +386,37 @@ jobs:
             fi
           }
 
-          for datei in *; do
-            case "$datei" in
-              *.asc|SHA256SUMS) continue ;;
-            esac
-            signieren "$datei"
-          done
           signieren SHA256SUMS
+          ls -la SHA256SUMS SHA256SUMS.asc
 
-          ls -la *.asc
-
-      - name: Attach the signatures
+      - name: Attach the signature
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd signatur
           gh release upload "${{ github.ref_name }}" \
             --repo "${{ github.repository }}" \
-            SHA256SUMS *.asc --clobber
+            SHA256SUMS SHA256SUMS.asc --clobber
+
+      # the release page shows every file as an equal row. with a signature
+      # per installer, twelve downloads became forty rows, and somebody who
+      # only wants the deb has to look for it. the guarantee stays: the
+      # checksum file is signed, and through it every single file can be
+      # checked.
+      #
+      # the .sig files belong to the updater, which reads its signature out of
+      # latest.json and never fetches them
+      - name: Clear away the loose signatures
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --json assets --jq '.assets[].name' \
+          | grep -E '\.(sig|asc)$' \
+          | grep -vx 'SHA256SUMS.asc' \
+          | while read -r name; do
+              echo "removing $name"
+              gh release delete-asset "${{ github.ref_name }}" "$name" \
+                --repo "${{ github.repository }}" --yes
+            done

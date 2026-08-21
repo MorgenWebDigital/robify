@@ -290,8 +290,8 @@ export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-t
 
 ### Checking the installers
 
-Every published file carries a detached openpgp signature (`.asc`) next to it,
-and a signed `SHA256SUMS` ships along. The signing key:
+A signed `SHA256SUMS` ships with every release. It holds the checksum of every
+published file, so one signature covers them all. The signing key:
 
 ```
 MorgenWebDigital (Robify release signing) <info@morgenwebdigital.de>
@@ -304,13 +304,16 @@ The public key ships as
 ```bash
 gpg --import packaging/robify-signing-key.asc
 
-# check a single file
-gpg --verify Robify_0.1.0_amd64.deb.asc Robify_0.1.0_amd64.deb
-
-# or all of them at once through the checksums
+# the signature vouches for the checksum file
 gpg --verify SHA256SUMS.asc SHA256SUMS
+
+# and the checksum file for whatever was downloaded
 sha256sum --check --ignore-missing SHA256SUMS
 ```
+
+Both steps together, and in this order. A checksum file on its own proves
+nothing: whoever can exchange an installer can exchange the checksums next to
+it. Only the signature ties them to this key.
 
 `Good signature` together with the fingerprint above means the file comes from
 this project unchanged. The warning that the key is not certified is to be
