@@ -153,6 +153,27 @@ jobs:
           path: packaging/arch/*.pkg.tar.zst
           if-no-files-found: error
 
+      # the artefact alone hangs off the run and is deleted after ninety days.
+      # the signing job reads the draft of the release, so what is not hung on
+      # here stays unsigned and does not reach anybody.
+      #
+      # the draft is created by the desktop job, which runs alongside this one.
+      # whoever finishes first would not find it yet, hence the wait
+      - name: Hang the package on the release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for i in $(seq 1 60); do
+            gh release view "${{ github.ref_name }}" \
+              --repo "${{ github.repository }}" >/dev/null 2>&1 && break
+            echo "the draft does not exist yet, attempt $i of 60"
+            sleep 10
+          done
+          gh release upload "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" --clobber \
+            packaging/arch/*.pkg.tar.zst
+
   android:
     name: Android (APK)
     runs-on: ubuntu-latest
@@ -272,6 +293,24 @@ jobs:
           name: robify-android-apk
           path: Robify_*.apk
           if-no-files-found: error
+
+      # same as with the arch package: without this the apk stays an artefact
+      # of the run, unsigned by pgp and gone after ninety days. the wait is
+      # for the draft, which the desktop job creates alongside
+      - name: Hang the APK on the release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for i in $(seq 1 60); do
+            gh release view "${{ github.ref_name }}" \
+              --repo "${{ github.repository }}" >/dev/null 2>&1 && break
+            echo "the draft does not exist yet, attempt $i of 60"
+            sleep 10
+          done
+          gh release upload "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" --clobber \
+            Robify_*.apk
 
   # --- signing ---
   #
