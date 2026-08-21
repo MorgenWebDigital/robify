@@ -1342,9 +1342,20 @@ const SAME_TAKE_MS: i64 = 15_000;
 ///
 /// this stands in for a value from outside where there is none, so on every
 /// search through the input field.
-fn consensus_duration_ms(results: &[SearchResult]) -> Option<i64> {
+fn consensus_duration_ms(results: &[SearchResult], query: &str) -> Option<i64> {
+    // only hits that mean the track itself have a say.
+    //
+    // otherwise the foreign versions set the norm, and next to a well-known
+    // track there are more of them than of the original: under "Bicep Glue"
+    // stand seven bootlegs and edits, each of a length of its own. their
+    // middle became the majority, and the official recording was charged for
+    // deviating from it — while a hit naming no length at all got away with
+    // the flat twelve. that is how a mashup came to stand first.
     let mut durations: Vec<i64> = results
         .iter()
+        .filter(|r| {
+            coverage_penalty(query, r) == 0.0 && version_penalty(&r.title, query) == 0.0
+        })
         .filter_map(|r| r.duration_ms)
         .filter(|ms| *ms > 0)
         .collect();
@@ -1449,7 +1460,7 @@ fn rank_candidates(
     // wrong where a known running time cannot
     let consensus = match expected_duration_ms.filter(|ms| *ms > 0) {
         Some(_) => None,
-        None => consensus_duration_ms(found),
+        None => consensus_duration_ms(found, query),
     };
 
     let mut ranked: Vec<(f64, &SearchResult)> = found
@@ -1540,7 +1551,7 @@ fn is_collection_url(url: &str) -> bool {
 /// unordered, the first hit of whichever source stood on top, even where it
 /// was an entirely different track or only an excerpt.
 fn sort_by_relevance(results: &mut [SearchResult], query: &str) {
-    let consensus = consensus_duration_ms(results);
+    let consensus = consensus_duration_ms(results, query);
     let rang = |candidate: &SearchResult| {
         coverage_penalty(query, candidate)
             // without this check remixes and edits stood right on top: the
@@ -2722,6 +2733,7 @@ fn locate_output(result_file: &Path, job_dir: &Path) -> Result<PathBuf> {
 mod tests {
     use super::{
         abzug_bei, apply_source_metadata, blocked_message, consensus_duration_ms,
+        consensus_penalty,
         coverage_penalty, explain_failure,
         ist_youtube, is_collection_url, plans_with_fallbacks, rank_candidates, score_candidate,
         fremde_fassungen, fremde_klammer, same_song, sort_by_relevance, version_penalty,
@@ -3588,6 +3600,40 @@ ERROR: Postprocessing: module mutagen was not found. Please install using `pytho
         assert_eq!(version_penalty("Song (Remix)", "Song (Remix)"), 0.0);
     }
 
+    /// foreign versions must not set the norm.
+    ///
+    /// under "Bicep Glue" stand seven bootlegs and edits, each of a length of
+    /// its own, and only one official recording. their middle became the
+    /// majority, the original was charged for deviating from it, and a
+    /// mashup naming no length at all ended up first.
+    #[test]
+    fn fremde_fassungen_bestimmen_die_mehrheitslaenge_nicht() {
+        let liste = [
+            treffer("BICEP | GLUE (Official Video)", 285, "YouTube"),
+            treffer("Bicep - Glue", 285, "SoundCloud"),
+            treffer("BICEP GLUE", 284, "YouTube Music"),
+            treffer("Bicep - Glue (Livsey Bootleg)", 203, "Bandcamp"),
+            treffer("Bicep - Glue (OAO Edit)", 199, "Bandcamp"),
+            treffer("Bicep - Glue (Aand Remix)", 328, "Bandcamp"),
+            treffer("Love Bicep Glue", 205, "Bandcamp"),
+        ];
+        let mehrheit = consensus_duration_ms(&liste, "Bicep Glue");
+        assert_eq!(
+            mehrheit,
+            Some(285_000),
+            "die Bootlegs haben die Mehrheitslänge bestimmt"
+        );
+
+        // and the official recording is charged nothing for it
+        assert_eq!(consensus_penalty(&liste[0], mehrheit), 0.0);
+        // the edits are, they are a different recording
+        assert!(consensus_penalty(&liste[3], mehrheit) > 0.0);
+
+        // where too few clean hits stand, nothing is stated at all — that is
+        // better than letting the foreign versions decide
+        assert!(consensus_duration_ms(&liste[3..], "Bicep Glue").is_none());
+    }
+
     #[test]
     fn mehrheit_der_quellen_bestimmt_die_laenge() {
         // four sources carry the same recording, one an excerpt
@@ -3597,14 +3643,14 @@ ERROR: Postprocessing: module mutagen was not found. Please install using `pytho
             treffer("Money Trees", 395, "SoundCloud"),
             treffer("Money Trees", 387, "YouTube"),
         ];
-        let consensus = consensus_duration_ms(&liste).expect("Mehrheit gefunden");
+        let consensus = consensus_duration_ms(&liste, "Money Trees").expect("Mehrheit gefunden");
         assert!(
             (consensus - 387_000).abs() < 10_000,
             "unerwartete Länge: {consensus} ms"
         );
 
         // too few values: better no statement than a poor one
-        assert!(consensus_duration_ms(&liste[..2]).is_none());
+        assert!(consensus_duration_ms(&liste[..2], "Money Trees").is_none());
     }
 
     #[test]

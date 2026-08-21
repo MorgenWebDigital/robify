@@ -12,7 +12,8 @@ the versions follow [semantic versioning](https://semver.org/).
   a non-commercial clause is one, so the apk could not have been passed on
   under robify's licence. in their place stand chaquopy (mit), yt-dlp
   (unlicense) installed by pip, and quickjs (mit) as the javascript runtime
-  youtube demands. the apk shrinks by more than half.
+  youtube demands. the apk over all four architectures now measures 65 mb;
+  the ffmpeg library alone brought 133 mb of that before.
 - the licence list covers the android build too, and refuses to run as soon as
   a dependency appears in it that nobody has looked at
 

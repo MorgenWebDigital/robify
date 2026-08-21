@@ -58,7 +58,6 @@ class _Mitleser(io.TextIOBase):
     def write(self, text):
         if not text:
             return 0
-        self._sammlung.append(text)
 
         # split at carriage return as well, not at the line break alone:
         # yt-dlp writes its progress over the same line again and again and
@@ -74,7 +73,11 @@ class _Mitleser(io.TextIOBase):
             if stelle < 0:
                 break
             zeile, self._rest = self._rest[:stelle], self._rest[stelle + 1:]
-            self._zeile_lesen(zeile)
+            if not self._fortschritt_lesen(zeile):
+                # progress lines are not kept: they have done their work, and
+                # in an error message a few hundred of them bury the sentence
+                # that says what went wrong
+                self._sammlung.append(zeile + "\n")
 
         # checked after writing, so the last line still reaches the log
         stand = _LAEUFT.get(self._kennung)
@@ -82,26 +85,38 @@ class _Mitleser(io.TextIOBase):
             raise _Abgebrochen()
         return len(text)
 
-    def _zeile_lesen(self, zeile):
+    def _fortschritt_lesen(self, zeile):
+        """reads a progress line, and says whether it was one."""
         stelle = zeile.find(_MARKE)
         if stelle < 0:
-            return
+            return False
         # the shape comes from `--progress-template` in downloader.rs:
         # ROBIFYPROGRESS|geladen|gesamt|schaetzung|tempo|rest
         felder = zeile[stelle + len(_MARKE):].strip().split("|")
         if len(felder) < 4:
-            return
+            return True
         geladen = _zahl(felder[1])
         gesamt = _zahl(felder[2])
         if gesamt is None:
             # a stream names no total, only an estimate
             gesamt = _zahl(felder[3])
         if geladen is None or not gesamt or gesamt <= 0:
-            return
+            return True
         prozent = max(0.0, min(100.0, geladen / gesamt * 100.0))
         stand = _LAEUFT.get(self._kennung)
         if stand is not None:
             stand["prozent"] = prozent
+        return True
+
+    def rest_holen(self):
+        """what stands after the last line break.
+
+        yt-dlp does not end every output with one — `--print` writes the last
+        entry without it, and the search would lose exactly that line
+        """
+        rest, self._rest = self._rest, ""
+        if rest and not self._fortschritt_lesen(rest):
+            self._sammlung.append(rest)
 
     def flush(self):
         return None
@@ -139,6 +154,11 @@ def lauf(kennung, args):
         # and a bare type name says nothing about where it came from
         fehlertext = traceback.format_exc()
     finally:
+        # whatever stands after the last line break belongs to the output too
+        try:
+            mitleser.rest_holen()
+        except Exception:  # noqa: BLE001 — nothing here may swallow the result
+            pass
         sys.stdout, sys.stderr = vorher_out, vorher_err
         with _SPERRE:
             _LAEUFT.pop(kennung, None)
