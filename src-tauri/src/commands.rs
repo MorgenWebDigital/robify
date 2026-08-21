@@ -1943,6 +1943,25 @@ pub fn is_job_dir(dir: &Path) -> bool {
         .is_some_and(|name| name.starts_with("job-"))
 }
 
+/// clears the job folder away once its file has left it.
+///
+/// what stays behind are thumbnails and the notes of the download; the audio
+/// file lies in the library by then. cleared here and not only by age at the
+/// next start — whoever loads an album of thirty titles would otherwise carry
+/// their leftovers around for a day.
+///
+/// only where the file really moved. with "do not move into the library" it
+/// stays where it lies, and the library points at exactly that place.
+fn auftragsordner_raeumen(quelle: &Path, ziel: &Path) -> bool {
+    if quelle == ziel {
+        return false;
+    }
+    let Some(job) = quelle.parent().filter(|dir| is_job_dir(dir)) else {
+        return false;
+    };
+    std::fs::remove_dir_all(job).is_ok()
+}
+
 /// moves a file into a target directory without overwriting anything there.
 ///
 /// across drive boundaries `rename` fails, and it copies and removes the
@@ -2101,6 +2120,9 @@ pub fn import_download(
 
     let _ = app.emit("library:changed", ());
     fetch_artists_in_background(&app, neue_kuenstler);
+
+    auftragsordner_raeumen(&source_path, &final_path);
+
     Ok(track)
 }
 
@@ -2378,6 +2400,41 @@ pub fn app_paths(app: AppHandle, state: State<'_, AppState>) -> CmdResult<serde_
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn auftragsordner_wird_nach_dem_import_geleert() {
+        let basis = std::env::temp_dir()
+            .join(format!("robify-importtest-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&basis);
+
+        let job = basis.join("job-7-1");
+        std::fs::create_dir_all(&job).unwrap();
+        std::fs::write(job.join("miniaturbild.jpg"), b"x").unwrap();
+        let quelle = job.join("lied.m4a");
+        std::fs::write(&quelle, b"x").unwrap();
+        let ziel = basis.join("Bibliothek").join("lied.m4a");
+
+        assert!(super::auftragsordner_raeumen(&quelle, &ziel));
+        assert!(!job.exists(), "der Auftragsordner steht noch");
+
+        // where the file stays put, the folder stays as well
+        let job2 = basis.join("job-8-1");
+        std::fs::create_dir_all(&job2).unwrap();
+        let bleibt = job2.join("lied.m4a");
+        std::fs::write(&bleibt, b"x").unwrap();
+        assert!(!super::auftragsordner_raeumen(&bleibt, &bleibt));
+        assert!(job2.exists(), "der Ordner wurde geleert, obwohl die Datei blieb");
+
+        // and a folder that is no job folder is never touched
+        let fremd = basis.join("etwas-anderes");
+        std::fs::create_dir_all(&fremd).unwrap();
+        let drin = fremd.join("lied.m4a");
+        std::fs::write(&drin, b"x").unwrap();
+        assert!(!super::auftragsordner_raeumen(&drin, &ziel));
+        assert!(fremd.exists(), "ein fremder Ordner wurde geleert");
+
+        let _ = std::fs::remove_dir_all(&basis);
+    }
     use super::{sanitize, schema_kleinschreiben};
 
     /// a typed link stays a link.
@@ -2451,5 +2508,4 @@ mod tests {
         // excessively long names are cut but stay valid
         let lang = sanitize(&"ä".repeat(500));
         assert_eq!(lang.chars().count(), 120);
-    }
-}
+    }}

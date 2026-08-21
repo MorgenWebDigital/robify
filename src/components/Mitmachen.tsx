@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { version } from "../../package.json";
+import { alsText } from "../lib/wachhund";
 import { MELDESTELLE, SPENDEN } from "../lib/kontakt";
 import { t } from "../lib/i18n";
 import { useUi } from "../store/ui";
@@ -70,12 +71,20 @@ export function Mitmachen({ ytdlp }: { ytdlp?: string | null }) {
   const [kopiert, setKopiert] = useState<string | null>(null);
 
   const berichtKopieren = async () => {
-    const text = t(
+    let text = t(
       "Robify {0}\nSystem: {1}\nyt-dlp: {2}\n\nWas wolltest du tun?\n\nWas ist stattdessen passiert?\n\nLässt es sich wiederholen?",
       version,
       systemZeile(),
       ytdlp || t("unbekannt"),
     );
+
+    // what the watchdog noticed comes along, and only where there is
+    // something. an entry without a running time is a call that never came
+    // back — exactly the case that is otherwise impossible to describe
+    const auffaellig = alsText();
+    if (auffaellig) {
+      text += `\n\n${t("Auffällige Aufrufe (Befehl, Dauer):")}\n${auffaellig}`;
+    }
     if (await inDieAblage(text)) {
       setBericht(true);
       notify(t("In die Zwischenablage kopiert"), "success");

@@ -137,8 +137,8 @@ const FORMATE = {
   vorbis: "libvorbis",
 };
 
-/** the file the interface reads its format list from. */
-const FORMATQUELLE = join(WURZEL, "src", "pages", "DownloaderPage.tsx");
+/** where the interface keeps its format list. */
+const FORMATQUELLE = join(WURZEL, "src", "lib", "formate.ts");
 
 /**
  * checks that every format on offer can be encoded.

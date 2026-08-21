@@ -1369,9 +1369,21 @@ pub async fn enrich(
     }
 
     // timestamps come from lrclib only, genius delivers the running text better
-    if let Ok(found) = synced {
-        metadata.lyrics_synced = found.synced_lyrics;
-        metadata.lyrics_plain = found.plain_lyrics;
+    match synced {
+        Ok(found) => {
+            metadata.lyrics_synced = found.synced_lyrics;
+            metadata.lyrics_plain = found.plain_lyrics;
+        }
+        // it used to fail without a word, and that is how it stayed unnoticed
+        // that on android no lyrics arrived at all: everything else came
+        // through, only this one thing quietly did not
+        Err(fehler) if want_lyrics => {
+            eprintln!(
+                "Lyrics: für „{} – {}“ nichts gefunden: {fehler}",
+                candidate.artist, candidate.title
+            );
+        }
+        Err(_) => {}
     }
     if let Some(text) = genius_text {
         metadata.lyrics_plain = Some(text);

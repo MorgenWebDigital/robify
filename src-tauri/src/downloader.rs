@@ -2323,19 +2323,28 @@ async fn download_inner<R: Runtime>(
         metadata.featured_artists = Some(crate::library::join_artists(&gaeste));
     }
 
-    // the source knows which release the recording comes from, while the
-    // metadata search guesses and lands on a vinyl cut or a sampler now and
-    // then.
+    // the source names the release its own copy comes from, and that is not
+    // always the one the recording belongs to. youtube music serves "Billie
+    // Jean" out of "HIStory" and "Das Model" out of the live box "3-D Der
+    // Katalog" — the audio is right both times, the album is a best-of.
     //
-    // the exception: where the album carries the same name as the track it is
-    // only the placeholder of a single. the search then leads to the real
+    // so it only fills a gap now. it used to have the last word, and back
+    // then that was the better rule: the metadata search took the first hit
+    // that fitted and landed on a vinyl cut or a sampler often enough. since
+    // four catalogues are asked at once and the album is decided by majority
+    // among them, they are the more reliable of the two.
+    //
+    // the second case: where the album carries the same name as the track it
+    // is only the placeholder of a single, and the search leads to the real
     // album more often ("Creep" to "Pablo Honey")
-    if let Some(album) = source
-        .album
-        .as_deref()
-        .filter(|album| !crate::online::looks_like_same(album, &metadata.title))
-    {
-        metadata.album = album.to_string();
+    if metadata.album.trim().is_empty() {
+        if let Some(album) = source
+            .album
+            .as_deref()
+            .filter(|album| !crate::online::looks_like_same(album, &metadata.title))
+        {
+            metadata.album = album.to_string();
+        }
     }
 
     // details known beforehand, from a spotify link for instance, have the

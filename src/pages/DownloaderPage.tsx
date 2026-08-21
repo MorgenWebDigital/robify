@@ -14,6 +14,7 @@ import { Button, Field, inputClass, Modal } from "../components/Modal";
 import { DownloadHinweis } from "../components/Rechtliches";
 import { api, errorMessage, fallback, meldungText } from "../lib/api";
 import { formatBytes, formatTime, plural } from "../lib/format";
+import { formate } from "../lib/formate";
 import { useDownloader, type Job, type Stapelstand } from "../store/downloader";
 import { useLibrary } from "../store/library";
 import { useUi } from "../store/ui";
@@ -32,15 +33,6 @@ import type {
 // once at load time. does the user switch language afterwards, the app
 // rebuilds itself but the module does not, and the labels would stay in the
 // starting language
-function formate() {
-  return [
-    { id: "best", label: t("Beste Qualität") },
-    { id: "mp3", label: "MP3" },
-    { id: "m4a", label: "M4A / AAC" },
-    { id: "flac", label: "FLAC" },
-    { id: "vorbis", label: "OGG Vorbis" },
-  ];
-}
 
 // the heading above the result list.
 //

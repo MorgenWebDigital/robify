@@ -1,4 +1,5 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke as roh } from "@tauri-apps/api/core";
+import { beobachten } from "./wachhund";
 import { useUi } from "../store/ui";
 import { t } from "./i18n";
 import type {
@@ -30,6 +31,17 @@ import type {
   Wrapped,
   YtdlpErneuert,
 } from "../types";
+
+/**
+ * every call to the backend runs through here.
+ *
+ * that is the whole point of the detour: with eighty-six call sites there is
+ * one place where each of them can be watched, and `src/lib/wachhund.ts`
+ * notes which take unusually long or never come back at all.
+ */
+function invoke<T>(befehl: string, args?: Record<string, unknown>): Promise<T> {
+  return beobachten(befehl, () => roh<T>(befehl, args));
+}
 
 export const api = {
   // --- library ---

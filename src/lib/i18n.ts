@@ -3448,6 +3448,14 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "المشاركة",
     zh: "参与",
   },
+  "Auffällige Aufrufe (Befehl, Dauer):": {
+    en: "Conspicuous calls (command, duration):",
+    es: "Llamadas llamativas (comando, duración):",
+    fr: "Appels remarquables (commande, durée) :",
+    ru: "Заметные вызовы (команда, длительность):",
+    ar: "استدعاءات لافتة (الأمر، المدة):",
+    zh: "异常调用（命令、时长）：",
+  },
   "Fehlerbericht vorbereiten": {
     en: "Prepare a bug report",
     es: "Preparar un informe de error",

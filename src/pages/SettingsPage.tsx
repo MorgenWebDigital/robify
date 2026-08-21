@@ -6,6 +6,7 @@ import { Button, Field, inputClass, Modal } from "../components/Modal";
 import { AkzentWahl } from "../components/AkzentWahl";
 import { Auswahl } from "../components/Auswahl";
 import { t } from "../lib/i18n";
+import { formate } from "../lib/formate";
 import { SPRACHEN } from "../lib/sprachen";
 import { Mitmachen } from "../components/Mitmachen";
 import { RechtlichesFuss } from "../components/Rechtliches";
@@ -37,15 +38,6 @@ function erscheinungsbilder() {
 }
 
 // opus is deliberately absent, the built-in player cannot play it
-function formate() {
-  return [
-    { id: "best", label: t("Beste Qualität") },
-    { id: "mp3", label: "MP3" },
-    { id: "m4a", label: "M4A / AAC" },
-    { id: "flac", label: "FLAC" },
-    { id: "vorbis", label: "OGG Vorbis" },
-  ];
-}
 
 function qualitaeten() {
   return [
