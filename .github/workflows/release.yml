@@ -7,6 +7,12 @@ on:
     tags:
       - "v*"
 
+# the jobs create the release and hang the installers on it. without this the
+# repository default applies, and that is read — the build then runs through
+# and fails at the last step with "Resource not accessible by integration"
+permissions:
+  contents: write
+
 jobs:
   desktop:
     name: ${{ matrix.label }}
