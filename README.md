@@ -582,6 +582,12 @@ along. `scripts/lizenzen.mjs` takes care of that: it collects the details from
 apk adds beyond that stands written out in the same script, and it refuses to
 run as soon as the android build file names a dependency nobody has looked at.
 
+A list is only ever as good as what somebody entered into it, though.
+`scripts/apk-lizenzen.mjs` therefore reads the other way round: out of the
+finished apk, where chaquopy leaves the metadata of every python package, and
+it stops the build on anything gpl. It earned its keep straight away —
+`yt-dlp[default]` had quietly brought mutagen along, and that is gpl.
+
 ```bash
 # runs with every `npm run build` anyway
 npm run lizenzen

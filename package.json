@@ -14,6 +14,7 @@
   "scripts": {
     "dev": "vite",
     "lizenzen": "node scripts/lizenzen.mjs",
+    "lizenzen:apk": "node scripts/apk-lizenzen.mjs",
     "version": "node scripts/version.mjs",
     "build": "node scripts/version.mjs && npm run lizenzen && tsc --noEmit && vite build",
     "preview": "vite preview",

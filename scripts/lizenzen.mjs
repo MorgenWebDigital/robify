@@ -217,6 +217,65 @@ const ANDROID_PAKETE = [
     quelle: "https://github.com/yt-dlp/ejs",
     hinweis: "Führt die JavaScript-Prüfungen von YouTube aus.",
   },
+  // what pip installs into the app beside yt-dlp. deliberately written out:
+  // `yt-dlp[default]` would be shorter and brought mutagen along, which is
+  // gpl — see PIP_PAKETE in scripts/android-nachruesten.mjs
+  {
+    name: "requests",
+    version: "aus der Python-Umgebung",
+    lizenz: "Apache-2.0",
+    quelle: "https://requests.readthedocs.io/",
+    hinweis: "HTTP-Zugriffe von yt-dlp.",
+  },
+  {
+    name: "urllib3",
+    version: "aus der Python-Umgebung",
+    lizenz: "MIT",
+    quelle: "https://urllib3.readthedocs.io/",
+    hinweis: "Der Unterbau von requests.",
+  },
+  {
+    name: "certifi",
+    version: "aus der Python-Umgebung",
+    lizenz: "MPL-2.0",
+    quelle: "https://github.com/certifi/python-certifi",
+    hinweis: "Die Wurzelzertifikate für HTTPS.",
+  },
+  {
+    name: "charset-normalizer",
+    version: "aus der Python-Umgebung",
+    lizenz: "MIT",
+    quelle: "https://github.com/jawah/charset_normalizer",
+    hinweis: "Erkennt die Zeichenkodierung einer Antwort.",
+  },
+  {
+    name: "idna",
+    version: "aus der Python-Umgebung",
+    lizenz: "BSD-3-Clause",
+    quelle: "https://github.com/kjd/idna",
+    hinweis: "Internationale Domainnamen.",
+  },
+  {
+    name: "Brotli",
+    version: "aus der Python-Umgebung",
+    lizenz: "MIT",
+    quelle: "https://github.com/google/brotli",
+    hinweis: "Packt komprimierte Antworten aus.",
+  },
+  {
+    name: "pycryptodomex",
+    version: "aus der Python-Umgebung",
+    lizenz: "BSD-2-Clause AND Unlicense",
+    quelle: "https://www.pycryptodome.org/",
+    hinweis: "Entschlüsselt, was manche Quellen verschlüsselt ausliefern.",
+  },
+  {
+    name: "websockets",
+    version: "aus der Python-Umgebung",
+    lizenz: "BSD-3-Clause",
+    quelle: "https://github.com/python-websockets/websockets",
+    hinweis: "Für Quellen, die über WebSockets ausliefern.",
+  },
   {
     name: "quickjs-ng",
     version: "0.16.2",

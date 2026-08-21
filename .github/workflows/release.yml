@@ -221,6 +221,13 @@ jobs:
       - name: Build the APK
         run: npx tauri android build --apk
 
+      # what the package actually carries, read out of it — not out of a list
+      # somebody keeps. a gpl library reached the apk twice this way without
+      # anyone noticing, and it would have made it impossible to pass on
+      # under robify's licence
+      - name: Check the licences in the APK
+        run: node scripts/apk-lizenzen.mjs
+
       # without a signature an apk cannot be installed on any device.
       # `tauri android build` delivers it unsigned, and setting gradle up for
       # it would bring nothing because the project under `gen/` is created

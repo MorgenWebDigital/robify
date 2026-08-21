@@ -54,6 +54,27 @@ const QUICKJS_ORDNER = "src-tauri/android/quickjs";
 const FFMPEG_ORDNER = "src-tauri/android/ffmpeg";
 /** the four architectures the universal apk carries. */
 const ARCHITEKTUREN = ["arm64-v8a", "armeabi-v7a", "x86", "x86_64"];
+/**
+ * what pip installs into the app.
+ *
+ * `yt-dlp[default]` would be shorter and is what the documentation suggests.
+ * it drags mutagen along though, and that is gpl — the very thing this whole
+ * exchange was about. yt-dlp needs it only to write covers into opus and ogg,
+ * and robify writes them itself at import.
+ *
+ * `yt-dlp-ejs` is what the group would otherwise bring and is needed: without
+ * it youtube stays incomplete since yt-dlp 2025.11.12.
+ */
+const PIP_PAKETE = [
+  "yt-dlp",
+  "yt-dlp-ejs",
+  "brotli",
+  "certifi",
+  "pycryptodomex",
+  "requests",
+  "urllib3",
+  "websockets",
+];
 
 /**
  * the back button is to lead through the app, not out of it.
@@ -249,17 +270,32 @@ function chaquopyEinbinden() {
     console.log("Chaquopy: in den Wurzelbau eingetragen");
   }
 
-  const inhalt = readFileSync(APP_GRADLE, "utf8");
-  if (inhalt.includes("com.chaquo.python")) {
-    console.log("Chaquopy: schon eingerichtet");
-    return;
+  let inhalt = readFileSync(APP_GRADLE, "utf8");
+
+  // an existing block is written anew rather than left alone.
+  //
+  // "is something there" is not the same as "is the right thing there": the
+  // list of python packages changed once, and because the block already stood
+  // there the change never reached the build. in the workflows that would
+  // have gone unnoticed — the project is generated fresh at every run there
+  const schonDa = inhalt.includes('id("com.chaquo.python")');
+  const anfang = inhalt.indexOf("\nchaquopy {");
+  if (anfang >= 0) {
+    const ende = inhalt.indexOf("\n}\n", anfang);
+    inhalt = inhalt.slice(0, anfang) + inhalt.slice(ende + 2);
+    inhalt = inhalt.replace(
+      "// Python samt yt-dlp, siehe scripts/android-nachruesten.mjs.\n",
+      "",
+    );
   }
 
   const bauPython = bauPythonFinden();
   const mit = inhalt
     .replace(
       '    id("rust")\n}',
-      '    id("rust")\n    id("com.chaquo.python")\n}',
+      schonDa
+        ? '    id("rust")\n}'
+        : '    id("rust")\n    id("com.chaquo.python")\n}',
     )
     .replace(
       "android {",
@@ -270,9 +306,11 @@ function chaquopyEinbinden() {
         `        version = "${PYTHON_FASSUNG}"`,
         `        buildPython("${bauPython}")`,
         "        pip {",
-        "            // Die Gruppe „default“ bringt yt-dlp-ejs mit, ohne das",
-        "            // YouTube seit 2025.11.12 unvollständig bleibt.",
-        '            install("yt-dlp[default]")',
+        "            // Einzeln aufgezählt und nicht als Gruppe „default“:",
+        "            // die zöge mutagen mit, und das steht unter der GPL.",
+        "            // Gebraucht wird es nur, um Cover in opus und ogg zu",
+        "            // schreiben — das macht Robify beim Import selbst.",
+        ...PIP_PAKETE.map((paket) => `            install("${paket}")`),
         "        }",
         "    }",
         "}",
@@ -281,7 +319,9 @@ function chaquopyEinbinden() {
       ].join("\n"),
     );
   writeFileSync(APP_GRADLE, mit);
-  console.log(`Chaquopy: eingerichtet, baut mit ${bauPython}`);
+  console.log(
+    `Chaquopy: ${schonDa ? "erneuert" : "eingerichtet"}, baut mit ${bauPython}`,
+  );
 }
 
 /**

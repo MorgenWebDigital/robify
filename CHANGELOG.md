@@ -21,6 +21,13 @@ the versions follow [semantic versioning](https://semver.org/).
   encoder at all. the apk over all four architectures measures 76 mb.
 - the licence list covers the android build too, and refuses to run as soon as
   a dependency appears in it that nobody has looked at
+- `scripts/apk-lizenzen.mjs` reads out of the finished apk what it actually
+  carries and refuses gpl. that is the direction that matters: a list somebody
+  keeps misses what nobody entered. it found mutagen, which `yt-dlp[default]`
+  had quietly brought along — gpl, and it would have made the apk impossible
+  to pass on. yt-dlp needs it only to write covers into opus and ogg, and
+  robify writes them itself at import, so the packages are now named one by
+  one instead of through the group
 
 ## [0.1.0] – not released yet
 

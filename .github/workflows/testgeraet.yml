@@ -155,6 +155,13 @@ jobs:
           NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
         run: npx tauri android build --apk
 
+      # what the package actually carries, read out of it — not out of a
+      # list somebody keeps. a gpl library reached the apk twice this way
+      # without anyone noticing, and it would have made it impossible to
+      # pass on under robify's licence
+      - name: Check the licences in the APK
+        run: node scripts/apk-lizenzen.mjs
+
       # signing happens after building and not through gradle: the android
       # project under `gen/` is created anew at every run, so a signing rule
       # entered there would be gone every time. `apksigner` works on the
