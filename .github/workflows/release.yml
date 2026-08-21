@@ -132,8 +132,11 @@ jobs:
       - name: Base packages
         run: |
           pacman -Syu --noconfirm
+          # github-cli is not in the container. the runner image brings it
+          # along, this job does not run on it — without it hanging the
+          # package on the release ends with "command not found"
           pacman -S --noconfirm git rust nodejs npm webkit2gtk-4.1 gtk3 \
-            alsa-lib openssl pkgconf sudo
+            alsa-lib openssl pkgconf sudo github-cli
 
       - uses: actions/checkout@v4
 
@@ -164,6 +167,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # without this the loop below waits ten minutes for a draft while the
+          # real cause is a missing command
+          command -v gh >/dev/null || {
+            echo "::error::gh is not installed in this job."
+            exit 1
+          }
           for i in $(seq 1 60); do
             gh release view "${{ github.ref_name }}" \
               --repo "${{ github.repository }}" >/dev/null 2>&1 && break
@@ -302,6 +311,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # without this the loop below waits ten minutes for a draft while the
+          # real cause is a missing command
+          command -v gh >/dev/null || {
+            echo "::error::gh is not installed in this job."
+            exit 1
+          }
           for i in $(seq 1 60); do
             gh release view "${{ github.ref_name }}" \
               --repo "${{ github.repository }}" >/dev/null 2>&1 && break
