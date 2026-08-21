@@ -18,6 +18,11 @@ src-tauri/gen/android/
 # von scripts/quickjs-bauen.mjs erzeugt
 src-tauri/android/quickjs/
 src-tauri/android/.quickjs-bau/
+# Python legt sie beim Ausführen neben dem Modul ab; sie tragen den
+# absoluten Pfad dieses Rechners in sich
+__pycache__/
+*.pyc
+
 # von scripts/ffmpeg-bauen.mjs erzeugt
 src-tauri/android/ffmpeg/
 src-tauri/android/.ffmpeg-bau/

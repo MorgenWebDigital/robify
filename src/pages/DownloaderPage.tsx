@@ -172,6 +172,8 @@ export function DownloaderPage() {
     addJob,
     patchJob,
     removeJob,
+    seiteBetreten,
+    seiteVerlassen,
   } = useDownloader();
 
   const jobCounter = useRef(0);
@@ -186,6 +188,20 @@ export function DownloaderPage() {
   useEffect(() => {
     if (settings) setFormat(settings.downloadFormat);
   }, [settings]);
+
+  // the search does not survive a long absence.
+  //
+  // whoever taps the wrong tab and comes straight back finds what they typed
+  // still standing. whoever returns much later finds a clean field — the old
+  // text would otherwise be no starting point but something in the way, and
+  // the next thing typed hangs itself onto it.
+  //
+  // the running downloads are untouched by this; they live in the store for
+  // exactly that reason
+  useEffect(() => {
+    seiteBetreten();
+    return seiteVerlassen;
+  }, [seiteBetreten, seiteVerlassen]);
 
   // one field for everything, the backend recognises by itself whether a
   // link was pasted or a search typed, and picks the matching source

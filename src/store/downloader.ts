@@ -33,6 +33,19 @@ export type Stapelstand = {
   jobId?: string;
 };
 
+/**
+ * how long the search survives a change of tab.
+ *
+ * two cases pull in opposite directions. whoever taps the wrong tab and comes
+ * straight back wants to find what they typed still standing — retyping it
+ * would be a punishment for a slip. whoever returns much later wants a clean
+ * field: the old text is then no longer a starting point but something in the
+ * way, and the next thing typed hangs itself onto it.
+ *
+ * ten seconds are enough for the slip and far too short for a detour.
+ */
+export const SUCHE_HAELT_MS = 10_000;
+
 interface DownloaderStore {
   input: string;
   plan: LinkPlan | null;
@@ -47,8 +60,20 @@ interface DownloaderStore {
    * it, because with a new plan the positions mean something else.
    */
   stapel: Record<number, Stapelstand>;
+  /** when the page was last left, as `Date.now()`. */
+  verlassenAm: number | null;
 
   setInput: (value: string) => void;
+  /** notes that the page has gone; the search keeps for a moment. */
+  seiteVerlassen: () => void;
+  /**
+   * back on the page: hands back whether the search was cleared.
+   *
+   * running downloads and an open review are untouched — those have nothing
+   * to do with the search field, and losing them at a change of tab was a
+   * bug of its own once.
+   */
+  seiteBetreten: () => boolean;
   setPlan: (plan: LinkPlan | null) => void;
   setStand: (stelle: number, stand: Stapelstand) => void;
   setBusy: (busy: boolean) => void;
@@ -69,8 +94,26 @@ export const useDownloader = create<DownloaderStore>((set) => ({
   busy: false,
   review: null,
   stapel: {},
+  verlassenAm: null,
 
   setInput: (input) => set({ input }),
+  seiteVerlassen: () => set({ verlassenAm: Date.now() }),
+  seiteBetreten: () => {
+    let geleert = false;
+    set((state) => {
+      const zulange =
+        state.verlassenAm !== null &&
+        Date.now() - state.verlassenAm > SUCHE_HAELT_MS;
+      if (!zulange || (state.input === "" && state.plan === null)) {
+        return { verlassenAm: null };
+      }
+      geleert = true;
+      // the result list goes with it: "hits for …" above an empty field
+      // would name a search nobody can see any more
+      return { verlassenAm: null, input: "", plan: null, stapel: {} };
+    });
+    return geleert;
+  },
   setPlan: (plan) => set({ plan, stapel: {} }),
   setStand: (stelle, stand) =>
     set((state) => ({ stapel: { ...state.stapel, [stelle]: stand } })),
