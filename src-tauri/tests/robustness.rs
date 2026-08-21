@@ -10,7 +10,7 @@
 
 use robify_lib::{db, library, online};
 
-/// inputs text processing is known to break on.
+/// inputs text processing is known to break on
 fn boesartige_eingaben() -> Vec<String> {
     let mut faelle: Vec<String> = vec![
         String::new(),

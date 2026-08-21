@@ -10,7 +10,7 @@
 //! each bring their own way of doing it, and none of them is needed as long
 //! as a window is standing open there.
 
-/// what the system is supposed to display.
+/// what the system is supposed to display
 pub struct Angabe {
     pub titel: String,
     pub kuenstler: String,
@@ -90,7 +90,7 @@ fn versuchen(angabe: &Angabe) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// nothing is playing any more: drop the display, stop the service.
+/// nothing is playing any more: drop the display, stop the service
 #[cfg(target_os = "android")]
 pub fn beenden() {
     let _ = beenden_versuchen();

@@ -26,7 +26,7 @@ import { fileURLToPath } from "node:url";
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const ZIEL = join(WURZEL, "public", "lizenzen.json");
 
-/** the filenames projects store their licence text under. */
+/** the filenames projects store their licence text under */
 const LIZENZDATEI = /^(LICEN[CS]E|COPYING|NOTICE|UNLICEN[CS]E)([-._].*)?$/i;
 
 function rufe(befehl, argumente, cwd) {
@@ -185,7 +185,7 @@ function npmPakete() {
 // is in it is few and stable, so it stands written out — and a check below
 // makes sure nothing new slips in unnoticed.
 
-/** what the apk carries beyond rust and npm. */
+/** what the apk carries beyond rust and npm */
 const ANDROID_PAKETE = [
   {
     name: "Chaquopy",

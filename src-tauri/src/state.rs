@@ -1,4 +1,4 @@
-//! shared application state: database, paths and the running player.
+//! shared application state: database, paths and the running player
 
 use crate::downloader::DownloadRegistry;
 use crate::player::PlayerHandle;
@@ -10,9 +10,9 @@ use std::sync::Arc;
 pub struct AppState {
     pub db: Mutex<Connection>,
     pub db_path: PathBuf,
-    /// working directory for downloads in flight.
+    /// working directory for downloads in flight
     pub work_dir: PathBuf,
-    /// music folder of the system, the fallback for the library.
+    /// music folder of the system, the fallback for the library
     pub default_library_dir: PathBuf,
     /// whether the folders are fixed or the user picks them.
     ///
@@ -51,7 +51,7 @@ impl AppState {
         }
     }
 
-    /// storage for tools fetched by the app itself (yt-dlp).
+    /// storage for tools fetched by the app itself (yt-dlp)
     pub fn tools_dir(&self) -> PathBuf {
         self.db_path
             .parent()
@@ -92,7 +92,7 @@ impl AppState {
     }
 }
 
-/// error bridge between `anyhow` and the tauri commands.
+/// error bridge between `anyhow` and the tauri commands
 #[derive(Debug)]
 pub struct Error(pub String);
 

@@ -9,20 +9,20 @@
 //
 // deliberately without a timer. a `setTimeout` would have to be cancelled in
 // every path, and it makes the whole thing awkward to test. instead the
-// running calls are simply kept, and whoever asks is told which of them have
+// running calls are kept, and whoever asks is told which of them have
 // been running too long by now.
 
-/** from here on a call counts as conspicuous. */
+/** from here on a call counts as conspicuous */
 export const GEDULD_MS = 30_000;
 
-/** at most this many are kept; the oldest fall away. */
+/** at most this many are kept; the oldest fall away */
 const HOECHSTENS = 20;
 
 export type Auffaellig = {
   befehl: string;
-  /** when it started, as `Date.now()`. */
+  /** when it started, as `Date.now()` */
   begonnen: number;
-  /** how long it took, or `null` where it is still running. */
+  /** how long it took, or `null` where it is still running */
   dauerMs: number | null;
 };
 
@@ -32,7 +32,7 @@ const laufend = new Map<number, Lauf>();
 const beendet: Auffaellig[] = [];
 let zaehler = 0;
 
-/** watches a call and answers exactly what it was given. */
+/** watches a call and answers exactly what it was given */
 export function beobachten<T>(
   befehl: string,
   starten: () => Promise<T>,
@@ -73,7 +73,7 @@ export function auffaelligkeiten(jetzt: number = Date.now()): Auffaellig[] {
   return [...haengend, ...beendet].slice(0, HOECHSTENS);
 }
 
-/** the same as a few lines for the report, or an empty string where nothing stands out. */
+/** the same as a few lines for the report, or an empty string where nothing stands out */
 export function alsText(jetzt: number = Date.now()): string {
   const liste = auffaelligkeiten(jetzt);
   if (liste.length === 0) return "";
@@ -90,7 +90,7 @@ export function alsText(jetzt: number = Date.now()): string {
     .join("\n");
 }
 
-/** only for the tests. */
+/** only for the tests */
 export function zuruecksetzen(): void {
   laufend.clear();
   beendet.length = 0;

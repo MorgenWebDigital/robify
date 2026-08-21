@@ -10,18 +10,18 @@ const base = useHttpScheme ? "http://robify.localhost" : "robify://localhost";
 // raised after cover changes so the cache does not show the old image
 let cacheBuster = 0;
 
-/** invalidates every cover url, to be called after a cover has changed. */
+/** invalidates every cover url, to be called after a cover has changed */
 export function bustCoverCache(): void {
   cacheBuster += 1;
 }
 
-/** url of an album cover, `null` without an album. */
+/** url of an album cover, `null` without an album */
 export function albumCover(albumId: number | null | undefined): string | null {
   if (!albumId) return null;
   return `${base}/cover/album/${albumId}?v=${cacheBuster}`;
 }
 
-/** url of an artist image, `null` without an artist. */
+/** url of an artist image, `null` without an artist */
 export function artistImage(
   artistId: number | null | undefined,
 ): string | null {
@@ -29,7 +29,7 @@ export function artistImage(
   return `${base}/cover/artist/${artistId}?v=${cacheBuster}`;
 }
 
-/** url of a playlist cover, `null` without a playlist. */
+/** url of a playlist cover, `null` without a playlist */
 export function playlistCover(
   playlistId: number | null | undefined,
 ): string | null {
@@ -37,7 +37,7 @@ export function playlistCover(
   return `${base}/cover/playlist/${playlistId}?v=${cacheBuster}`;
 }
 
-/** turns base64 image data into a data url, `null` without data. */
+/** turns base64 image data into a data url, `null` without data */
 export function dataUrl(
   base64: string | null,
   mime: string | null,

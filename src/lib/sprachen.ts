@@ -11,11 +11,11 @@
 // in saudi arabia alone, but as a recognition aid in a long list it beats any
 // code
 export interface SprachEintrag {
-  /** iso 639-1, the same code as in the translation tables. */
+  /** iso 639-1, the same code as in the translation tables */
   id: string;
-  /** endonym, the way speakers of this language write it. */
+  /** endonym, the way speakers of this language write it */
   name: string;
-  /** german name, so the search fires on it as well. */
+  /** german name, so the search fires on it as well */
   deutsch: string;
   flagge: string;
 }
@@ -37,10 +37,10 @@ export const SPRACHEN: SprachEintrag[] = [
   { id: "zh", name: "中文", deutsch: "Chinesisch", flagge: "🇨🇳" },
 ].sort((a, b) => a.name.localeCompare(b.name, "de"));
 
-/** languages written from right to left. */
+/** languages written from right to left */
 export const RECHTS_NACH_LINKS = new Set(["ar"]);
 
-/** the entry for a language code, `undefined` where it is unknown. */
+/** the entry for a language code, `undefined` where it is unknown */
 export function sprachEintrag(id: string): SprachEintrag | undefined {
   return SPRACHEN.find((eintrag) => eintrag.id === id);
 }

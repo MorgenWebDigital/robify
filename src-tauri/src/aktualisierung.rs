@@ -12,14 +12,14 @@
 use anyhow::Result;
 use serde::Serialize;
 
-/// the two repositories, as owner and name.
+/// the two repositories, as owner and name
 const APP_LAGER: &str = "MorgenWebDigital/robify";
 const YTDLP_LAGER: &str = "yt-dlp/yt-dlp";
 
-/// the page the new version of robify lies on.
+/// the page the new version of robify lies on
 pub const APP_SEITE: &str = "https://github.com/MorgenWebDigital/robify/releases/latest";
 
-/// a version that stands above the one installed.
+/// a version that stands above the one installed
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Neuerung {
@@ -28,7 +28,7 @@ pub struct Neuerung {
     pub neu: String,
 }
 
-/// what is to be had, both parts independent of one another.
+/// what is to be had, both parts independent of one another
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Aktualisierungen {
@@ -37,7 +37,7 @@ pub struct Aktualisierungen {
 }
 
 impl Aktualisierungen {
-    /// whether anything at all is to be had.
+    /// whether anything at all is to be had
     pub fn etwas_da(&self) -> bool {
         self.app.is_some() || self.ytdlp.is_some()
     }
@@ -80,7 +80,7 @@ pub fn neuer_als(neu: &str, jetzt: &str) -> bool {
 ///
 /// `…/releases/tag/2026.08.19` carries it in the last segment. a repository
 /// without any release lands on `…/releases` instead, and nothing is to be
-/// read there — that is no fault, there is simply nothing yet.
+/// read there — that is no fault, there is nothing yet.
 ///
 /// the leading `v` of a tag such as `v0.2.0` falls away, so that what is
 /// compared afterwards is a number and not a mixture of both spellings.

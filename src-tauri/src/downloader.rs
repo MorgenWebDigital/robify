@@ -28,7 +28,7 @@ use crate::fehler;
 
 const PROGRESS_MARKER: &str = "ROBIFYPROGRESS";
 
-/// registry of running jobs, so downloads can be cancelled.
+/// registry of running jobs, so downloads can be cancelled
 #[derive(Default)]
 pub struct DownloadRegistry {
     cancels: Mutex<HashMap<String, Arc<AtomicBool>>>,
@@ -73,15 +73,15 @@ pub enum SearchSource {
     /// release rather than lyric videos and fan uploads.
     YoutubeMusic,
     Soundcloud,
-    /// artists upload there themselves, mostly complete and in good quality.
+    /// artists upload there themselves, mostly complete and in good quality
     Bandcamp,
-    /// open music platform, delivers mp3 at up to 320 kbit/s.
+    /// open music platform, delivers mp3 at up to 320 kbit/s
     Audius,
-    /// the input is a url already and goes to yt-dlp directly.
+    /// the input is a url already and goes to yt-dlp directly
     Url,
 }
 
-/// sources queried at the same time on a text search.
+/// sources queried at the same time on a text search
 const SEARCHED_SOURCES: [SearchSource; 5] = [
     SearchSource::YoutubeMusic,
     SearchSource::Bandcamp,
@@ -239,12 +239,12 @@ async fn search_audius(query: &str, limit: usize) -> Result<Vec<SearchResult>> {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DownloadPlan {
-    /// goes to yt-dlp unchanged, with spotify it is a search expression.
+    /// goes to yt-dlp unchanged, with spotify it is a search expression
     pub url: String,
-    /// fallback addresses where the first source delivers nothing.
+    /// fallback addresses where the first source delivers nothing
     #[serde(default)]
     pub fallbacks: Vec<String>,
-    /// search term the best hit is determined from.
+    /// search term the best hit is determined from
     #[serde(default)]
     pub match_query: Option<String>,
     /// what the user searched for. serves the check after downloading only,
@@ -256,7 +256,7 @@ pub struct DownloadPlan {
     pub thumbnail: Option<String>,
     pub duration_ms: Option<i64>,
     pub source: String,
-    /// metadata known beforehand, which wins over the tags of the file.
+    /// metadata known beforehand, which wins over the tags of the file
     pub metadata: Option<TrackMetadata>,
     /// whether a track of the same name by the same artist lies in the
     /// library already. the entry can be skipped in a batch then.
@@ -264,17 +264,17 @@ pub struct DownloadPlan {
     pub already_in_library: bool,
 }
 
-/// a hint the ui puts into words itself.
+/// a hint the ui puts into words itself
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlanHinweis {
     /// which hint. the ui holds the wording in every language.
     pub code: String,
-    /// values in the order of the placeholders `{0}`, `{1}` and so on.
+    /// values in the order of the placeholders `{0}`, `{1}` and so on
     pub args: Vec<String>,
 }
 
-/// what sits behind a pasted link.
+/// what sits behind a pasted link
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LinkPlan {
@@ -395,10 +395,10 @@ pub struct SearchResult {
 #[serde(rename_all = "camelCase")]
 pub struct DownloadOptions {
     pub url: String,
-    /// "mp3", "opus", "flac", "m4a", "vorbis" or "best" (no conversion).
+    /// "mp3", "opus", "flac", "m4a", "vorbis" or "best" (no conversion)
     #[serde(default = "default_format")]
     pub format: String,
-    /// 0 is the best quality up to 9, relevant with lossy formats only.
+    /// 0 is the best quality up to 9, relevant with lossy formats only
     #[serde(default)]
     pub quality: Option<String>,
     #[serde(default = "default_true")]
@@ -407,10 +407,10 @@ pub struct DownloadOptions {
     /// whatever stands in the downloaded file.
     #[serde(default)]
     pub metadata: Option<TrackMetadata>,
-    /// where `url` finds nothing, these addresses are tried in order.
+    /// where `url` finds nothing, these addresses are tried in order
     #[serde(default)]
     pub fallbacks: Vec<String>,
-    /// search online for matching metadata after downloading.
+    /// search online for matching metadata after downloading
     #[serde(default = "default_true")]
     pub auto_match: bool,
     #[serde(default = "default_true")]
@@ -471,7 +471,7 @@ pub struct DownloadOutcome {
     pub format: String,
     pub metadata: TrackMetadata,
     pub source_url: String,
-    /// set where the result does not match the search input.
+    /// set where the result does not match the search input
     #[serde(default)]
     pub warning: Option<String>,
 }
@@ -557,7 +557,7 @@ fn ytdlp_asset() -> &'static str {
     }
 }
 
-/// where robify keeps its own yt-dlp.
+/// where robify keeps its own yt-dlp
 pub fn managed_ytdlp(tools_dir: &Path) -> PathBuf {
     tools_dir.join(if cfg!(target_os = "windows") {
         "yt-dlp.exe"
@@ -723,7 +723,7 @@ pub const PLAYABLE_EXTENSIONS: [&str; 9] = [
     "mp3", "m4a", "mp4", "aac", "flac", "ogg", "oga", "wav", "aiff",
 ];
 
-/// whether the file can be played with what is on board.
+/// whether the file can be played with what is on board
 pub fn is_playable(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
@@ -789,7 +789,7 @@ async fn supports_thumbnail_embedding(ytdlp: &Path) -> bool {
     *SUPPORTED.get_or_init(|| supported)
 }
 
-/// the runtime as an argument list, where present and supported.
+/// the runtime as an argument list, where present and supported
 async fn js_runtime_args(ytdlp: &Path) -> Vec<String> {
     match js_runtime() {
         Some(runtime) if supports_js_runtimes(ytdlp).await => {
@@ -806,7 +806,7 @@ async fn js_runtime_args(ytdlp: &Path) -> Vec<String> {
 // sequence without a pause. youtube answers exactly that pattern with "403
 // Forbidden", and the block then hits everything that follows.
 
-/// this many yt-dlp processes run at once at most.
+/// this many yt-dlp processes run at once at most
 const MAX_PARALLEL_YTDLP: usize = 2;
 
 // --- timeouts ---
@@ -828,19 +828,19 @@ const MAX_PARALLEL_YTDLP: usize = 2;
 /// sources anyway, and they stay untouched by it.
 const VOLLE_ABFRAGE_MAX: usize = 4;
 
-/// after this time a search counts as failed.
+/// after this time a search counts as failed
 const SEARCH_TIMEOUT: Duration = Duration::from_secs(90);
 
-/// upper bound for a single download.
+/// upper bound for a single download
 const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(15 * 60);
 
-/// this long a running download may stay silent before it counts as hanging.
+/// this long a running download may stay silent before it counts as hanging
 const IDLE_TIMEOUT: Duration = Duration::from_secs(120);
 
-/// upper bound for the conversion into a playable format.
+/// upper bound for the conversion into a playable format
 const CONVERT_TIMEOUT: Duration = Duration::from_secs(5 * 60);
 
-/// minimum distance between two accesses to the same source.
+/// minimum distance between two accesses to the same source
 const MIN_SPACING: Duration = Duration::from_millis(700);
 
 /// the distance while youtube is refusing.
@@ -857,7 +857,7 @@ fn ytdlp_slots() -> &'static tokio::sync::Semaphore {
     SLOTS.get_or_init(|| tokio::sync::Semaphore::new(MAX_PARALLEL_YTDLP))
 }
 
-/// when a source was last accessed.
+/// when a source was last accessed
 fn last_access() -> &'static Mutex<HashMap<&'static str, Instant>> {
     static LAST: OnceLock<Mutex<HashMap<&'static str, Instant>>> = OnceLock::new();
     LAST.get_or_init(Default::default)
@@ -910,7 +910,7 @@ pub fn cleanup_work_dir(work_dir: &Path, max_age: Duration) -> usize {
 // youtube changes, and without an expiry robify would stay with the fallback
 // sources for the rest of the session.
 
-/// this long a refusal from youtube counts as current.
+/// this long a refusal from youtube counts as current
 const ABSAGE_GILT: Duration = Duration::from_secs(30 * 60);
 
 /// deduction for youtube hits while the refusal holds.
@@ -925,28 +925,28 @@ fn absage_vermerk() -> &'static Mutex<Option<Instant>> {
     VERMERK.get_or_init(|| Mutex::new(None))
 }
 
-/// whether the address belongs to youtube or youtube music.
+/// whether the address belongs to youtube or youtube music
 fn ist_youtube(url: &str) -> bool {
     let quelle = source_label(url);
     quelle == SearchSource::Youtube.label() || quelle == SearchSource::YoutubeMusic.label()
 }
 
-/// records that youtube refused the access.
+/// records that youtube refused the access
 fn absage_merken() {
     *absage_vermerk().lock() = Some(Instant::now());
 }
 
-/// whether youtube is refusing right now.
+/// whether youtube is refusing right now
 fn youtube_sagt_ab() -> bool {
     matches!(*absage_vermerk().lock(), Some(zeit) if zeit.elapsed() < ABSAGE_GILT)
 }
 
-/// whether the source refused the access.
+/// whether the source refused the access
 fn zugriff_verweigert(fehler: &anyhow::Error) -> bool {
     fehler.to_string().contains("(403)")
 }
 
-/// the deduction for a hit while the refusal holds.
+/// the deduction for a hit while the refusal holds
 fn absage_abzug(url: &str) -> f64 {
     abzug_bei(url, youtube_sagt_ab())
 }
@@ -1022,7 +1022,7 @@ async fn acquire_slot(source: &'static str) -> tokio::sync::SemaphorePermit<'sta
     permit
 }
 
-/// hides the console window under windows.
+/// hides the console window under windows
 pub(crate) fn configure(cmd: &mut Command) {
     #[cfg(windows)]
     {
@@ -1035,7 +1035,7 @@ pub(crate) fn configure(cmd: &mut Command) {
 /// a second attempt for youtube with one more word.
 ///
 /// youtube answers some search terms with a page yt-dlp can read no entries
-/// from, without an error, simply empty. one extra word changes the answer.
+/// from, without an error, just empty. one extra word changes the answer.
 ///
 /// shown with "Yeat Naked": no hits, while "Yeat Naked audio" delivers the
 /// original right away. without the second attempt youtube was missing
@@ -1152,7 +1152,7 @@ async fn search_once(
 // first search hit blindly, several are fetched and the best fitting one is
 // chosen, which drops remixes, live versions and videos with an intro.
 
-/// suffixes hinting at a different version.
+/// suffixes hinting at a different version
 const VERSION_MARKERS: [&str; 45] = [
     "remix",
     "rmx",
@@ -1314,7 +1314,7 @@ fn coverage_penalty(query: &str, candidate: &SearchResult) -> f64 {
     missing as f64 * 20.0 + (extra as f64 * 9.0).min(18.0)
 }
 
-/// shorter than this is no whole track but a preview.
+/// shorter than this is no whole track but a preview
 const PREVIEW_LIMIT_MS: i64 = 60_000;
 
 /// longer than this is no music track.
@@ -1324,7 +1324,7 @@ const PREVIEW_LIMIT_MS: i64 = 60_000;
 /// instead of failing.
 const MAX_DURATION_MS: i64 = 24 * 60 * 60 * 1000;
 
-/// accepts only running times that can be calculated with.
+/// accepts only running times that can be calculated with
 fn sane_duration(value: Option<i64>) -> Option<i64> {
     value.filter(|ms| *ms > 0 && *ms <= MAX_DURATION_MS)
 }
@@ -1504,7 +1504,7 @@ fn rank_candidates(
         .collect()
 }
 
-/// searches several hits and orders them by fit.
+/// searches several hits and orders them by fit
 pub async fn select_matches(
     ytdlp: &Path,
     query: &str,
@@ -2506,7 +2506,7 @@ impl SourceMetadata {
             .unwrap_or_default()
     }
 
-    /// the fields arrive separated by `\u{1f}`, and "NA" stands for unknown.
+    /// the fields arrive separated by `\u{1f}`, and "NA" stands for unknown
     fn parse(line: &str) -> SourceMetadata {
         let mut felder = line.split('\u{1f}').map(|wert| {
             let wert = wert.trim();
@@ -2591,7 +2591,7 @@ fn apply_source_metadata(
     }
 }
 
-/// extensions that stay behind in upload names.
+/// extensions that stay behind in upload names
 const FILE_SUFFIXES: [&str; 8] = [
     ".mp3", ".wav", ".flac", ".m4a", ".ogg", ".opus", ".aac", ".aiff",
 ];
@@ -2606,7 +2606,7 @@ fn strip_file_suffix(title: &str) -> String {
     title.to_string()
 }
 
-/// whether `name` means the same artist as the value already known.
+/// whether `name` means the same artist as the value already known
 fn bezeichnet_denselben(name: &str, bekannt: Option<&str>) -> bool {
     bekannt.is_some_and(|bekannt| crate::online::looks_like_same(name, bekannt))
 }
@@ -2746,7 +2746,7 @@ mod tests {
         SearchResult, TrackMetadata, ABSAGE_ABZUG,
     };
 
-    /// a hit with an address the source can be recognised by.
+    /// a hit with an address the source can be recognised by
     fn treffer_bei(titel: &str, sekunden: i64, adresse: &str) -> SearchResult {
         SearchResult {
             id: adresse.into(),
@@ -3078,7 +3078,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
         assert_eq!(teile, vec!["yt-dlp: {0}", "[generic] xyz: Kaputt"]);
     }
 
-    /// explanation and source message stay two translatable sentences.
+    /// explanation and source message stay two translatable sentences
     #[test]
     fn erklaerung_und_quellmeldung_stehen_getrennt() {
         let stderr = "ERROR: [youtube] xyz: Private video\n";
@@ -3215,7 +3215,7 @@ Please DO NOT open an issue, unless you have evidence that the video is not DRM 
     #[test]
     fn ohne_brauchbare_laenge_bleibt_die_textnaehe_massgeblich() {
         // every hit falls through the length check, and then the first one
-        // must not simply be taken
+        // must not be taken over unchecked
         let treffer_liste = [
             treffer("Ganz anderer Song", 600, "Bandcamp"),
             treffer("Tropical Island", 600, "YouTube"),

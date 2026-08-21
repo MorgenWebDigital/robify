@@ -28,15 +28,15 @@ import { fileURLToPath } from "node:url";
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** the version of quickjs-ng, the maintained fork of bellard's quickjs. */
+/** the version of quickjs-ng, the maintained fork of bellard's quickjs */
 const FASSUNG = "0.16.2";
-/** checksum of the source archive, checked before anything is unpacked. */
+/** checksum of the source archive, checked before anything is unpacked */
 const PRUEFSUMME =
   "97c80625b26775a4c7ca618c004d4ea24cf99cbf867e4eba78bd927a8b23d106";
-/** the lowest android version robify runs on, see tauri.conf.json. */
+/** the lowest android version robify runs on, see tauri.conf.json */
 const PLATTFORM = "android-26";
 
-/** the four architectures the universal apk carries. */
+/** the four architectures the universal apk carries */
 const ARCHITEKTUREN = ["arm64-v8a", "armeabi-v7a", "x86", "x86_64"];
 
 const ZIEL = join(WURZEL, "src-tauri", "android", "quickjs");
@@ -52,7 +52,7 @@ function rufe(befehl, argumente, ordner) {
   });
 }
 
-/** the ndk, from the environment or from the usual place. */
+/** the ndk, from the environment or from the usual place */
 function ndkFinden() {
   const aus = process.env.NDK_HOME || process.env.ANDROID_NDK_HOME;
   if (aus && existsSync(aus)) return aus;
@@ -70,7 +70,7 @@ function ndkFinden() {
     : null;
 }
 
-/** whether everything is already there in the wanted version. */
+/** whether everything is already there in the wanted version */
 function schonDa() {
   if (!existsSync(MARKE)) return false;
   if (readFileSync(MARKE, "utf8").trim() !== FASSUNG) return false;

@@ -80,7 +80,7 @@ describe("Menu", () => {
     expect(liste.style.bottom).toBe("");
   });
 
-  /** at the bottom edge the direction turns around instead of running out of view. */
+  /** at the bottom edge the direction turns around instead of running out of view */
   it("fährt nach oben aus, wenn darunter kein Platz mehr ist", async () => {
     const nutzer = userEvent.setup();
     knopfSitztBei(760);

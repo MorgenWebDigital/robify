@@ -273,7 +273,7 @@ export function PageHeader({
   title: string;
   subtitle?: string;
   actions?: React.ReactNode;
-  /** actions at the right edge instead of under the start of the heading. */
+  /** actions at the right edge instead of under the start of the heading */
   actionsRechts?: boolean;
   /**
    * grow narrower instead of wrapping.
@@ -293,7 +293,7 @@ export function PageHeader({
   return (
     // a fixed build height for every page. eyebrow and subtitle are not
     // filled everywhere, the settings have none and the review gets its own
-    // only after loading. were the lines simply missing then, the heading of
+    // only after loading. were the lines missing then, the heading of
     // every page would sit at a different height, and search bar and content
     // below would jump along on a change.
     //
@@ -371,7 +371,7 @@ export function SectionTitle({
   );
 }
 
-/** how many tiles fit side by side, the larger the fewer. */
+/** how many tiles fit side by side, the larger the fewer */
 const GRID_COLUMNS = {
   sm: "grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8",
   md: "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
@@ -406,7 +406,7 @@ export function Grid({
 }: {
   children: React.ReactNode;
   size?: GridSize;
-  /** three tiles as an excerpt, the rest behind "view all". */
+  /** three tiles as an excerpt, the rest behind "view all" */
   vorschau?: boolean;
 }) {
   const spalten = vorschau ? VORSCHAU_SPALTEN : GRID_COLUMNS[size];

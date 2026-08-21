@@ -1,3 +1,7 @@
+// the library: every track, sortable, searchable, importable.
+// note: the sorting and the view survive a restart, they live in the
+// settings.
+
 import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -29,9 +33,9 @@ export function LibraryPage() {
   const notifyUndo = useUi((s) => s.notifyUndo);
 
   const [search, setSearch] = useState("");
-  /** `null` while not loaded yet, otherwise the empty state flashes up. */
+  /** `null` while not loaded yet, otherwise the empty state flashes up */
   const [tracks, setTracks] = useState<Track[] | null>(null);
-  /** for the count in the header only, the releases have pages of their own. */
+  /** for the count in the header only, the releases have pages of their own */
   const [albums, setAlbums] = useState<Album[]>([]);
   const [check, setCheck] = useState<LibraryCheck | null>(null);
   const settings = useLibrary((s) => s.settings);
@@ -104,7 +108,7 @@ export function LibraryPage() {
     }
   };
 
-  /** single files instead of a whole folder. */
+  /** single files instead of a whole folder */
   const importFiles = async () => {
     try {
       const selected = await open({

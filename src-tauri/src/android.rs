@@ -13,7 +13,7 @@
 //!
 //! tauri has its own hook for this, `run_on_android_context`, but it sits
 //! behind `pub(crate)` and cannot be reached from outside. the way in is
-//! `JNI_OnLoad` instead: android calls this function as soon as it loads the
+//! `JNI_OnLoad` instead: android calls it as soon as it loads the
 //! library and passes the `JavaVM` in. the context is fetched from there.
 
 use jni::objects::GlobalRef;
@@ -39,23 +39,23 @@ static EINGERICHTET: AtomicBool = AtomicBool::new(false);
 /// here and kept as a global reference instead of grasping into thin air.
 static YTDLP_KLASSE: OnceLock<GlobalRef> = OnceLock::new();
 
-/// the prepared bridge class, where the setup went through.
+/// the prepared bridge class, where the setup went through
 pub fn ytdlp_klasse() -> Option<&'static GlobalRef> {
     YTDLP_KLASSE.get()
 }
 
-/// the bridge class to the system player, prepared for the same reason.
+/// the bridge class to the system player, prepared for the same reason
 static WIEDERGABE_KLASSE: OnceLock<GlobalRef> = OnceLock::new();
 
-/// the prepared class for the player of the system.
+/// the prepared class for the player of the system
 pub fn wiedergabe_klasse() -> Option<&'static GlobalRef> {
     WIEDERGABE_KLASSE.get()
 }
 
-/// the bridge class for files coming out of the android file picker.
+/// the bridge class for files coming out of the android file picker
 static DATEIEN_KLASSE: OnceLock<GlobalRef> = OnceLock::new();
 
-/// the prepared class that turns `content://` addresses into files.
+/// the prepared class that turns `content://` addresses into files
 pub fn dateien_klasse() -> Option<&'static GlobalRef> {
     DATEIEN_KLASSE.get()
 }
@@ -192,7 +192,7 @@ fn umgebung_weiterreichen(vm: &JavaVM) -> Result<(), Box<dyn std::error::Error>>
 
     // a global reference that outlives the call: `ndk-context` keeps the raw
     // pointer for the entire runtime of the app. an ordinary reference would
-    // be invalid after this function, and the audio side would grasp into
+    // be invalid once it returns, and the audio side would grasp into
     // thin air
     let dauerhaft = env.new_global_ref(&anwendung)?;
     let context_zeiger = dauerhaft.as_obj().as_raw() as *mut c_void;

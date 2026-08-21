@@ -7,7 +7,7 @@ use anyhow::Result;
 use rusqlite::{params, Connection};
 use std::path::Path;
 
-/// opens a connection and sets the pragmas the app relies on.
+/// opens a connection and sets the pragmas the app relies on
 pub fn open(path: &Path) -> Result<Connection> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -23,7 +23,7 @@ pub fn open(path: &Path) -> Result<Connection> {
     Ok(conn)
 }
 
-/// creates the schema, adds columns retrofitted later and merges duplicates.
+/// creates the schema, adds columns retrofitted later and merges duplicates
 pub fn migrate(conn: &Connection) -> Result<()> {
     conn.execute_batch(
         r#"
@@ -409,7 +409,7 @@ fn add_column_if_missing(
     Ok(())
 }
 
-/// the current time as a unix timestamp in seconds.
+/// the current time as a unix timestamp in seconds
 pub fn now() -> i64 {
     chrono::Utc::now().timestamp()
 }
@@ -449,7 +449,7 @@ pub fn clean_text(value: &str) -> String {
         .join(" ")
 }
 
-/// normalised key for recognising duplicate artists and albums.
+/// normalised key for recognising duplicate artists and albums
 pub fn key_of(value: &str) -> String {
     value
         .trim()
@@ -463,7 +463,7 @@ pub fn key_of(value: &str) -> String {
         .join(" ")
 }
 
-/// reads one setting, `None` where it was never set.
+/// reads one setting, `None` where it was never set
 pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<String>> {
     use rusqlite::OptionalExtension;
     let value = conn
@@ -474,7 +474,7 @@ pub fn get_setting(conn: &Connection, key: &str) -> Result<Option<String>> {
     Ok(value)
 }
 
-/// writes one setting, overwriting whatever stood there.
+/// writes one setting, overwriting whatever stood there
 pub fn set_setting(conn: &Connection, key: &str, value: &str) -> Result<()> {
     conn.execute(
         "INSERT INTO settings (key, value) VALUES (?1, ?2)

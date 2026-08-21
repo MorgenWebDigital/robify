@@ -17,7 +17,7 @@ fn ffmpeg_available() -> bool {
         .unwrap_or(false)
 }
 
-/// creates a silent mp3 file of the wanted length.
+/// creates a silent mp3 file of the wanted length
 fn make_mp3(dir: &Path, name: &str, seconds: u32) -> PathBuf {
     let path = dir.join(format!("{name}.mp3"));
     let status = Command::new("ffmpeg")
@@ -39,7 +39,7 @@ fn make_mp3(dir: &Path, name: &str, seconds: u32) -> PathBuf {
     path
 }
 
-/// creates a silent file in the wanted format.
+/// creates a silent file in the wanted format
 fn make_audio(dir: &Path, name: &str, extension: &str, seconds: u32) -> PathBuf {
     let path = dir.join(format!("{name}.{extension}"));
     let output = Command::new("ffmpeg")
@@ -331,7 +331,7 @@ fn tempdir(name: &str) -> PathBuf {
     dir
 }
 
-/// the smallest valid png, base64 encoded.
+/// the smallest valid png, base64 encoded
 fn base64_png() -> String {
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==".into()
 }

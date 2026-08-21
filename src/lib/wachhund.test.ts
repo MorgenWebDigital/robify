@@ -1,3 +1,6 @@
+// the watchdog is meant for a fault that never repeated, so the tests carry
+// the burden of proof: a call that never returns has to be named.
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   alsText,

@@ -26,7 +26,7 @@ import type { Track } from "../types";
 
 interface TrackListProps {
   tracks: Track[];
-  /** plays the whole list from this index on. */
+  /** plays the whole list from this index on */
   onPlay?: (index: number) => void;
   showCover?: boolean;
   showAlbum?: boolean;
@@ -42,7 +42,7 @@ interface TrackListProps {
   removeLabel?: string;
   onChanged?: () => void;
   emptyMessage?: ReactNode;
-  /** highlight this track and bring it into view. */
+  /** highlight this track and bring it into view */
   highlightTrackId?: number | null;
   /**
    * makes the order changeable by dragging. receives the new order as a list
@@ -71,7 +71,7 @@ export function TrackList({
   const { notify, notifyUndo, editTrack, openAddToPlaylist } = useUi();
   const settings = useLibrary((s) => s.settings);
   const saveSetting = useLibrary((s) => s.saveSetting);
-  /** ticked in the dialog: delete without asking from now on. */
+  /** ticked in the dialog: delete without asking from now on */
   const [nichtMehrFragen, setNichtMehrFragen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Track | null>(null);
   const { zieht, luecke, merkmale } = useZiehordnung(
@@ -106,7 +106,7 @@ export function TrackList({
   const beginn = useRef<{ x: number; y: number; index: number } | null>(null);
   const gewischt = useRef(false);
 
-  /** from here on it counts as a swipe and no longer as a tremor while tapping. */
+  /** from here on it counts as a swipe and no longer as a tremor while tapping */
   const SCHWELLE = 72;
 
   const wischStart = (index: number) => (event: React.TouchEvent) => {

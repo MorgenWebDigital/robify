@@ -1,4 +1,4 @@
-//! reading and writing audio tags (id3, vorbis, mp4 and so on) through `lofty`.
+//! reading and writing audio tags (id3, vorbis, mp4 and so on) through `lofty`
 
 use crate::models::TrackMetadata;
 use anyhow::{anyhow, Result};
@@ -16,7 +16,7 @@ pub const AUDIO_EXTENSIONS: &[&str] = &[
     "mpc",
 ];
 
-/// whether the extension is one of the audio formats robify reads.
+/// whether the extension is one of the audio formats robify reads
 pub fn is_audio_file(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
@@ -24,7 +24,7 @@ pub fn is_audio_file(path: &Path) -> bool {
         .unwrap_or(false)
 }
 
-/// what reading a file yields: tags plus technical details.
+/// what reading a file yields: tags plus technical details
 pub struct FileTags {
     pub metadata: TrackMetadata,
     pub duration_ms: i64,
@@ -44,7 +44,7 @@ fn parse_year(value: &str) -> Option<i64> {
     digits.parse::<i64>().ok().filter(|y| *y > 0)
 }
 
-/// reads tags, duration and cover out of an audio file.
+/// reads tags, duration and cover out of an audio file
 pub fn read(path: &Path) -> Result<FileTags> {
     let tagged = read_from_path(path)?;
     let duration_ms = tagged.properties().duration().as_millis() as i64;
@@ -135,7 +135,7 @@ fn mime_from_str(mime: &str) -> MimeType {
     }
 }
 
-/// writes the edited metadata back into the file.
+/// writes the edited metadata back into the file
 pub fn write(path: &Path, meta: &TrackMetadata) -> Result<()> {
     let mut tagged = read_from_path(path)?;
 

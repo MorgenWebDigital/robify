@@ -25,7 +25,7 @@ const MAIN_ACTIVITY =
 const APP_GRADLE = "src-tauri/gen/android/app/build.gradle.kts";
 const PROGUARD = "src-tauri/gen/android/app/robify-regeln.pro";
 const PAKET_ORDNER = "src-tauri/gen/android/app/src/main/java/de/robify/player";
-/** the version of the chaquopy gradle plugin, it brings python into the app. */
+/** the version of the chaquopy gradle plugin, it brings python into the app */
 const CHAQUOPY_FASSUNG = "17.0.0";
 /**
  * the python robify runs on the phone.
@@ -34,25 +34,25 @@ const CHAQUOPY_FASSUNG = "17.0.0";
  * 3.11 only, and with a newer one every 32-bit device would lose the app.
  */
 const PYTHON_FASSUNG = "3.11";
-/** the path to the manifest of the app, recreated at every `tauri android init`. */
+/** the path to the manifest of the app, recreated at every `tauri android init` */
 const MANIFEST = "src-tauri/gen/android/app/src/main/AndroidManifest.xml";
 const DRAWABLE = "src-tauri/gen/android/app/src/main/res/drawable";
 const GRADLE_EIGENSCHAFTEN = "src-tauri/gen/android/gradle.properties";
 const SYMBOLE = "src-tauri/icons/android";
 const RES = "src-tauri/gen/android/app/src/main/res";
-/** the version of `androidx.media`, it brings mediasession and the media keys. */
+/** the version of `androidx.media`, it brings mediasession and the media keys */
 const MEDIA_FASSUNG = "1.7.0";
-/** the build file of the whole project, not of the app. */
+/** the build file of the whole project, not of the app */
 const WURZEL_GRADLE = "src-tauri/gen/android/build.gradle.kts";
-/** where the python of the app lives. */
+/** where the python of the app lives */
 const PYTHON_ORDNER = "src-tauri/gen/android/app/src/main/python";
-/** where the native libraries of the app lie, one folder per architecture. */
+/** where the native libraries of the app lie, one folder per architecture */
 const JNI_ORDNER = "src-tauri/gen/android/app/src/main/jniLibs";
-/** the javascript runtime, built by scripts/quickjs-bauen.mjs. */
+/** the javascript runtime, built by scripts/quickjs-bauen.mjs */
 const QUICKJS_ORDNER = "src-tauri/android/quickjs";
-/** the converter, built by scripts/ffmpeg-bauen.mjs. */
+/** the converter, built by scripts/ffmpeg-bauen.mjs */
 const FFMPEG_ORDNER = "src-tauri/android/ffmpeg";
-/** the four architectures the universal apk carries. */
+/** the four architectures the universal apk carries */
 const ARCHITEKTUREN = ["arm64-v8a", "armeabi-v7a", "x86", "x86_64"];
 /**
  * what pip installs into the app.

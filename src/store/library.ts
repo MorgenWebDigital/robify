@@ -6,7 +6,7 @@ import { akzentSchrift } from "../lib/farbe";
 import type { LibraryStats, Playlist, ScanProgress, Settings } from "../types";
 
 interface LibraryStore {
-  /** raised on every change, and pages reload on it. */
+  /** raised on every change, and pages reload on it */
   revision: number;
   /**
    * whether the first fetch is through.

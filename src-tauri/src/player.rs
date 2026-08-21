@@ -17,12 +17,12 @@ use tauri::{AppHandle, Emitter};
 use crate::fehler;
 
 const TICK: Duration = Duration::from_millis(250);
-/// this often the running playback position is stored.
+/// this often the running playback position is stored
 const REMEMBER_EVERY: Duration = Duration::from_secs(5);
 /// from this listening time on a track counts as heard, as with the common
 /// services.
 const MIN_PLAY_MS: u64 = 30_000;
-/// gain at the full swing of the slider.
+/// gain at the full swing of the slider
 const OBERGRENZE: f32 = 0.85;
 
 /// from this listening time on robify remembers a track as recently played.
@@ -36,16 +36,16 @@ const VERLAUF_MS: u64 = 5_000;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum RepeatMode {
-    /// after the last track it ends.
+    /// after the last track it ends
     Off,
-    /// repeat the queue endlessly.
+    /// repeat the queue endlessly
     All,
-    /// repeat the current track endlessly.
+    /// repeat the current track endlessly
     One,
 }
 
 impl RepeatMode {
-    /// short name for the settings table.
+    /// short name for the settings table
     fn as_str(self) -> &'static str {
         match self {
             RepeatMode::Off => "off",
@@ -66,9 +66,9 @@ impl RepeatMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum SleepTimerMode {
-    /// pause after a fixed duration.
+    /// pause after a fixed duration
     Duration,
-    /// pause at the end of the running track.
+    /// pause at the end of the running track
     EndOfTrack,
 }
 
@@ -80,7 +80,7 @@ pub struct SleepTimerState {
     pub remaining_ms: u64,
 }
 
-/// the complete state the frontend needs for rendering.
+/// the complete state the frontend needs for rendering
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayerState {
@@ -101,7 +101,7 @@ pub struct PlayerState {
     /// the coming tracks do not stand behind the running one but lie
     /// scattered over the whole list.
     pub order: Vec<usize>,
-    /// where in `order` the running track stands.
+    /// where in `order` the running track stands
     pub order_pos: Option<usize>,
     pub sleep_timer: Option<SleepTimerState>,
 }
@@ -221,7 +221,7 @@ struct Engine {
     shared: Arc<Mutex<PlayerState>>,
 
     queue: Vec<i64>,
-    /// playback order as indices into `queue`, shuffled where drawn.
+    /// playback order as indices into `queue`, shuffled where drawn
     order: Vec<usize>,
     order_pos: Option<usize>,
 
@@ -230,13 +230,13 @@ struct Engine {
     volume: f32,
     muted: bool,
 
-    /// whether a source is currently running in the sink.
+    /// whether a source is currently running in the sink
     loaded: bool,
     duration_ms: u64,
-    /// milliseconds of the running track actually heard.
+    /// milliseconds of the running track actually heard
     listened_ms: u64,
     last_tick: Instant,
-    /// when the state was last stored.
+    /// when the state was last stored
     last_remembered: Instant,
     /// what last went out as a tick. where nothing changes nothing is sent,
     /// otherwise a message would cross the bridge four times a second while
@@ -493,7 +493,7 @@ impl Engine {
         });
     }
 
-    /// rebuilds the order without interrupting the running track.
+    /// rebuilds the order without interrupting the running track
     fn rebuild_order_keeping(&mut self, current: Option<usize>) {
         match current {
             Some(c) if c < self.queue.len() => self.rebuild_order(Some(c)),
@@ -627,7 +627,7 @@ impl Engine {
     /// left at.
     ///
     /// where anything about it fails, a missing file or an unreadable format,
-    /// the player simply stays empty. a failed restore must not hold up the
+    /// the player stays empty. a failed restore must not hold up the
     /// start.
     fn restore(&mut self) {
         // the repeat mode holds regardless of whether a queue is remembered,
@@ -781,7 +781,7 @@ impl Engine {
 
     // --- statistics ---
 
-    /// writes the listening time of the running track into the database.
+    /// writes the listening time of the running track into the database
     fn record_play(&mut self) {
         let Some(index) = self.current_queue_index() else {
             self.listened_ms = 0;

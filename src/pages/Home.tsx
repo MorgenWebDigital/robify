@@ -31,10 +31,10 @@ import type { Album, Track, WeeklyMixSummary } from "../types";
  */
 const VORSCHAU = 6;
 
-/** this many of them are visible on a phone. */
+/** this many of them are visible on a phone */
 const VORSCHAU_SCHMAL = 3;
 
-/** hides the trailing tiles while the row holds three only. */
+/** hides the trailing tiles while the row holds three only */
 function nurBreit(stelle: number): string {
   return stelle >= VORSCHAU_SCHMAL ? "max-lg:hidden" : "";
 }

@@ -66,7 +66,7 @@ fn ist_fremde_fassung(titel: &str, gesucht: &str) -> bool {
     })
 }
 
-/// running time and written form of the track from the metadata sources.
+/// running time and written form of the track from the metadata sources
 async fn referenz(artist: &str, titel: &str) -> Option<(String, i64)> {
     let treffer = online::search_metadata(&format!("{artist} {titel}")).await.ok()?;
     let mit_laufzeit: Vec<_> = treffer

@@ -1,3 +1,7 @@
+// every call to the rust side runs through here.
+// note: the detour exists so each of them can be watched — see
+// `src/lib/wachhund.ts`.
+
 import { invoke as roh } from "@tauri-apps/api/core";
 import { beobachten } from "./wachhund";
 import { useUi } from "../store/ui";
@@ -49,7 +53,7 @@ export const api = {
   scanFolders: (paths: string[]) =>
     invoke<ScanResult>("scan_folders", { paths }),
   checkLibrary: () => invoke<LibraryCheck>("check_library"),
-  /** returns the ids of the removed tracks, so it can be undone. */
+  /** returns the ids of the removed tracks, so it can be undone */
   removeMissingTracks: () => invoke<number[]>("remove_missing_tracks"),
   backupDatabase: () => invoke<string>("backup_database"),
   resetApp: (deleteFiles: boolean, keepSettings: boolean) =>
@@ -133,7 +137,7 @@ export const api = {
     invoke<Track>("update_track_metadata", { trackId, metadata, writeToFile }),
   searchMetadataOnline: (query: string) =>
     invoke<MetadataCandidate[]>("search_metadata_online", { query }),
-  /** fetches cover, lyrics, release type and track number for a hit. */
+  /** fetches cover, lyrics, release type and track number for a hit */
   enrichCandidate: (candidate: MetadataCandidate, durationMs?: number) =>
     invoke<TrackMetadata>("enrich_candidate", {
       candidate,
@@ -201,7 +205,7 @@ export const api = {
     invoke<void>("reorder_playlist", { playlistId, trackIds }),
   reorderFavorites: (trackIds: number[]) =>
     invoke<void>("reorder_favorites", { trackIds }),
-  /** order of the collection itself, not of the tracks inside it. */
+  /** order of the collection itself, not of the tracks inside it */
   reorderPlaylists: (playlistIds: number[]) =>
     invoke<void>("reorder_playlists", { playlistIds }),
 
@@ -239,14 +243,14 @@ export const api = {
 
   // --- downloader ---
   downloaderStatus: () => invoke<DownloaderStatus>("downloader_status"),
-  /** fetches the newest version of yt-dlp and returns its number. */
+  /** fetches the newest version of yt-dlp and returns its number */
   ytdlpAktualisieren: () => invoke<YtdlpErneuert>("update_ytdlp"),
   aktualisierungenPruefen: () => invoke<Aktualisierungen>("check_updates"),
   releaseSeiteOeffnen: () => invoke<void>("open_release_page"),
   aktualisierungsnotizen: () => invoke<string | null>("update_notes"),
   aktualisierungEinspielen: () => invoke<boolean>("install_update"),
   neustarten: () => invoke<void>("restart_app"),
-  /** recognises by itself whether a link was pasted or a search typed. */
+  /** recognises by itself whether a link was pasted or a search typed */
   resolveInput: (input: string, limit?: number) =>
     invoke<LinkPlan>("resolve_input", { input, limit: limit ?? null }),
   startDownload: (jobId: string, options: DownloadOptions) =>
@@ -274,10 +278,10 @@ export const api = {
   appPaths: () => invoke<AppPaths>("app_paths"),
 };
 
-/** error messages from the backend arrive as a string. */
-/** separates template and values, has to match `meldung.rs`. */
+/** error messages from the backend arrive as a string */
+/** separates template and values, has to match `meldung.rs` */
 const TRENNER = "\u001f";
-/** separates two independent messages, has to match `meldung.rs`. */
+/** separates two independent messages, has to match `meldung.rs` */
 const ABSATZ = "\u001e";
 
 /**
@@ -322,7 +326,7 @@ export function meldungText(roh: string): string {
     .join("\n\n");
 }
 
-/** the last failure reported, together with its time. */
+/** the last failure reported, together with its time */
 let letzteMeldung = { text: "", zeit: 0 };
 
 /**

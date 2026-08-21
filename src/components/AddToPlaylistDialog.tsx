@@ -16,7 +16,7 @@ export function AddToPlaylistDialog() {
   const reloadPlaylists = useLibrary((s) => s.reloadPlaylists);
   const [anlegen, setAnlegen] = useState(false);
   const [busy, setBusy] = useState(false);
-  /** playlist id to how many of the chosen tracks already lie there. */
+  /** playlist id to how many of the chosen tracks already lie there */
   const [enthalten, setEnthalten] = useState<Map<number, number>>(new Map());
 
   const trackIds = addToPlaylistIds ?? [];
@@ -62,7 +62,7 @@ export function AddToPlaylistDialog() {
     }
   };
 
-  /** after creating it, the chosen tracks travel straight into it. */
+  /** after creating it, the chosen tracks travel straight into it */
   const einfuellen = async (playlist: { id: number; name: string }) => {
     try {
       await api.addToPlaylist(playlist.id, trackIds);

@@ -20,7 +20,7 @@ export function FavoritesPage() {
   const revision = useLibrary((s) => s.revision);
   const refresh = useLibrary((s) => s.refresh);
   const notify = useUi((s) => s.notify);
-  /** `null` while not loaded yet, otherwise the empty state flashes up. */
+  /** `null` while not loaded yet, otherwise the empty state flashes up */
   const [tracks, setTracks] = useState<Track[] | null>(null);
 
   useEffect(() => {

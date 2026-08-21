@@ -74,7 +74,7 @@ export function RechtlichesFuss() {
   );
 }
 
-/** the separator dot between the entries in the footer. */
+/** the separator dot between the entries in the footer */
 function Punkt() {
   return <span className="mx-2 text-mute/40">·</span>;
 }

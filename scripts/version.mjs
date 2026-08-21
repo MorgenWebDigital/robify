@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** where the number stands and what it looks like there. */
+/** where the number stands and what it looks like there */
 const STELLEN = [
   { datei: "package.json", muster: /("version"\s*:\s*")([^"]+)(")/ },
   { datei: "src-tauri/Cargo.toml", muster: /(^version\s*=\s*")([^"]+)(")/m },

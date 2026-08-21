@@ -26,7 +26,7 @@ import { fileURLToPath } from "node:url";
 
 const WURZEL = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** where `tauri android build --apk` leaves its result. */
+/** where `tauri android build --apk` leaves its result */
 const STANDARD = join(
   WURZEL,
   "src-tauri/gen/android/app/build/outputs/apk/universal/release",
@@ -47,7 +47,7 @@ const UNVERTRAEGLICH = [
   /\bSSPL/i,
 ];
 
-/** the lgpl reads like the gpl and must not be caught by the patterns above. */
+/** the lgpl reads like the gpl and must not be caught by the patterns above */
 function istLgpl(text) {
   return /\bLGPL|Lesser General Public/i.test(text);
 }

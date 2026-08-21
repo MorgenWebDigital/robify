@@ -1,3 +1,7 @@
+// the state of playback, mirrored out of the rust side.
+// note: what is heard is decided there, not here — this store only follows
+// the events and holds what the interface needs to draw.
+
 import { listen } from "@tauri-apps/api/event";
 import { create } from "zustand";
 import { api } from "../lib/api";

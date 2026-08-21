@@ -3,7 +3,7 @@ import { t } from "../lib/i18n";
 import { PlaylistIcon } from "./Icons";
 import { Button } from "./Modal";
 
-/** an image chosen by the user, not stored yet. */
+/** an image chosen by the user, not stored yet */
 export interface CoverChoice {
   base64: string;
   mime: string;
@@ -20,10 +20,10 @@ export function CoverPicker({
   onPick,
   onRemove,
 }: {
-  /** the image to show, or `null` for the placeholder. */
+  /** the image to show, or `null` for the placeholder */
   preview: string | null;
   onPick: (choice: CoverChoice) => void;
-  /** without the callback the image cannot be removed. */
+  /** without the callback the image cannot be removed */
   onRemove?: () => void;
 }) {
   const dateiFeld = useRef<HTMLInputElement>(null);

@@ -3,9 +3,9 @@ import { t } from "../lib/i18n";
 
 interface Props {
   children: ReactNode;
-  /** what failed, for the heading: "this page", "Robify". */
+  /** what failed, for the heading: "this page", "Robify" */
   scope: string;
-  /** called on a click on the retry button, before the re-render. */
+  /** called on a click on the retry button, before the re-render */
   onReset?: () => void;
 }
 

@@ -8,7 +8,7 @@ import { ArtistIcon, DownloadIcon, SearchIcon } from "./Icons";
 import { Button, Field, inputClass, Modal, textareaClass } from "./Modal";
 import type { Artist, ArtistCandidate } from "../types";
 
-/** a round artist image falling back to an icon. */
+/** a round artist image falling back to an icon */
 export function ArtistAvatar({
   artist,
   className = "",
@@ -16,7 +16,7 @@ export function ArtistAvatar({
 }: {
   artist: Pick<Artist, "id" | "name" | "hasImage">;
   className?: string;
-  /** the preview while editing, not stored yet. */
+  /** the preview while editing, not stored yet */
   preview?: string | null;
 }) {
   const [failed, setFailed] = useState(false);
@@ -115,7 +115,7 @@ export function ArtistEditor({
     }
   };
 
-  /** takes a suggestion over directly, image included. */
+  /** takes a suggestion over directly, image included */
   const apply = async (candidate: ArtistCandidate) => {
     setSaving(true);
     try {

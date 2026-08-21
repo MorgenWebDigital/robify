@@ -18,7 +18,7 @@ use std::collections::BTreeMap;
 use std::process::Command;
 use std::sync::Arc;
 
-/// widely spread: languages, decades, genres, well known and less so.
+/// widely spread: languages, decades, genres, well known and less so
 const SONGS: [(&str, &str); 40] = [
     // rap, international
     ("Yeat", "Naked"),
@@ -68,7 +68,7 @@ const SONGS: [(&str, &str); 40] = [
     ("Ludovico Einaudi", "Nuvole Bianche"),
 ];
 
-/// hints about the production that belong in no song title.
+/// hints about the production that belong in no song title
 const TITELMUELL: [&str; 11] = [
     "official video",
     "official audio",
@@ -117,7 +117,7 @@ fn quellenangaben(ytdlp: &std::path::Path, url: &str) -> Quelle {
     }
 }
 
-/// whether `nadel` sits in `heu` as a word sequence.
+/// whether `nadel` sits in `heu` as a word sequence
 fn enthaelt(heu: &str, nadel: &str) -> bool {
     online::contains_word_sequence(
         &online::normalize_words(heu),

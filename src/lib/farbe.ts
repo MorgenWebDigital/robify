@@ -3,9 +3,9 @@
 // a module of its own because these are pure functions: they need neither
 // react nor the backend and can therefore be checked directly
 
-/** type on a light accent, the same tone as the body text. */
+/** type on a light accent, the same tone as the body text */
 const DUNKLE_SCHRIFT = "#16161a";
-/** type on a dark accent. */
+/** type on a dark accent */
 const HELLE_SCHRIFT = "#ffffff";
 
 /**
@@ -24,7 +24,7 @@ export function normalisiereHex(eingabe: string): string | null {
   return null;
 }
 
-/** splits the stored list, unusable entries fall away. */
+/** splits the stored list, unusable entries fall away */
 export function eigeneFarben(gespeichert: string): string[] {
   return gespeichert
     .split(",")

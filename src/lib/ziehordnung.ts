@@ -16,7 +16,7 @@ export function useZiehordnung(
   kennungen: number[],
   aufNeueOrdnung: ((kennungen: number[]) => void) | undefined,
 ) {
-  /** position of the entry currently being dragged. */
+  /** position of the entry currently being dragged */
   const [zieht, setZieht] = useState<number | null>(null);
   /**
    * where it would land: 0 means the very top, `length` the very bottom.

@@ -10,7 +10,7 @@ import { Button } from "./Modal";
 import { useAusblenden } from "../lib/ausblenden";
 import { useSchliesstBeimSeitenwechsel } from "../lib/seitenwechsel";
 
-/** has to match the duration of `.animate-slide-out` in the stylesheet. */
+/** has to match the duration of `.animate-slide-out` in the stylesheet */
 const AUSFAHREN_MS = 240;
 
 export function QueuePanel() {

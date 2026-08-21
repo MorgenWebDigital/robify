@@ -15,7 +15,7 @@ use robify_lib::downloader::{self, DownloadOptions, DownloadRegistry};
 use robify_lib::online;
 use std::sync::Arc;
 
-/// widely spread: languages, decades, genres, and every kind of release.
+/// widely spread: languages, decades, genres, and every kind of release
 const SONGS: [(&str, &str); 25] = [
     // rap, international
     ("Kendrick Lamar", "Money Trees"),
@@ -51,7 +51,7 @@ const SONGS: [(&str, &str); 25] = [
     ("Stromae", "Alors on danse"),
 ];
 
-/// what the catalogue says a recording is.
+/// what the catalogue says a recording is
 #[derive(Debug, Default)]
 struct Wahrheit {
     titel: Option<String>,
@@ -104,7 +104,7 @@ async fn wahrheit_holen(artist: &str, titel: &str) -> Wahrheit {
     }
 }
 
-/// whether a hit means this recording and not a version of it.
+/// whether a hit means this recording and not a version of it
 fn meint_die_aufnahme(name: &str, wer: &str, titel: &str, artist: &str) -> bool {
     gleiche_sache(name, titel)
         && gleiche_sache(wer, artist)
@@ -114,7 +114,7 @@ fn meint_die_aufnahme(name: &str, wer: &str, titel: &str, artist: &str) -> bool 
             .all(|zusatz| online::ist_nur_beiwerk(zusatz))
 }
 
-/// title, artist, album and kind as deezer carries them.
+/// title, artist, album and kind as deezer carries them
 async fn deezer_wahrheit(
     artist: &str,
     titel: &str,
@@ -169,7 +169,7 @@ async fn deezer_wahrheit(
     )
 }
 
-/// the year of the first appearance, and the record itunes hangs it on.
+/// the year of the first appearance, and the record itunes hangs it on
 async fn itunes_wahrheit(artist: &str, titel: &str) -> (Option<i64>, Option<String>) {
     let url = format!(
         "https://itunes.apple.com/search?term={}&entity=song&limit=50",

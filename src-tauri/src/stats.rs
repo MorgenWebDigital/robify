@@ -1,4 +1,4 @@
-//! evaluations: the weekly mixes and the monthly and yearly wrapped.
+//! evaluations: the weekly mixes and the monthly and yearly wrapped
 
 use crate::db::now;
 use crate::library;
@@ -59,7 +59,7 @@ pub struct Wrapped {
     pub total_plays: i64,
     pub distinct_tracks: i64,
     pub distinct_artists: i64,
-    /// total time of the five most played tracks taken together.
+    /// total time of the five most played tracks taken together
     pub top_tracks_total_ms: i64,
     pub top_tracks: Vec<WrappedTrack>,
     pub top_artists: Vec<WrappedArtist>,
@@ -110,7 +110,7 @@ fn period_range(period: &str, offset: i64) -> Result<(i64, i64)> {
     }
 }
 
-/// the review of one month, one year or of everything played so far.
+/// the review of one month, one year or of everything played so far
 pub fn wrapped(conn: &Connection, period: &str, offset: i64) -> Result<Wrapped> {
     let (start, end) = period_range(period, offset)?;
 
@@ -281,14 +281,14 @@ pub struct Recommendation {
     /// rust side would arrive in german whatever the language. what becomes
     /// of it is up to the ui.
     pub play_count: i64,
-    /// how long it ran in total while doing so.
+    /// how long it ran in total while doing so
     pub ms_played: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WeeklyMix {
-    /// calendar week, "2026-KW33" for instance.
+    /// calendar week, "2026-KW33" for instance
     pub week_key: String,
     /// running number counted from the first week with listening data.
     ///
@@ -299,12 +299,12 @@ pub struct WeeklyMix {
     pub end: i64,
     /// how many weeks back. 0 is the running one.
     pub offset: i64,
-    /// whether another week with listening data lies before it.
+    /// whether another week with listening data lies before it
     pub has_older: bool,
     pub items: Vec<Recommendation>,
 }
 
-/// short form of a weekly mix for the overview, without the tracks.
+/// short form of a weekly mix for the overview, without the tracks
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WeeklyMixSummary {
@@ -314,7 +314,7 @@ pub struct WeeklyMixSummary {
     pub end: i64,
     pub offset: i64,
     pub track_count: i64,
-    /// albums of the most played tracks, the mosaic cover grows out of them.
+    /// albums of the most played tracks, the mosaic cover grows out of them
     pub cover_album_ids: Vec<i64>,
 }
 
@@ -395,7 +395,7 @@ fn week_range(offset: i64) -> (i64, i64, String) {
     )
 }
 
-/// this many tracks make up a weekly mix.
+/// this many tracks make up a weekly mix
 const WEEKLY_SIZE: usize = 30;
 
 /// the weekly mix of one calendar week: the thirty most played tracks.

@@ -5,15 +5,15 @@ export interface Toast {
   id: number;
   message: string;
   tone: "info" | "success" | "error";
-  /** undoes the action just carried out. */
+  /** undoes the action just carried out */
   undo?: () => void | Promise<void>;
 }
 
 interface UiStore {
   toasts: Toast[];
-  /** the track whose metadata is being edited. */
+  /** the track whose metadata is being edited */
   editingTrack: Track | null;
-  /** tracks about to be added to a playlist. */
+  /** tracks about to be added to a playlist */
   addToPlaylistIds: number[] | null;
   nowPlayingOpen: boolean;
   queueOpen: boolean;

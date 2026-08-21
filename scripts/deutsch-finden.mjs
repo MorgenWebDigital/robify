@@ -44,7 +44,7 @@ const EIGENNAMEN = new Set([
   "feat.",
 ]);
 
-/** these files carry no display text. */
+/** these files carry no display text */
 const AUSGENOMMEN =
   /\.(test|d)\.tsx?$|types\.ts$|lib\/(i18n|mehrzahl|sprachen)\.ts$/;
 

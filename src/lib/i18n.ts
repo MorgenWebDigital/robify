@@ -4492,7 +4492,7 @@ export function istGefuehrt(text: string, sprache?: string): boolean {
   return sprache === undefined || fassungen[sprache] !== undefined;
 }
 
-/** the current language, set when the app is built up. */
+/** the current language, set when the app is built up */
 let aktuell = "de";
 
 /**
@@ -4514,7 +4514,7 @@ export function spracheAufloesen(einstellung: string | undefined): string {
     : "en";
 }
 
-/** sets the language and the matching attributes on the root element. */
+/** sets the language and the matching attributes on the root element */
 export function spracheSetzen(sprache: string): void {
   aktuell = sprache;
   // outside a window, in a test for instance, there is no document. the
@@ -4526,7 +4526,7 @@ export function spracheSetzen(sprache: string): void {
   document.documentElement.dir = RECHTS_NACH_LINKS.has(sprache) ? "rtl" : "ltr";
 }
 
-/** the language currently set. */
+/** the language currently set */
 export function spracheJetzt(): string {
   return aktuell;
 }

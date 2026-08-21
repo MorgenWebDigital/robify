@@ -5,9 +5,9 @@ import { t } from "../lib/i18n";
 export interface AuswahlOption {
   id: string;
   label: string;
-  /** a small icon to the left of the name, a flag for instance. */
+  /** a small icon to the left of the name, a flag for instance */
   symbol?: string;
-  /** extra words the search fires on without being visible. */
+  /** extra words the search fires on without being visible */
   suchtext?: string;
 }
 
@@ -30,15 +30,15 @@ export function Auswahl({
   value: string;
   options: AuswahlOption[];
   onChange: (value: string) => void;
-  /** label for screen readers. */
+  /** label for screen readers */
   label: string;
   className?: string;
 }) {
   const [offen, setOffen] = useState(false);
   const [suche, setSuche] = useState("");
-  /** the entry under the keyboard cursor, independent of the selected one. */
+  /** the entry under the keyboard cursor, independent of the selected one */
   const [markiert, setMarkiert] = useState(0);
-  /** open upwards where there is no room left below. */
+  /** open upwards where there is no room left below */
   const [nachOben, setNachOben] = useState(false);
   const huelle = useRef<HTMLDivElement>(null);
   const knopf = useRef<HTMLButtonElement>(null);

@@ -65,7 +65,7 @@ export function LyricsPanel({ track, compact = false }: LyricsPanelProps) {
   const listeRef = useRef<HTMLUListElement>(null);
   const aktiveZeile = () =>
     listeRef.current?.children[aktivRef.current] ?? null;
-  /** the active index, readable for the lookup above without a re-render. */
+  /** the active index, readable for the lookup above without a re-render */
   const aktivRef = useRef(0);
   // stable, otherwise every line would get a new function on each tick and
   // the memoising would come to nothing

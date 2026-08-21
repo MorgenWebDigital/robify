@@ -68,7 +68,7 @@ export function AlbumEditor({
     reader.readAsDataURL(file);
   };
 
-  /** searches online for this release and takes cover, year and type over. */
+  /** searches online for this release and takes cover, year and type over */
   const searchOnline = async () => {
     setSearching(true);
     try {

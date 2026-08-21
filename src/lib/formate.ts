@@ -10,10 +10,10 @@ import { t } from "./i18n";
 // `scripts/ffmpeg-bauen.mjs` reads this list and refuses to build where a
 // format has no encoder.
 
-/** what `--audio-format` is given, and what the interface calls it. */
+/** what `--audio-format` is given, and what the interface calls it */
 export type Format = { id: string; label: string };
 
-/** "best" is no conversion: the file stays as the source delivered it. */
+/** "best" is no conversion: the file stays as the source delivered it */
 export function formate(): Format[] {
   return [
     { id: "best", label: t("Beste Qualität") },

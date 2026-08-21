@@ -26,15 +26,15 @@ pub fn client() -> &'static reqwest::Client {
     })
 }
 
-/// a metadata suggestion the user can take over or discard.
+/// a metadata suggestion the user can take over or discard
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MetadataCandidate {
     pub source: String,
     pub title: String,
-    /// lead artists, several of them separated by semicolons.
+    /// lead artists, several of them separated by semicolons
     pub artist: String,
-    /// guest artists, separated by semicolons as well.
+    /// guest artists, separated by semicolons as well
     pub featured_artists: Option<String>,
     pub album: String,
     pub album_artist: Option<String>,
@@ -46,10 +46,10 @@ pub struct MetadataCandidate {
     pub cover_url: Option<String>,
     pub mbid: Option<String>,
     pub duration_ms: Option<i64>,
-    /// genius page carrying the lyrics.
+    /// genius page carrying the lyrics
     #[serde(default)]
     pub lyrics_url: Option<String>,
-    /// genius ids, for fetching track number and release type later.
+    /// genius ids, for fetching track number and release type later
     #[serde(default)]
     pub genius_song_id: Option<i64>,
     #[serde(default)]
@@ -165,7 +165,7 @@ async fn genius_song(id: i64) -> Option<MetadataCandidate> {
 
 // --- artist data ---
 
-/// a suggestion for an artist: image and description to take over.
+/// a suggestion for an artist: image and description to take over
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ArtistCandidate {
@@ -369,7 +369,7 @@ fn strip_tags(fragment: &str) -> String {
     unescape_entities(&out)
 }
 
-/// fetches the lyrics off a genius song page.
+/// fetches the lyrics off a genius song page
 pub async fn genius_lyrics(url: &str) -> Result<String> {
     let doc = client()
         .get(url)
@@ -410,7 +410,7 @@ pub async fn genius_lyrics(url: &str) -> Result<String> {
     Ok(lyrics)
 }
 
-/// number of tracks on the album and the position of the track looked for.
+/// number of tracks on the album and the position of the track looked for
 async fn genius_album_tracks(album_id: i64, song_id: Option<i64>) -> Option<(i64, Option<i64>)> {
     let url = format!("https://genius.com/api/albums/{album_id}/tracks?per_page=50");
     let body: serde_json::Value = client().get(url).send().await.ok()?.json().await.ok()?;
@@ -882,7 +882,7 @@ pub async fn search_metadata(query: &str) -> Result<Vec<MetadataCandidate>> {
 // album. the track is therefore looked up online after the download, but only
 // where the hit is certainly the same one.
 
-/// noise words that stand in video titles without belonging to the song title.
+/// noise words that stand in video titles without belonging to the song title
 const TITLE_NOISE: [&str; 14] = [
     "official video",
     "official music video",
@@ -957,15 +957,15 @@ const BEIWERK: [&str; 22] = [
     "remastered",
 ];
 
-/// words after which only a name follows, never a version.
+/// words after which only a name follows, never a version
 const NAMENSWORT: [&str; 6] = ["feat", "ft", "featuring", "with", "prod", "by"];
 
-/// whether a single word says nothing about which recording it is.
+/// whether a single word says nothing about which recording it is
 pub fn ist_beiwerk_wort(wort: &str) -> bool {
     BEIWERK.contains(&wort) || wort.chars().all(|z| z.is_ascii_digit())
 }
 
-/// whether only a name can follow this word.
+/// whether only a name can follow this word
 pub fn ist_namenswort(wort: &str) -> bool {
     NAMENSWORT.contains(&wort)
 }
@@ -992,7 +992,7 @@ pub fn ist_nur_beiwerk(text: &str) -> bool {
     worte.all(|wort| BEIWERK.contains(&wort))
 }
 
-/// the bracketed additions of a title, in the order they stand.
+/// the bracketed additions of a title, in the order they stand
 pub fn klammerzusaetze(titel: &str) -> Vec<String> {
     let mut gefunden = Vec::new();
     for (auf, zu) in [('(', ')'), ('[', ']'), ('{', '}')] {
@@ -1034,7 +1034,7 @@ pub fn contains_word_sequence(haystack: &str, needle: &str) -> bool {
     hay.windows(seek.len()).any(|window| window == seek.as_slice())
 }
 
-/// whether two labels are the same with high confidence.
+/// whether two labels are the same with high confidence
 pub fn looks_like_same(a: &str, b: &str) -> bool {
     let (a, b) = (normalize_for_match(a), normalize_for_match(b));
     if a.is_empty() || b.is_empty() {
@@ -1048,7 +1048,7 @@ pub fn looks_like_same(a: &str, b: &str) -> bool {
     long.contains(short.as_str()) && short.len() * 10 >= long.len() * 6
 }
 
-/// whether two answers describe the same track.
+/// whether two answers describe the same track
 fn gleiches_stueck(a: &MetadataCandidate, b: &MetadataCandidate) -> bool {
     looks_like_same(&a.title, &b.title) && passt_zum_kuenstler(&a.artist, &b.artist)
 }

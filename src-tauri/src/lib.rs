@@ -33,7 +33,7 @@ use tauri::{Emitter, Manager};
 /// the files inside it orphaned.
 pub(crate) const EIGENE_SONGS: &str = "Eigene Songs";
 
-/// the bundle id before version 0.1.0.
+/// the bundle id before version 0.1.0
 const ALTE_KENNUNG: &str = "de.robify.app";
 
 /// what robify itself stores in the data folder.

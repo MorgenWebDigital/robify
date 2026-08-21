@@ -1,3 +1,5 @@
+// one release with its tracks, its cover and what can be changed about it
+
 import { ZurueckKnopf } from "../components/Cards";
 import { t } from "../lib/i18n";
 import { useEffect, useState } from "react";

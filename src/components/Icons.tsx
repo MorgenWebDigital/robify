@@ -2,7 +2,7 @@ import type { SVGProps } from "react";
 
 type IconProps = SVGProps<SVGSVGElement> & { size?: number };
 
-/** the shared basis: a 24 unit grid, stroke width 1.8, currentcolor. */
+/** the shared basis: a 24 unit grid, stroke width 1.8, currentcolor */
 function Icon({ size = 20, children, ...props }: IconProps) {
   return (
     <svg
@@ -382,7 +382,7 @@ export const NotesMark = ({ size = 20, ...p }: IconProps) => (
   </svg>
 );
 
-/** small animated bars for the track currently running. */
+/** small animated bars for the track currently running */
 export function PlayingBars({ className = "" }: { className?: string }) {
   return (
     <span

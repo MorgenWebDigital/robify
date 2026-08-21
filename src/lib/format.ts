@@ -1,7 +1,7 @@
 import { spracheJetzt, t } from "./i18n";
 import { mehrzahl } from "./mehrzahl";
 
-/** mm:ss or h:mm:ss, for running times in the player and in lists. */
+/** mm:ss or h:mm:ss, for running times in the player and in lists */
 export function formatTime(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) ms = 0;
   const total = Math.floor(ms / 1000);
@@ -46,7 +46,7 @@ export function formatNumber(value: number): string {
   return new Intl.NumberFormat(spracheJetzt()).format(value);
 }
 
-/** a byte count as b, kb, mb or gb. */
+/** a byte count as b, kb, mb or gb */
 export function formatBytes(bytes: number | null | undefined): string {
   if (!bytes || bytes <= 0) return t("unbekannt");
   const units = ["B", "KB", "MB", "GB"];
@@ -76,7 +76,7 @@ export function releaseLabel(type: string): string {
  * a count together with the inflected noun, "7 Titel" for instance.
  *
  * the keyword is the german word in the singular, and `mehrzahl` handles the
- * inflection. this function used to take two finished words, which does for
+ * inflection. it used to take two finished words, which does for
  * german and english but not for russian with its four forms, and the app
  * therefore read "7 Треки" instead of "7 треков".
  */

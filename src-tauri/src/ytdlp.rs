@@ -12,14 +12,14 @@
 use anyhow::Result;
 use std::path::Path;
 
-/// what a run left behind.
+/// what a run left behind
 pub struct Ausgabe {
     pub erfolg: bool,
     pub stdout: String,
     pub stderr: String,
 }
 
-/// runs yt-dlp once and waits for it to finish.
+/// runs yt-dlp once and waits for it to finish
 #[cfg(not(target_os = "android"))]
 pub async fn einmal(werkzeug: &Path, args: &[String]) -> Result<Ausgabe> {
     use std::process::Stdio;
@@ -46,7 +46,7 @@ pub async fn einmal(_werkzeug: &Path, args: &[String]) -> Result<Ausgabe> {
     tokio::task::spawn_blocking(move || bruecke_rufen(&id, &args)).await?
 }
 
-/// calls `de.robify.player.Ytdlp.ausfuehren` over jni.
+/// calls `de.robify.player.Ytdlp.ausfuehren` over jni
 #[cfg(target_os = "android")]
 pub fn bruecke_rufen(id: &str, args: &[String]) -> Result<Ausgabe> {
     use anyhow::{anyhow, Context};
@@ -94,7 +94,7 @@ pub fn bruecke_rufen(id: &str, args: &[String]) -> Result<Ausgabe> {
     })
 }
 
-/// progress of a running job in percent, or `None`.
+/// progress of a running job in percent, or `None`
 #[cfg(target_os = "android")]
 pub fn fortschritt(id: &str) -> Option<f32> {
     use jni::objects::JValue;
@@ -121,7 +121,7 @@ pub fn fortschritt(id: &str) -> Option<f32> {
     (wert >= 0.0).then_some(wert)
 }
 
-/// cancels a running job.
+/// cancels a running job
 #[cfg(target_os = "android")]
 pub fn abbrechen(id: &str) {
     use jni::objects::JValue;
@@ -258,9 +258,9 @@ fn verweigerung_deuten(stderr: &str) -> Option<String> {
     None
 }
 
-/// what came of an attempt to renew yt-dlp.
+/// what came of an attempt to renew yt-dlp
 pub enum Erneuert {
-    /// renewed, with the version now in place.
+    /// renewed, with the version now in place
     Fassung(String),
     /// yt-dlp refuses because the file is not its own. the text says what can
     /// be done about it by hand; the caller decides whether to take another

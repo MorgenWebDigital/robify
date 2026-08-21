@@ -4,7 +4,7 @@ import type { Track } from "../types";
 
 let naechsteId = 1;
 
-/** a track with every required field, only a few of which matter here. */
+/** a track with every required field, only a few of which matter here */
 function titel(teil: Partial<Track>): Track {
   return {
     id: naechsteId++,
@@ -33,7 +33,7 @@ function titel(teil: Partial<Track>): Track {
   };
 }
 
-/** sorts and returns only what can be read off in the test. */
+/** sorts and returns only what can be read off in the test */
 function ordne(
   tracks: Track[],
   ordnung: string,

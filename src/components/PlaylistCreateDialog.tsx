@@ -19,7 +19,7 @@ export function PlaylistCreateDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  /** receives the freshly created playlist, to fill tracks into it for instance. */
+  /** receives the freshly created playlist, to fill tracks into it for instance */
   onCreated?: (playlist: Playlist) => void | Promise<void>;
 }) {
   const reloadPlaylists = useLibrary((s) => s.reloadPlaylists);

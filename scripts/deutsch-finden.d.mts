@@ -4,11 +4,11 @@
 // coverage guard imports it from typescript though, and a description is
 // needed for that
 
-/** every finding under `wurzel`, as `file:line  text`. */
+/** every finding under `wurzel`, as `file:line  text` */
 export function ungehuellteStellen(wurzel?: string): string[];
 
-/** every `.ts` and `.tsx` file under a directory. */
+/** every `.ts` and `.tsx` file under a directory */
 export function dateien(verzeichnis: string): string[];
 
-/** the findings of a single file, as `[line, text]`. */
+/** the findings of a single file, as `[line, text]` */
 export function pruefen(datei: string): [number, string][];

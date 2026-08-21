@@ -1,4 +1,4 @@
-//! every command the frontend can invoke.
+//! every command the frontend can invoke
 
 use crate::downloader::{
     self, DownloadOptions, DownloadOutcome, LinkPlan, SearchSource,
@@ -30,7 +30,7 @@ pub fn library_stats(state: State<'_, AppState>) -> CmdResult<LibraryStats> {
     Ok(library::library_stats(&conn)?)
 }
 
-/// what the android file picker returns instead of a path.
+/// what the android file picker returns instead of a path
 const INHALTSADRESSE: &str = "content://";
 
 // turns what the file picker delivers into readable paths.
@@ -102,14 +102,14 @@ pub fn scan_folders(
     Ok(result)
 }
 
-/// result of comparing the folder against the database.
+/// result of comparing the folder against the database
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryCheck {
-    /// audio files in the library folder that belong to no track.
+    /// audio files in the library folder that belong to no track
     pub orphan_count: usize,
     pub orphan_samples: Vec<String>,
-    /// tracks whose file no longer exists.
+    /// tracks whose file no longer exists
     pub missing_count: usize,
     pub missing_samples: Vec<String>,
 }
@@ -212,13 +212,13 @@ pub fn get_artist(state: State<'_, AppState>, id: i64) -> CmdResult<Artist> {
     Ok(library::get_artist(&conn, id)?)
 }
 
-/// searches online for details about an artist.
+/// searches online for details about an artist
 #[tauri::command]
 pub async fn search_artists_online(name: String) -> CmdResult<Vec<online::ArtistCandidate>> {
     Ok(online::search_artists(&name).await?)
 }
 
-/// takes a suggestion over: the image is fetched, the description stored.
+/// takes a suggestion over: the image is fetched, the description stored
 #[tauri::command]
 pub async fn apply_artist_metadata(
     app: AppHandle,
@@ -308,7 +308,7 @@ pub async fn best_artist_match(
     None
 }
 
-/// one press: the best hit is searched for and taken over right away.
+/// one press: the best hit is searched for and taken over right away
 #[tauri::command]
 pub async fn fetch_artist_metadata(
     app: AppHandle,
@@ -490,7 +490,7 @@ fn fetch_artists_in_background(app: &AppHandle, artists: Vec<(i64, String, Vec<S
     });
 }
 
-/// changes the master data by hand: name, description and image.
+/// changes the master data by hand: name, description and image
 #[tauri::command]
 pub fn update_artist(
     app: AppHandle,
@@ -529,7 +529,7 @@ pub fn update_artist(
     Ok(artist)
 }
 
-/// changes title, year, classification and cover of a release.
+/// changes title, year, classification and cover of a release
 #[tauri::command]
 pub fn update_album(
     app: AppHandle,
@@ -580,7 +580,7 @@ pub fn artist_tracks(state: State<'_, AppState>, artist_id: i64) -> CmdResult<Ve
     Ok(library::artist_tracks(&conn, artist_id)?)
 }
 
-/// tracks the artist only appears on as a guest.
+/// tracks the artist only appears on as a guest
 #[tauri::command]
 pub fn artist_features(state: State<'_, AppState>, artist_id: i64) -> CmdResult<Vec<Track>> {
     let conn = state.db();
@@ -633,7 +633,7 @@ pub fn delete_track(
     Ok(())
 }
 
-/// undoes the removal of a track.
+/// undoes the removal of a track
 #[tauri::command]
 pub fn restore_track(
     app: AppHandle,
@@ -649,7 +649,7 @@ pub fn restore_track(
     Ok(())
 }
 
-/// undoes the removal of a playlist.
+/// undoes the removal of a playlist
 #[tauri::command]
 pub fn restore_playlist(state: State<'_, AppState>, id: i64) -> CmdResult<Playlist> {
     let conn = state.db();
@@ -702,7 +702,7 @@ pub fn get_track_metadata(state: State<'_, AppState>, track_id: i64) -> CmdResul
     })
 }
 
-/// takes edited metadata over into the file and the library alike.
+/// takes edited metadata over into the file and the library alike
 #[tauri::command]
 pub fn update_track_metadata(
     app: AppHandle,
@@ -874,7 +874,7 @@ pub fn save_lyrics(
     Ok(())
 }
 
-/// fetches lyrics matching the track automatically and stores them.
+/// fetches lyrics matching the track automatically and stores them
 #[tauri::command]
 pub async fn fetch_lyrics_online(
     state: State<'_, AppState>,
@@ -965,7 +965,7 @@ pub fn update_playlist(
     Ok(library::get_playlist(&conn, id)?)
 }
 
-/// a track as the downloader knows it: artist and name.
+/// a track as the downloader knows it: artist and name
 #[derive(Debug, Clone, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaylistEntry {
@@ -973,14 +973,14 @@ pub struct PlaylistEntry {
     pub title: String,
 }
 
-/// what came out of taking a playlist over.
+/// what came out of taking a playlist over
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PlaylistFill {
     pub playlist: Playlist,
-    /// whether it was newly created or an existing one extended.
+    /// whether it was newly created or an existing one extended
     pub created: bool,
-    /// how many tracks came along this time.
+    /// how many tracks came along this time
     pub added: i64,
 }
 
@@ -1061,7 +1061,7 @@ pub fn playlist_tracks(state: State<'_, AppState>, playlist_id: i64) -> CmdResul
     Ok(library::playlist_tracks(&conn, playlist_id)?)
 }
 
-/// where these tracks already lie: playlist id and count.
+/// where these tracks already lie: playlist id and count
 #[tauri::command]
 pub fn playlists_containing(
     state: State<'_, AppState>,
@@ -1101,14 +1101,14 @@ pub fn reorder_playlist(
     Ok(library::reorder_playlist(&conn, playlist_id, &track_ids)?)
 }
 
-/// order of the favourites as the user dragged them.
+/// order of the favourites as the user dragged them
 #[tauri::command]
 pub fn reorder_favorites(state: State<'_, AppState>, track_ids: Vec<i64>) -> CmdResult<()> {
     let conn = state.db();
     Ok(library::reorder_favorites(&conn, &track_ids)?)
 }
 
-/// order of the collection itself, not of the tracks inside it.
+/// order of the collection itself, not of the tracks inside it
 #[tauri::command]
 pub fn reorder_playlists(
     app: AppHandle,
@@ -1218,7 +1218,7 @@ pub fn queue_clear(state: State<'_, AppState>) -> CmdResult<()> {
     Ok(state.player.send(Cmd::ClearQueue)?)
 }
 
-/// `minutes` is ignored with `endOfTrack`.
+/// `minutes` is ignored with `endOfTrack`
 #[tauri::command]
 pub fn set_sleep_timer(
     state: State<'_, AppState>,
@@ -1244,7 +1244,7 @@ pub fn weekly_mix(state: State<'_, AppState>, offset: Option<i64>) -> CmdResult<
     Ok(stats::weekly_mix(&conn, offset.unwrap_or(0))?)
 }
 
-/// the last weekly mixes for the overview on the home page.
+/// the last weekly mixes for the overview on the home page
 #[tauri::command]
 pub fn weekly_mixes(
     state: State<'_, AppState>,
@@ -1294,7 +1294,7 @@ pub fn save_weekly_mix(
     Ok(playlist)
 }
 
-/// recently played tracks, each of them once.
+/// recently played tracks, each of them once
 #[tauri::command]
 pub fn recently_played(state: State<'_, AppState>, limit: Option<i64>) -> CmdResult<Vec<Track>> {
     let conn = state.db();
@@ -1315,7 +1315,7 @@ pub struct DownloaderStatus {
     pub ytdlp_path: Option<String>,
     pub ytdlp_version: Option<String>,
     pub ffmpeg_available: bool,
-    /// needed for youtube, without it 403 errors come up.
+    /// needed for youtube, without it 403 errors come up
     pub js_runtime: Option<String>,
     /// whether anything can be done about this missing runtime at all.
     ///
@@ -1389,7 +1389,7 @@ pub async fn downloader_status(state: State<'_, AppState>) -> CmdResult<Download
 #[serde(rename_all = "camelCase")]
 pub struct YtdlpErneuert {
     pub fassung: String,
-    /// whether robify had to fetch a copy of its own for it.
+    /// whether robify had to fetch a copy of its own for it
     pub eigene_kopie: bool,
 }
 
@@ -1532,7 +1532,7 @@ async fn einspielen(app: tauri::AppHandle) -> CmdResult<bool> {
     Ok(true)
 }
 
-/// android has no updater, and it needs none.
+/// android has no updater, and it needs none
 #[cfg(not(desktop))]
 async fn einspielen(_app: tauri::AppHandle) -> CmdResult<bool> {
     Ok(false)
@@ -2164,31 +2164,31 @@ pub struct Settings {
     pub ytdlp_path: String,
     pub auto_fetch_lyrics: bool,
     pub auto_fetch_cover: bool,
-    /// fetch image and description at the first track of an artist.
+    /// fetch image and description at the first track of an artist
     pub auto_fetch_artists: bool,
     pub move_downloads_into_library: bool,
     pub accent: String,
-    /// "system", "light" or "dark".
+    /// "system", "light" or "dark"
     pub theme: String,
-    /// playlists as tiles ("grid") or as a list ("list").
+    /// playlists as tiles ("grid") or as a list ("list")
     pub playlist_view: String,
-    /// tile size: "sm", "md" or "lg".
+    /// tile size: "sm", "md" or "lg"
     pub playlist_size: String,
     /// ask before deleting. can be turned off in the dialog itself.
     pub confirm_delete: bool,
-    /// turn a downloaded playlist into a playlist in the library.
+    /// turn a downloaded playlist into a playlist in the library
     pub playlist_from_download: bool,
-    /// how much of the review is shown: "all", "month", "year" or "off".
+    /// how much of the review is shown: "all", "month", "year" or "off"
     pub wrapped_mode: String,
-    /// look missing details up online at import.
+    /// look missing details up online at import
     pub auto_fetch_import: bool,
-    /// sorting of the library: "added", "title", "artist", "album", "year".
+    /// sorting of the library: "added", "title", "artist", "album", "year"
     pub library_sort: String,
     /// accent colours mixed by hand, comma separated ("#ff0000,#00ff00").
     ///
     /// as a string, because the settings table knows text only.
     pub accent_custom: String,
-    /// ui language: "system", "de" or "en".
+    /// ui language: "system", "de" or "en"
     pub language: String,
     /// whether the storage locations are fixed. then there is nothing to set.
     ///
@@ -2250,10 +2250,10 @@ pub fn set_setting(state: State<'_, AppState>, key: String, value: String) -> Cm
     Ok(db::set_setting(&conn, &key, &value)?)
 }
 
-/// how many backups are kept.
+/// how many backups are kept
 const MAX_BACKUPS: usize = 5;
 
-/// folder for the backups where the storage locations are fixed.
+/// folder for the backups where the storage locations are fixed
 const SICHERUNGEN: &str = "saves";
 
 /// writes a backup of the database and returns its path.

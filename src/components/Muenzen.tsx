@@ -12,7 +12,7 @@ import type { SVGProps } from "react";
 
 type MuenzProps = SVGProps<SVGSVGElement> & { size?: number };
 
-/** brand colour and glyph of one coin. */
+/** brand colour and glyph of one coin */
 interface Muenzbild {
   farbe: string;
   glyphe: React.ReactNode;

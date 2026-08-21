@@ -17,9 +17,9 @@
  */
 export const MELDESTELLE = "https://github.com/MorgenWebDigital/robify/issues";
 
-/** a donation address as it appears in the settings. */
+/** a donation address as it appears in the settings */
 export interface Spendenweg {
-  /** what arrives there, "Bitcoin" or "Monero" for instance. */
+  /** what arrives there, "Bitcoin" or "Monero" for instance */
   name: string;
   /** the complete address. it is displayed shortened. */
   adresse: string;

@@ -44,7 +44,7 @@ function abschnitte(): { type: ReleaseType; title: string }[] {
  */
 const VORSCHAU = 3;
 
-/** how many tracks stand under the popular heading. */
+/** how many tracks stand under the popular heading */
 const VORSCHAU_TITEL = 5;
 
 export function ArtistDetail() {
@@ -59,7 +59,7 @@ export function ArtistDetail() {
   const [features, setFeatures] = useState<Track[]>([]);
   const [editing, setEditing] = useState(false);
   const [fetching, setFetching] = useState(false);
-  /** which release types show all of their tiles. */
+  /** which release types show all of their tiles */
   const [entfaltet, setEntfaltet] = useState<string[]>([]);
   const notify = useUi((s) => s.notify);
 
@@ -96,7 +96,7 @@ export function ArtistDetail() {
   // are the most played
   const topTracks = tracks.slice(0, VORSCHAU_TITEL);
 
-  /** fetches image and description in one step. */
+  /** fetches image and description in one step */
   const fetchMetadata = async () => {
     setFetching(true);
     try {

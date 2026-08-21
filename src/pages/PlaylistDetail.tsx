@@ -1,3 +1,7 @@
+// one playlist: its tracks, their order, its cover.
+// note: the order is dragged and written back, so a failed write has to
+// restore the old one.
+
 import { PlaylistMosaic, ZurueckKnopf } from "../components/Cards";
 import { t } from "../lib/i18n";
 import { EmptyState } from "../components/EmptyState";
@@ -95,7 +99,7 @@ export function PlaylistDetail() {
     );
   };
 
-  /** stores the new order after dragging. */
+  /** stores the new order after dragging */
   const neuOrdnen = async (ids: number[]) => {
     // show it at once so the row does not jump back while the database is
     // still writing

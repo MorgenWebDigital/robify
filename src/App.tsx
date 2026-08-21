@@ -1,3 +1,8 @@
+// the shell around every page: routing, the player bar, the dialogs that
+// belong to no page.
+// note: the three stores are started here, so their events arrive while any
+// page is open.
+
 import { useCallback, useEffect, useRef } from "react";
 import { t } from "./lib/i18n";
 import { Route, Routes, useLocation } from "react-router-dom";

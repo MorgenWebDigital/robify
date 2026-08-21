@@ -20,7 +20,7 @@ use robify_lib::downloader::{self, SearchResult};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// from this similarity on, the audio counts as the same recording.
+/// from this similarity on, the audio counts as the same recording
 const SAME_RECORDING: f64 = 0.80;
 
 /// the excerpt compared: from second 20, 45 seconds long.
@@ -70,7 +70,7 @@ const SONGS: [(&str, &str); 30] = [
 
 // --- fingerprint ---
 
-/// reads the chromaprint fingerprint of a file as a sequence of 32 bit values.
+/// reads the chromaprint fingerprint of a file as a sequence of 32 bit values
 fn fingerprint(path: &Path) -> Option<Vec<u32>> {
     let output = Command::new("ffmpeg")
         .args([

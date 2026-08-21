@@ -1,3 +1,8 @@
+// the full-screen player: cover, title, lyrics and what else there is by the
+// artist.
+// note: the cover animates on a track change, and the timing has to match the
+// stylesheet.
+
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { t } from "../lib/i18n";
@@ -28,7 +33,7 @@ import { activeLineIndex, parseLrc, type LyricLine } from "../lib/lrc";
 import { useAusblenden } from "../lib/ausblenden";
 import { useSchliesstBeimSeitenwechsel } from "../lib/seitenwechsel";
 
-/** has to match the duration of `.animate-stage-out` in the stylesheet. */
+/** has to match the duration of `.animate-stage-out` in the stylesheet */
 const ZU_MS = 280;
 
 // the full screen view with a large cover and lyrics running along
@@ -57,9 +62,9 @@ export function NowPlaying() {
   // on a phone only: the lyrics do not stand next to it there but behind a
   // tile. on a desktop they are visible the whole time anyway
   const [textOffen, setTextOffen] = useState(false);
-  /** the preview as plain text where no time-synced version is on hand. */
+  /** the preview as plain text where no time-synced version is on hand */
   const [anfang, setAnfang] = useState<string[]>([]);
-  /** the time-synced version, where there is one. */
+  /** the time-synced version, where there is one */
   const [synchron, setSynchron] = useState<LyricLine[]>([]);
 
   const trackId = currentTrack?.id ?? null;
@@ -172,13 +177,13 @@ export function NowPlaying() {
   const zugBeginn = useRef<{ x: number; y: number; oben: boolean } | null>(
     null,
   );
-  /** from here on it is a gesture and no longer a slip. */
+  /** from here on it is a gesture and no longer a slip */
   const ZUG_SCHWELLE = 90;
 
   // where the move is going, for the brief animation along with it.
   //
   // the change itself comes from the rust side and takes a moment, and
-  // without an animation the old track would simply stand there during that
+  // without an animation the old track would stand there during that
   // time, making the swipe look as if it had gone nowhere
   const [blaettert, setBlaettert] = useState<"vor" | "zurueck" | null>(null);
   const blaetterUhr = useRef<number | null>(null);

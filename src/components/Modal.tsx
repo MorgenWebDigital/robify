@@ -14,7 +14,7 @@ interface ModalProps {
   width?: string;
 }
 
-/** what can be reached with the tab key. */
+/** what can be reached with the tab key */
 const ANSTEUERBAR =
   'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
 
@@ -30,7 +30,7 @@ function sichtbareFelder(wurzel: HTMLElement | null): HTMLElement[] {
   );
 }
 
-/** how long the fade-out takes, has to match `.animate-out` in the css. */
+/** how long the fade-out takes, has to match `.animate-out` in the css */
 const AUSBLENDEN_MS = 160;
 
 export function Modal({
@@ -232,5 +232,5 @@ export function Field({
  */
 export const inputClass = "search-field";
 
-/** the same for several lines: same groove, a rounded rectangle instead of a pill. */
+/** the same for several lines: same groove, a rounded rectangle instead of a pill */
 export const textareaClass = "text-field";

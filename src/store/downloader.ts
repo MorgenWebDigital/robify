@@ -13,7 +13,7 @@ export interface Job {
   progress: DownloadProgress | null;
   outcome: DownloadOutcome | null;
   error: string | null;
-  /** batch downloads land in the library without asking. */
+  /** batch downloads land in the library without asking */
   autoImport: boolean;
 }
 
@@ -26,10 +26,10 @@ export interface Job {
  * would be gone. this store listens for the progress events as well, not the
  * page.
  */
-/** what has become of one entry of a batch. */
+/** what has become of one entry of a batch */
 export type Stapelstand = {
   zustand: "laeuft" | "fertig" | "pruefen" | "fehler";
-  /** the job it hangs on, for the progress. */
+  /** the job it hangs on, for the progress */
   jobId?: string;
 };
 
@@ -60,11 +60,11 @@ interface DownloaderStore {
    * it, because with a new plan the positions mean something else.
    */
   stapel: Record<number, Stapelstand>;
-  /** when the page was last left, as `Date.now()`. */
+  /** when the page was last left, as `Date.now()` */
   verlassenAm: number | null;
 
   setInput: (value: string) => void;
-  /** notes that the page has gone; the search keeps for a moment. */
+  /** notes that the page has gone; the search keeps for a moment */
   seiteVerlassen: () => void;
   /**
    * back on the page: hands back whether the search was cleared.
@@ -83,7 +83,7 @@ interface DownloaderStore {
   removeJob: (id: string) => void;
   clearJobs: () => void;
 
-  /** to be called once at the start of the app. */
+  /** to be called once at the start of the app */
   init: () => Promise<() => void>;
 }
 

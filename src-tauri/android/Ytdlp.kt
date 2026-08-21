@@ -33,7 +33,7 @@ object Ytdlp {
         return listOf("--js-runtimes", "quickjs:${qjs.absolutePath}")
     }
 
-    /** where the converter lies, or `null` where it did not come along. */
+    /** where the converter lies, or `null` where it did not come along */
     private fun ffmpeg(kontext: Context): File? =
         File(kontext.applicationInfo.nativeLibraryDir, "libffmpeg.so").takeIf { it.exists() }
 
@@ -78,7 +78,7 @@ object Ytdlp {
         return klasse.getMethod("currentApplication").invoke(null) as Context
     }
 
-    /** the interpreter, started on first use. */
+    /** the interpreter, started on first use */
     @Synchronized
     private fun python(): Python {
         if (!Python.isStarted()) {
@@ -164,7 +164,7 @@ object Ytdlp {
      * nothing to fetch at runtime. the answer names the version in place.
      */
     // the context stays in the signature although nothing here needs it: the
-    // rust side calls this method by that exact signature over jni
+    // rust side calls it by that exact signature over jni
     @Suppress("UNUSED_PARAMETER")
     @JvmStatic
     fun aktualisieren(kontext: Context): String {
@@ -179,7 +179,7 @@ object Ytdlp {
         }
     }
 
-    /** progress of a job in percent, or -1 where it is not running. */
+    /** progress of a job in percent, or -1 where it is not running */
     @JvmStatic
     fun fortschritt(id: String): Float {
         return try {
@@ -189,7 +189,7 @@ object Ytdlp {
         }
     }
 
-    /** cancels a running job. */
+    /** cancels a running job */
     @JvmStatic
     fun abbrechen(id: String) {
         try {

@@ -30,19 +30,19 @@ interface MenuProps {
   hover?: boolean;
 }
 
-/** where the menu stands, in window coordinates. */
+/** where the menu stands, in window coordinates */
 interface Lage {
   obenAus: boolean;
-  /** distance to the top or bottom window edge, depending on `obenAus`. */
+  /** distance to the top or bottom window edge, depending on `obenAus` */
   y: number;
-  /** distance to the left or right window edge, depending on `align`. */
+  /** distance to the left or right window edge, depending on `align` */
   x: number;
   maxHoehe: number;
 }
 
-/** air to the window edges. */
+/** air to the window edges */
 const RAND = 8;
-/** air between button and list. */
+/** air between button and list */
 const LUFT = 4;
 
 // a small context menu, closes on a click outside and on escape.

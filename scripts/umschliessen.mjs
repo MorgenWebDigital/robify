@@ -25,7 +25,7 @@ if (!datei) {
   process.exit(1);
 }
 
-/** attributes whose value appears on the screen. */
+/** attributes whose value appears on the screen */
 const MERKMALE = [
   "label",
   "hint",
@@ -43,7 +43,7 @@ const MERKMALE = [
 let inhalt = readFileSync(datei, "utf8");
 const gefunden = [];
 
-/** starts with a capital or a quote and carries substance. */
+/** starts with a capital or a quote and carries substance */
 const istText = (text) =>
   /^[A-ZÄÖÜ„][^]{2,}$/.test(text) && /[a-zäöüß]/.test(text);
 

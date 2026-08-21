@@ -292,14 +292,14 @@ const FORMEN: Record<string, Record<string, Formen>> = {
   },
 };
 
-/** test helper: whether the keyword is in the table, and if so in this language. */
+/** test helper: whether the keyword is in the table, and if so in this language */
 export function hatFormen(stichwort: string, sprache?: string): boolean {
   const eintrag = FORMEN[stichwort];
   if (!eintrag) return false;
   return sprache === undefined || eintrag[sprache] !== undefined;
 }
 
-/** every keyword, for the coverage test. */
+/** every keyword, for the coverage test */
 export function stichwoerter(): string[] {
   return Object.keys(FORMEN);
 }

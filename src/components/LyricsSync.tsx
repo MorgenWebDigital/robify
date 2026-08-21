@@ -42,7 +42,7 @@ export function LyricsSync({
 }: {
   track: Track;
   plain: string;
-  /** receives the lrc text and the running text cleared of the trimmings. */
+  /** receives the lrc text and the running text cleared of the trimmings */
   onDone: (lrc: string, bereinigt: string) => void;
   onCancel: () => void;
 }) {
@@ -72,7 +72,7 @@ export function LyricsSync({
 
   const laeuftDieser = currentTrack?.id === track.id;
 
-  /** the next line needing a mark: not deselected, still without a time. */
+  /** the next line needing a mark: not deselected, still without a time */
   const dran = marken.findIndex((zeit, i) => zeit === null && !aus[i]);
   const fertig = dran === -1;
   const gesetzt = marken.filter((z, i) => z !== null && !aus[i]).length;

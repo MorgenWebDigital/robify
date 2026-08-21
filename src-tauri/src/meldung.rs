@@ -32,12 +32,12 @@ pub const TRENNER: char = '\u{1f}';
 /// the seven explanations.
 pub const ABSATZ: char = '\u{1e}';
 
-/// joins two assembled messages.
+/// joins two assembled messages
 pub fn verketten(erste: String, zweite: String) -> String {
     format!("{erste}{ABSATZ}{zweite}")
 }
 
-/// assembles template and values into one transferable message.
+/// assembles template and values into one transferable message
 pub fn bauen(vorlage: &str, werte: &[&dyn Display]) -> String {
     let mut text = String::from(vorlage);
     for wert in werte {

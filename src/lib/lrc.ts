@@ -38,7 +38,7 @@ export function parseLrc(input: string): LyricLine[] {
   return lines;
 }
 
-/** index of the line being sung at `positionMs`. */
+/** index of the line being sung at `positionMs` */
 export function activeLineIndex(
   lines: LyricLine[],
   positionMs: number,

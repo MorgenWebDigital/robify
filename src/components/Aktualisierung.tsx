@@ -83,14 +83,14 @@ export function useAktualisierungen(): Aktualisierungen | null {
  */
 export const SIGNAL = "var(--hinweis)";
 
-/** whether anything at all is to be had. */
+/** whether anything at all is to be had */
 export function etwasNeues(was: Aktualisierungen | null): boolean {
   return Boolean(was?.app || was?.ytdlp);
 }
 
 // --- the two ways in ---
 
-/** the key in the foot of the sidebar, on a desktop. */
+/** the key in the foot of the sidebar, on a desktop */
 export function Aktualisierungsknopf() {
   const was = useAktualisierungen();
   const [offen, setOffen] = useState(false);
@@ -298,7 +298,7 @@ export function Aktualisierungsfenster({
   );
 }
 
-/** one line: what is renewed, and to which version. */
+/** one line: what is renewed, and to which version */
 function Zeile({ name, neu }: { name: string; neu: string }) {
   return (
     <li className="flex items-baseline gap-2">

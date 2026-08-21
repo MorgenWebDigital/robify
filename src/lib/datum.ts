@@ -12,7 +12,7 @@ import { spracheJetzt, t } from "./i18n";
 // a formatter remembers its language, and one created once would keep the old
 // one after a language switch
 
-/** weekday with day and month, "Montag, 17. August" for instance. */
+/** weekday with day and month, "Montag, 17. August" for instance */
 export function wochentagUndTag(datum: Date): string {
   return new Intl.DateTimeFormat(spracheJetzt(), {
     weekday: "long",
@@ -21,7 +21,7 @@ export function wochentagUndTag(datum: Date): string {
   }).format(datum);
 }
 
-/** month and year, "August 2026" for instance. */
+/** month and year, "August 2026" for instance */
 export function monatUndJahr(datum: Date): string {
   return new Intl.DateTimeFormat(spracheJetzt(), {
     month: "long",
@@ -29,7 +29,7 @@ export function monatUndJahr(datum: Date): string {
   }).format(datum);
 }
 
-/** the day written out, "17. August 2026" for instance. */
+/** the day written out, "17. August 2026" for instance */
 export function vollesDatum(datum: Date): string {
   return new Intl.DateTimeFormat(spracheJetzt(), {
     day: "numeric",
@@ -38,7 +38,7 @@ export function vollesDatum(datum: Date): string {
   }).format(datum);
 }
 
-/** short day without a year, for the bars in the review. */
+/** short day without a year, for the bars in the review */
 export function kurzerTag(datum: Date): string {
   return new Intl.DateTimeFormat(spracheJetzt(), {
     day: "numeric",

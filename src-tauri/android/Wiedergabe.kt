@@ -41,7 +41,7 @@ import androidx.media.session.MediaButtonReceiver
  * stands here, and the buttons pass their commands back there.
  */
 object Wiedergabe {
-    /** what is running, the service reads it while building the display. */
+    /** what is running, the service reads it while building the display */
     internal var titel: String = ""
     internal var kuenstler: String = ""
     internal var album: String = ""
@@ -118,7 +118,7 @@ object Wiedergabe {
         }
     }
 
-    /** nothing is playing any more: drop the display, stop the service. */
+    /** nothing is playing any more: drop the display, stop the service */
     @JvmStatic
     fun beenden(kontext: Context) {
         val anwendung = kontext.applicationContext
@@ -183,7 +183,7 @@ class Wiedergabedienst : Service() {
         super.onDestroy()
     }
 
-    /** a new state: pull session and display along. */
+    /** a new state: pull session and display along */
     fun auffrischen() {
         sitzung.setMetadata(
             MediaMetadataCompat.Builder()

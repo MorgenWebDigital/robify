@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
-/* --- morgenweb design ---
+/* --- morgenweb design --- */
 
-   minimalism close to macos: a grey canvas, white cards with a hairline
+/* minimalism close to macos: a grey canvas, white cards with a hairline
    border, a clear depth order bg < surface < sunken, restrained shadows.
 
    the layout stays as it was (sidebar, content area, player bar at the
@@ -1363,9 +1363,9 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   opacity: 1;
 }
 
-/* --- lyrics as a spatial surface ---
+/* --- lyrics as a spatial surface --- */
 
-   the text is to tip away to the back instead of lying flat on the screen:
+/* the text is to tip away to the back instead of lying flat on the screen:
    the frame sets the vanishing depth, the inner surface tilts by a few
    degrees. it fades out softly at the top and bottom so the edges do not look
    cut off.
@@ -1704,9 +1704,9 @@ input[type="range"]:focus-visible::-webkit-slider-thumb {
   }
 }
 
-/* --- our own title bar ---
+/* --- our own title bar --- */
 
-   the native window band is off (`decorations: false`), and this flat 30 px
+/* the native window band is off (`decorations: false`), and this flat 30 px
    bar in the design of the app replaces it (see components/TitleBar.tsx). it
    is the drag area for moving the window at the same time. */
 .titlebar {

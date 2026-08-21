@@ -1,3 +1,7 @@
+// the bar at the lower edge: what is running, the buttons, the position.
+// note: while dragging, the display follows the finger and not the backend,
+// otherwise the handle jumps back at every progress event.
+
 import { useEffect, useRef, useState } from "react";
 import { t } from "../lib/i18n";
 import { api, errorMessage } from "../lib/api";
@@ -350,7 +354,7 @@ function MiniPlayer() {
   // is a shortcut and no replacement.
   //
   // upwards only and only clearly: the bar is two fingers high, and a tap
-  // wobbles a few pixels inside it easily
+  // wobbles a few pixels inside it
   const hochBeginn = useRef<{ x: number; y: number } | null>(null);
   const HOCH_SCHWELLE = 40;
 

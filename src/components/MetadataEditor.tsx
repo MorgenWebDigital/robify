@@ -1,3 +1,7 @@
+// the form behind "check metadata" and "edit metadata".
+// note: the same form serves the downloader and the library, which is why it
+// takes its value from outside instead of holding it.
+
 import { useEffect, useRef, useState } from "react";
 import { t } from "../lib/i18n";
 import { api, errorMessage } from "../lib/api";
@@ -29,7 +33,7 @@ export const emptyMetadata: TrackMetadata = {
 interface MetadataFormProps {
   value: TrackMetadata;
   onChange: (value: TrackMetadata) => void;
-  /** the duration helps in finding matching lyrics. */
+  /** the duration helps in finding matching lyrics */
   durationMs?: number;
 }
 

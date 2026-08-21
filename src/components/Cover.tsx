@@ -6,7 +6,7 @@ interface CoverProps {
   alt: string;
   className?: string;
   rounded?: string;
-  /** used for the placeholder pattern so it stays stable. */
+  /** used for the placeholder pattern so it stays stable */
   seed?: string | number;
 }
 
@@ -39,7 +39,7 @@ export function useBildFertig(src: string | null) {
   // library a new counter hangs on all images so the cache does not show the
   // old one. were it reset here, every image would fall back to the
   // placeholder briefly. an `img` keeps its old frame until the new one is
-  // decoded anyway, so the change stays seamless without any help
+  // decoded anyway, so the change stays smooth without any help
   void src;
 
   return {

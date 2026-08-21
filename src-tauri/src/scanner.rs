@@ -1,4 +1,4 @@
-//! import of local files and folders into the library.
+//! import of local files and folders into the library
 
 use crate::library::{self, TrackInsert};
 use crate::models::ReleaseType;

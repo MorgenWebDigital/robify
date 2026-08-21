@@ -49,7 +49,7 @@ export function WrappedPage() {
   const revision = useLibrary((s) => s.revision);
   const settings = useLibrary((s) => s.settings);
   const modus = settings?.wrappedMode ?? "all";
-  /** with "month" or "year" the period is fixed and the choice is dropped. */
+  /** with "month" or "year" the period is fixed and the choice is dropped */
   const fest = modus === "month" || modus === "year";
 
   const [period, setPeriod] = useState<Period>("month");

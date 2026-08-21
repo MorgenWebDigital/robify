@@ -105,7 +105,7 @@ pub struct SpotifyTrack {
     /// everyone involved, lead artist first. spotify draws no line around
     /// guest contributions, whoever is listed stands there as an equal.
     pub artists: Vec<String>,
-    /// guest artists pulled out of the title ("… (feat. X)").
+    /// guest artists pulled out of the title ("… (feat. X)")
     pub featured: Vec<String>,
     pub duration_ms: Option<i64>,
     pub track_no: Option<i64>,
@@ -115,7 +115,7 @@ pub struct SpotifyTrack {
 #[serde(rename_all = "camelCase")]
 pub struct SpotifyRelease {
     pub kind: SpotifyKind,
-    /// name of the album, the playlist or the track.
+    /// name of the album, the playlist or the track
     pub name: String,
     pub artist: Option<String>,
     pub cover_url: Option<String>,
@@ -149,7 +149,7 @@ pub fn split_spotify_artists(value: &str) -> Vec<String> {
         .collect()
 }
 
-/// pulls "(feat. A, B & C)" out of the title and returns title and names.
+/// pulls "(feat. A, B & C)" out of the title and returns title and names
 pub fn split_feature_suffix(title: &str) -> (String, Vec<String>) {
     const MARKERS: [&str; 4] = ["(feat. ", "(ft. ", "(featuring ", "(with "];
     let lower = title.to_lowercase();
@@ -220,7 +220,7 @@ pub async fn track_cover_url(track_id: &str) -> Option<String> {
     text(&json["thumbnail_url"])
 }
 
-/// reads title, artists, cover and track list off the embed page.
+/// reads title, artists, cover and track list off the embed page
 pub async fn resolve(reference: &SpotifyRef) -> Result<SpotifyRelease> {
     let url = format!(
         "https://open.spotify.com/embed/{}/{}",

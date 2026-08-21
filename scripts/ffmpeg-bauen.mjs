@@ -49,10 +49,10 @@ const VORBIS_FASSUNG = "1.3.7";
 const VORBIS_PRUEFSUMME =
   "0e982409a9c3fc82ee06e08205b1355e5c6aa4c36bca58146ef399621b0ce5ab";
 
-/** the lowest android version robify runs on, see tauri.conf.json. */
+/** the lowest android version robify runs on, see tauri.conf.json */
 const API = 26;
 
-/** the four architectures the universal apk carries. */
+/** the four architectures the universal apk carries */
 const ARCHITEKTUREN = {
   "arm64-v8a": {
     dreiklang: "aarch64-linux-android",
@@ -90,7 +90,7 @@ const ZIEL = join(WURZEL, "src-tauri", "android", "ffmpeg");
 const MARKE = join(ZIEL, ".fassung");
 const ARBEIT = join(WURZEL, "src-tauri", "android", ".ffmpeg-bau");
 
-/** what has to lie in the app afterwards. */
+/** what has to lie in the app afterwards */
 const DATEIEN = [
   "libffmpeg.so",
   "libffprobe.so",
@@ -137,7 +137,7 @@ const FORMATE = {
   vorbis: "libvorbis",
 };
 
-/** where the interface keeps its format list. */
+/** where the interface keeps its format list */
 const FORMATQUELLE = join(WURZEL, "src", "lib", "formate.ts");
 
 /**
@@ -283,7 +283,7 @@ function lameBauen(quelle, abi, prefix, wz) {
   rufe("make", ["install"], bau, wz.umgebung);
 }
 
-/** the two xiph libraries, built the plain autotools way. */
+/** the two xiph libraries, built the plain autotools way */
 function xiphBauen(quelle, abi, prefix, wz, name, zusatz = []) {
   const bau = join(ARBEIT, `${name}-${abi}`);
   rmSync(bau, { recursive: true, force: true });

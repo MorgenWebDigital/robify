@@ -21,7 +21,7 @@ export interface NavEintrag {
    */
   schluessel: string;
   icon: ComponentType<{ size?: number; className?: string }>;
-  /** further addresses belonging to this section. */
+  /** further addresses belonging to this section */
   auch: string[];
 }
 

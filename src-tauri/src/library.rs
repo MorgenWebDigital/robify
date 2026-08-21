@@ -21,10 +21,10 @@ JOIN artists ar ON ar.id = t.artist_id
 JOIN albums  al ON al.id = t.album_id
 "#;
 
-/// separator for several artists inside one text field.
+/// separator for several artists inside one text field
 const ARTIST_SEPARATOR: char = ';';
 
-/// words that guest artists follow.
+/// words that guest artists follow
 const FEATURE_MARKERS: [&str; 5] = [" feat. ", " feat ", " ft. ", " ft ", " featuring "];
 
 /// splits "A; B; C" into single names. commas and ampersands stay untouched,
@@ -85,7 +85,7 @@ const TITLE_TAGS: [&str; 21] = [
     "remastered",
 ];
 
-/// strips bracketed suffixes that only describe the production.
+/// strips bracketed suffixes that only describe the production
 fn strip_title_tags(raw: &str) -> String {
     let mut out = String::with_capacity(raw.len());
     let mut rest = raw;
@@ -297,7 +297,7 @@ fn attach_artists(conn: &Connection, tracks: &mut [Track]) -> Result<()> {
     Ok(())
 }
 
-/// rewrites the participants of a track.
+/// rewrites the participants of a track
 pub fn set_track_artists(
     conn: &Connection,
     track_id: i64,
@@ -434,9 +434,9 @@ pub fn upsert_album(
 pub struct TrackInsert {
     pub path: String,
     pub title: String,
-    /// raw artist field, may hold several names and a "feat.".
+    /// raw artist field, may hold several names and a "feat."
     pub artist: String,
-    /// additional guest artists, separated by semicolons.
+    /// additional guest artists, separated by semicolons
     pub featured_artists: Option<String>,
     pub album: Option<String>,
     pub album_artist: Option<String>,
@@ -704,7 +704,7 @@ pub fn releases_needing_kind(conn: &Connection, limit: i64) -> Result<Vec<(i64, 
     Ok(rows)
 }
 
-/// writes down what a source said about the kind of a release.
+/// writes down what a source said about the kind of a release
 pub fn set_release_kind(conn: &Connection, album_id: i64, art: ReleaseType) -> Result<()> {
     conn.execute(
         "UPDATE albums SET release_type = ?2, release_type_locked = ?3
@@ -714,7 +714,7 @@ pub fn set_release_kind(conn: &Connection, album_id: i64, art: ReleaseType) -> R
     Ok(())
 }
 
-/// classifies every release not set by hand from its track count.
+/// classifies every release not set by hand from its track count
 pub fn refresh_release_types(conn: &Connection) -> Result<()> {
     let mut stmt = conn.prepare(
         "SELECT id FROM albums WHERE release_type_locked = 0", // ART_GERATEN
@@ -730,7 +730,7 @@ pub fn refresh_release_types(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// removes artists and albums with no tracks left.
+/// removes artists and albums with no tracks left
 pub fn prune_empty(conn: &Connection) -> Result<()> {
     conn.execute(
         "DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks)",
@@ -886,7 +886,7 @@ pub fn list_albums(conn: &Connection, search: Option<&str>) -> Result<Vec<Album>
     Ok(out.into_iter().filter(|a| a.track_count > 0).collect())
 }
 
-/// every release of an artist, the frontend groups them by `releaseType`.
+/// every release of an artist, the frontend groups them by `releaseType`
 pub fn artist_releases(conn: &Connection, artist_id: i64) -> Result<Vec<Album>> {
     let sql = format!(
         "{ALBUM_SELECT} WHERE al.artist_id = ?1
@@ -919,7 +919,7 @@ pub fn album_tracks(conn: &Connection, album_id: i64) -> Result<Vec<Track>> {
     Ok(out)
 }
 
-/// every track the artist takes part in, as a guest too.
+/// every track the artist takes part in, as a guest too
 pub fn artist_tracks(conn: &Connection, artist_id: i64) -> Result<Vec<Track>> {
     let sql = format!(
         "{TRACK_SELECT}
@@ -938,7 +938,7 @@ pub fn artist_tracks(conn: &Connection, artist_id: i64) -> Result<Vec<Track>> {
     Ok(out)
 }
 
-/// tracks the artist is only a guest on.
+/// tracks the artist is only a guest on
 pub fn artist_features(conn: &Connection, artist_id: i64) -> Result<Vec<Track>> {
     let sql = format!(
         "{TRACK_SELECT}
@@ -992,7 +992,7 @@ pub fn set_favorite(conn: &Connection, track_id: i64, favorite: bool) -> Result<
     Ok(())
 }
 
-/// sets the order of the favourites anew, driven by drag and drop in the ui.
+/// sets the order of the favourites anew, driven by drag and drop in the ui
 pub fn reorder_favorites(conn: &Connection, track_ids: &[i64]) -> Result<()> {
     for (stelle, track_id) in track_ids.iter().enumerate() {
         conn.execute(
@@ -1019,7 +1019,7 @@ pub fn tracks_without_file(conn: &Connection) -> Result<Vec<(i64, String)>> {
         .collect())
 }
 
-/// every known file path, the basis for recognising orphans.
+/// every known file path, the basis for recognising orphans
 pub fn known_paths(conn: &Connection) -> Result<std::collections::HashSet<String>> {
     let mut stmt = conn.prepare("SELECT path FROM tracks WHERE deleted_at IS NULL")?;
     let pfade = stmt
@@ -1078,7 +1078,7 @@ pub fn tracks_with_weak_metadata(conn: &Connection, limit: usize) -> Result<Vec<
         .collect())
 }
 
-/// the check behind `tracks_with_weak_metadata`, usable on its own.
+/// the check behind `tracks_with_weak_metadata`, usable on its own
 pub fn weak_metadata(track: &Track) -> bool {
     track.artist_name == "Unbekannter Künstler"
         || looks_like_filename(&track.title)
@@ -1170,7 +1170,7 @@ fn with_titles(
     Ok(out)
 }
 
-/// profile image of an artist.
+/// profile image of an artist
 pub fn set_artist_image(conn: &Connection, artist_id: i64, data: &[u8], mime: &str) -> Result<()> {
     conn.execute(
         "UPDATE artists SET image = ?2, image_mime = ?3 WHERE id = ?1",
@@ -1231,7 +1231,7 @@ pub fn update_artist(
     Ok(())
 }
 
-/// changes title, year and classification of a release.
+/// changes title, year and classification of a release
 pub fn update_album(
     conn: &Connection,
     album_id: i64,
@@ -1334,7 +1334,7 @@ pub fn get_lyrics(conn: &Connection, track_id: i64) -> Result<Option<Lyrics>> {
 
 // --- playlists ---
 
-/// whether a playlist of this name exists already.
+/// whether a playlist of this name exists already
 pub fn playlist_name_taken(conn: &Connection, name: &str) -> Result<bool> {
     let anzahl: i64 = conn.query_row(
         "SELECT COUNT(*) FROM playlists WHERE name = ?1 AND deleted_at IS NULL",
@@ -1344,7 +1344,7 @@ pub fn playlist_name_taken(conn: &Connection, name: &str) -> Result<bool> {
     Ok(anzahl > 0)
 }
 
-/// recently played tracks, each of them once and the youngest first.
+/// recently played tracks, each of them once and the youngest first
 pub fn recently_played(conn: &Connection, limit: i64) -> Result<Vec<Track>> {
     // through `tracks.last_played_at` and not through `plays`: only what ran
     // long enough to count in the statistics stands there, thirty seconds. a
@@ -1571,7 +1571,7 @@ pub fn remove_from_playlist(conn: &Connection, playlist_id: i64, track_id: i64) 
     Ok(())
 }
 
-/// sets the order completely anew, driven by drag and drop in the ui.
+/// sets the order completely anew, driven by drag and drop in the ui
 pub fn reorder_playlist(conn: &Connection, playlist_id: i64, track_ids: &[i64]) -> Result<()> {
     for (position, track_id) in track_ids.iter().enumerate() {
         conn.execute(
@@ -1590,7 +1590,7 @@ pub fn reorder_playlist(conn: &Connection, playlist_id: i64, track_ids: &[i64]) 
 /// listening history: `plays` hangs off the track by foreign key and would go
 /// with it, and the review would lose hours retroactively. this way it stays
 /// complete, and creating the same track again later has `upsert_track` tie
-/// into the same row and simply carry on counting.
+/// into the same row and carry on counting.
 ///
 /// the file travels into `papierkorb` instead of being deleted. only that way
 /// can the action be undone, a deleted file is gone.
@@ -1832,7 +1832,7 @@ pub fn library_stats(conn: &Connection) -> Result<LibraryStats> {
 mod tests {
     use super::*;
 
-    /// a folder under `target` that does not collide with other runs.
+    /// a folder under `target` that does not collide with other runs
     fn testordner(name: &str) -> std::path::PathBuf {
         let pfad = std::env::temp_dir().join(format!("robify-umzug-{name}"));
         let _ = std::fs::remove_dir_all(&pfad);
@@ -1885,7 +1885,7 @@ mod tests {
         let _ = std::fs::remove_dir_all(&basis);
     }
 
-    /// what already lies at the target is not overwritten.
+    /// what already lies at the target is not overwritten
     #[test]
     fn umzug_laesst_vorhandenes_stehen() {
         let basis = testordner("vorhanden");

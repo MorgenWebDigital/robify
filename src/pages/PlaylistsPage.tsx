@@ -1,3 +1,6 @@
+// all playlists as tiles or as a list.
+// note: view and size survive a restart, they live in the settings.
+
 import { useState } from "react";
 import type { ComponentType } from "react";
 import {
@@ -211,7 +214,7 @@ function Einfuegemarke({
   luecke: number | null;
   index: number;
   anzahl: number;
-  /** in the tile grid the line stands upright between two tiles. */
+  /** in the tile grid the line stands upright between two tiles */
   senkrecht?: boolean;
 }) {
   if (zieht === null) return null;

@@ -15,7 +15,7 @@ export function Toasts() {
   const playerError = usePlayer((s) => s.lastError);
   const clearError = usePlayer((s) => s.clearError);
 
-  // Fehler aus der Wiedergabe-Engine als Toast spiegeln.
+  // mirrors an error out of the playback engine as a toast
   useEffect(() => {
     if (!playerError) return;
     notify(playerError, "error");

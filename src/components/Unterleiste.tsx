@@ -12,7 +12,7 @@ import {
   useAktualisierungen,
 } from "./Aktualisierung";
 
-/** has to match the duration of `.animate-out` in the stylesheet. */
+/** has to match the duration of `.animate-out` in the stylesheet */
 const AUSBLENDEN_MS = 160;
 
 // navigation at the bottom edge, for the phone.
