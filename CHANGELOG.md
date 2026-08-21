@@ -11,17 +11,16 @@ the versions follow [semantic versioning](https://semver.org/).
   and its ffmpeg stand under the gpl-3.0, which forbids further restrictions —
   a non-commercial clause is one, so the apk could not have been passed on
   under robify's licence. in their place stand chaquopy (mit), yt-dlp
-  (unlicense) installed by pip, and quickjs (mit) as the javascript runtime
-  youtube demands. the apk over all four architectures now measures 65 mb;
-  the ffmpeg library alone brought 133 mb of that before.
+  (unlicense) installed by pip, quickjs (mit) as the javascript runtime
+  youtube demands, and an ffmpeg built here without its gpl parts, with lame
+  for mp3 and libvorbis for ogg — lgpl and bsd, and beside the program as
+  separate shared libraries so they can be exchanged.
+- converting on android keeps working: mp3, m4a, flac and ogg vorbis as
+  before. the converter weighs about five megabytes per architecture where
+  the ready-made gpl build brought thirty-five, because it holds no video
+  encoder at all. the apk over all four architectures measures 76 mb.
 - the licence list covers the android build too, and refuses to run as soon as
   a dependency appears in it that nobody has looked at
-
-### Removed
-
-- converting to mp3 or flac on android. it took ffmpeg, and the only
-  maintained build for android is gpl. the format is chosen so that it plays
-  as it is, cover and tags robify writes itself
 
 ## [0.1.0] – not released yet
 

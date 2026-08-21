@@ -669,15 +669,12 @@ pub async fn eigenes_holen(tools_dir: &Path) -> Result<PathBuf> {
 }
 
 pub fn ffmpeg_available() -> bool {
-    // android goes without it.
-    //
-    // the only maintained build for android stands under the gpl, and that
-    // does not go together with robify's licence. little is lost: the format
-    // is chosen so that it plays as it is, cover and tags robify writes
-    // itself, and only converting to mp3 or flac falls away. the interface
-    // says so, the sentence is translated
+    // on android it comes along in the package and never stands in the search
+    // path. it is a build of robify's own, without the gpl parts — those are
+    // video encoders, and nothing here touches video. the bridge in
+    // `de.robify.player.Ytdlp` knows where it lies and hands it to yt-dlp
     if cfg!(target_os = "android") {
-        return false;
+        return true;
     }
     which::which("ffmpeg").is_ok()
 }

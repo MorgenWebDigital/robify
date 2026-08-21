@@ -18,6 +18,9 @@ src-tauri/gen/android/
 # von scripts/quickjs-bauen.mjs erzeugt
 src-tauri/android/quickjs/
 src-tauri/android/.quickjs-bau/
+# von scripts/ffmpeg-bauen.mjs erzeugt
+src-tauri/android/ffmpeg/
+src-tauri/android/.ffmpeg-bau/
 src-tauri/gen/apple/
 *.keystore
 key.properties

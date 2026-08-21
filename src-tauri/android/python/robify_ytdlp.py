@@ -16,6 +16,7 @@ the three things the rust side expects are kept:
 
 import io
 import json
+import os
 import sys
 import threading
 import traceback
@@ -125,9 +126,30 @@ class _Mitleser(io.TextIOBase):
         return True
 
 
-def lauf(kennung, args):
+def bibliotheken_bekanntmachen(ordner):
+    """tells the loader where the shared libraries lie.
+
+    ffmpeg is built as shared libraries, and yt-dlp starts it as a program of
+    its own. the loader of that new process looks nowhere by itself, and
+    android has no place it would find them: without this the call ends in
+    `CANNOT LINK EXECUTABLE … library "libavfilter.so" not found`.
+
+    `os.environ` is written through to the c environment, so every process
+    started later inherits it — that is exactly what is needed here.
+    """
+    if not ordner:
+        return
+    vorher = os.environ.get("LD_LIBRARY_PATH", "")
+    if ordner in vorher.split(":"):
+        return
+    os.environ["LD_LIBRARY_PATH"] = f"{ordner}:{vorher}" if vorher else ordner
+
+
+def lauf(kennung, args, bibliotheken=None):
     """runs yt-dlp with the given arguments and answers as the bridge does."""
     import yt_dlp
+
+    bibliotheken_bekanntmachen(bibliotheken)
 
     ausgabe = []
     with _SPERRE:

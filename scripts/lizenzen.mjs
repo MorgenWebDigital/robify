@@ -226,6 +226,32 @@ const ANDROID_PAKETE = [
     hinweis: "Die JavaScript-Laufzeit, die yt-dlp dafür braucht.",
   },
   {
+    name: "FFmpeg",
+    version: "9.0.1",
+    lizenz: "LGPL-2.1-or-later",
+    quelle: "https://ffmpeg.org/",
+    text: "ffmpeg.txt",
+    hinweis:
+      "Wandelt nach MP3, M4A und FLAC. Eigener Bau ohne die GPL-Teile; " +
+      "als eigenständige Bibliotheken beigelegt, siehe scripts/ffmpeg-bauen.mjs.",
+  },
+  {
+    name: "LAME",
+    version: "3.100",
+    lizenz: "LGPL-2.0-or-later",
+    quelle: "https://lame.sourceforge.io/",
+    text: "lame.txt",
+    hinweis: "Der MP3-Kodierer, den FFmpeg dafür benutzt.",
+  },
+  {
+    name: "libvorbis / libogg",
+    version: "1.3.7 / 1.3.6",
+    lizenz: "BSD-3-Clause",
+    quelle: "https://xiph.org/vorbis/",
+    text: "xiph.txt",
+    hinweis: "Der Vorbis-Kodierer, den FFmpeg für OGG benutzt.",
+  },
+  {
     name: "androidx.media",
     version: "1.7.0",
     lizenz: "Apache-2.0",

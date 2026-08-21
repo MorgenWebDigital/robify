@@ -50,6 +50,8 @@ const PYTHON_ORDNER = "src-tauri/gen/android/app/src/main/python";
 const JNI_ORDNER = "src-tauri/gen/android/app/src/main/jniLibs";
 /** the javascript runtime, built by scripts/quickjs-bauen.mjs. */
 const QUICKJS_ORDNER = "src-tauri/android/quickjs";
+/** the converter, built by scripts/ffmpeg-bauen.mjs. */
+const FFMPEG_ORDNER = "src-tauri/android/ffmpeg";
 /** the four architectures the universal apk carries. */
 const ARCHITEKTUREN = ["arm64-v8a", "armeabi-v7a", "x86", "x86_64"];
 
@@ -314,6 +316,44 @@ function quickjsEinlegen() {
     gelegt += 1;
   }
   console.log(`QuickJS: für ${gelegt} Architekturen eingelegt`);
+}
+
+/**
+ * lays the converter beside the other native libraries.
+ *
+ * robify offers mp3, m4a and flac. aac and flac ffmpeg encodes itself, mp3
+ * takes lame — both lgpl, which goes together with robify's licence. the
+ * ready-made android builds do not: they carry x264 and its like and are gpl
+ * throughout, and those are video encoders nothing here needs.
+ *
+ * the shared libraries travel along beside the program. `libavcodec.so` and
+ * `libmp3lame.so` lying separately is what makes the lgpl easy to satisfy:
+ * whoever wants to exchange them copies a file.
+ */
+function ffmpegEinlegen() {
+  if (!existsSync(FFMPEG_ORDNER)) {
+    console.error(
+      '::error::ffmpeg fehlt. Erst "node scripts/ffmpeg-bauen.mjs" ausführen.',
+    );
+    process.exit(1);
+  }
+
+  let gelegt = 0;
+  for (const abi of ARCHITEKTUREN) {
+    const quelle = join(FFMPEG_ORDNER, abi);
+    if (!existsSync(quelle)) {
+      console.error(`::error::ffmpeg fehlt für ${abi}.`);
+      process.exit(1);
+    }
+    const ordner = join(JNI_ORDNER, abi);
+    mkdirSync(ordner, { recursive: true });
+    for (const datei of readdirSync(quelle)) {
+      if (!datei.endsWith(".so")) continue;
+      copyFileSync(join(quelle, datei), join(ordner, datei));
+      gelegt += 1;
+    }
+  }
+  console.log(`ffmpeg: ${gelegt} Bibliotheken eingelegt`);
 }
 
 /**
@@ -856,6 +896,7 @@ zurueckKnopfAnschalten();
 zertifikatspruefungEinbinden();
 chaquopyEinbinden();
 quickjsEinlegen();
+ffmpegEinlegen();
 ytdlpEinbinden();
 systemplayerEinbinden();
 benachrichtigungenErbitten();

@@ -260,13 +260,19 @@ Two things are built alongside and are looked for by the retrofit script:
 ```bash
 uv python install 3.11              # chaquopy runs pip with it
 node scripts/quickjs-bauen.mjs      # the javascript runtime, once per version
+node scripts/ffmpeg-bauen.mjs       # the converter, likewise once
 ```
 
 Python 3.11 and not something newer: chaquopy carries `armeabi-v7a` and `x86`
 up to that version only, and with a newer one every 32-bit device would lose
 the app. Any python 3.11 does — from the package manager, from `uv`, from
-anywhere on the path. `npm run android:build` calls the quickjs build itself;
-it does nothing when the version in place already matches.
+anywhere on the path. `npm run android:build` calls both builds itself; they
+do nothing when the versions in place already match.
+
+FFmpeg takes a few minutes per architecture and is built without its gpl
+parts — those are video encoders, and robify converts audio only. The result
+weighs some five megabytes per architecture where the ready-made android
+builds bring thirty-five.
 
 The apk ends up under `src-tauri/gen/android/app/build/outputs/apk/`. For a
 release in the play store it still has to be signed.
@@ -558,9 +564,11 @@ python runtime was exchanged the apk carried `youtubedl-android` and its
 ffmpeg, both gpl-3.0, and the gpl forbids further restrictions — a
 non-commercial clause is one. The apk could not have been passed on that way.
 In its place stand chaquopy (mit) with a python of its own, yt-dlp (unlicense)
-installed into it by pip, and quickjs (mit) as the javascript runtime youtube
-demands. Converting to mp3 or flac fell away with ffmpeg; the format is chosen
-so that it plays as it is.
+installed into it by pip, quickjs (mit) as the javascript runtime youtube
+demands, and an ffmpeg built here without its gpl parts (lgpl), with lame
+(lgpl) for mp3 and libvorbis (bsd) for ogg. The lgpl asks that whoever gets the program can exchange those
+parts, so they lie beside it as separate shared libraries rather than being
+built into one binary.
 
 All three expressly allow the whole to be passed on under different terms, so
 the licence of robify may be stricter than theirs. Mpl-2.0 acts on the files of
