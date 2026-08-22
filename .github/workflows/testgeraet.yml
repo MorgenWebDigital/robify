@@ -69,10 +69,25 @@ jobs:
           # not empty is not the same as usable. a dead token only showed at
           # the last step, after twenty-five minutes of build time for four
           # architectures, and everything before it was thrown away with the
-          # runner. the probe costs a second
+          # runner. the probe costs a second.
+          #
+          # two calls and not one: a single call against the repository fails
+          # for either reason, and a message naming both leaves the search
+          # where it started
+          if ! GH_TOKEN="$TESTGERAET_TOKEN" gh api user --jq .login > /dev/null 2>&1; then
+            echo "::error::TESTGERAET_TOKEN is not accepted by github at all. It is expired, withdrawn, or a character was lost when it was entered. Check it with: gh api user -H \"Authorization: Bearer <token>\""
+            exit 1
+          fi
+
+          case "$TESTGERAET_REPO" in
+            */*) ;;
+            *) echo "::error::TESTGERAET_REPO must read owner/name — without https:// and without .git."
+               exit 1 ;;
+          esac
+
           if ! GH_TOKEN="$TESTGERAET_TOKEN" \
                gh api "repos/$TESTGERAET_REPO" --jq .full_name > /dev/null 2>&1; then
-            echo "::error::TESTGERAET_TOKEN is refused for TESTGERAET_REPO. Either the token is expired or withdrawn, or it does not carry Contents: read and write on that repository. Check it with: gh api user -H \"Authorization: Bearer <token>\""
+            echo "::error::The token lives, but it does not reach the repository from TESTGERAET_REPO. Either the name is wrong, or the token does not list that repository under Repository access, or it lacks Contents: read and write."
             exit 1
           fi
 
