@@ -14,7 +14,41 @@ permissions:
   contents: write
 
 jobs:
+  # the signing job runs last, so a missing key only showed after every
+  # installer was built — twenty-one minutes on six systems, thrown away with
+  # the runners. an empty secret is enough for that: the name exists, the
+  # value is nothing, and `gh secret list` shows no difference.
+  #
+  # ten seconds up front instead. checked is only presence; whether a key
+  # actually decodes shows where it is used
+  geheimnisse:
+    name: Check the secrets
+    runs-on: ubuntu-latest
+    steps:
+      # the condition sits on the step and not on the job: a skipped job takes
+      # everything that needs it along, and a run started by hand builds no
+      # release and needs none of these secrets
+      - if: github.ref_type == 'tag'
+        env:
+          PGP_PRIVATE_KEY: ${{ secrets.PGP_PRIVATE_KEY }}
+          PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+          TAURI_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          for name in PGP_PRIVATE_KEY PGP_PASSPHRASE TAURI_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::The secret $name is empty. See the readme, section \"Checking the installers\"."
+              exit 1
+            fi
+          done
+
+          case "$PGP_PRIVATE_KEY" in
+            *"BEGIN PGP PRIVATE KEY BLOCK"*) ;;
+            *) echo "::error::PGP_PRIVATE_KEY does not hold an armored private key. Export it with: gpg --armor --export-secret-keys <fingerprint> > key.asc, check the file is several thousand bytes, then set it from that file."
+               exit 1 ;;
+          esac
+
   desktop:
+    needs: geheimnisse
     name: ${{ matrix.label }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -125,6 +159,7 @@ jobs:
           if-no-files-found: warn
 
   arch:
+    needs: geheimnisse
     name: Arch Linux (pacman)
     runs-on: ubuntu-latest
     container: archlinux:base-devel
@@ -184,6 +219,7 @@ jobs:
             packaging/arch/*.pkg.tar.zst
 
   android:
+    needs: geheimnisse
     name: Android (APK)
     runs-on: ubuntu-latest
     steps:
