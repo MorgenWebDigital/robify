@@ -66,6 +66,16 @@ jobs:
             fi
           done
 
+          # not empty is not the same as usable. a dead token only showed at
+          # the last step, after twenty-five minutes of build time for four
+          # architectures, and everything before it was thrown away with the
+          # runner. the probe costs a second
+          if ! GH_TOKEN="$TESTGERAET_TOKEN" \
+               gh api "repos/$TESTGERAET_REPO" --jq .full_name > /dev/null 2>&1; then
+            echo "::error::TESTGERAET_TOKEN is refused for TESTGERAET_REPO. Either the token is expired or withdrawn, or it does not carry Contents: read and write on that repository. Check it with: gh api user -H \"Authorization: Bearer <token>\""
+            exit 1
+          fi
+
           printf '%s' "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/robify.keystore"
           if ! keytool -list -keystore "$RUNNER_TEMP/robify.keystore" \
                        -storepass "$KEYSTORE_PASSWORD" > "$RUNNER_TEMP/schluessel.txt" 2>&1; then
