@@ -55,6 +55,8 @@ parking_lot = "0.12"
 urlencoding = "2"
 rand = "0.9"
 which = "8"
+# unpacks the ffmpeg and deno builds robify fetches itself
+zip = { version = "4", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }

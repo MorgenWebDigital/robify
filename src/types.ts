@@ -334,6 +334,9 @@ export interface DownloaderStatus {
    * be installed either. the warning is dropped there.
    */
   jsRuntimeRelevant: boolean;
+  /** whether robify fetches the missing piece itself with the next download */
+  ffmpegHolbar: boolean;
+  jsRuntimeHolbar: boolean;
   activeJobs: string[];
 }
 

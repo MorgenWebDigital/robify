@@ -11,6 +11,8 @@ const status = {
   ffmpegAvailable: true,
   jsRuntime: null as string | null,
   jsRuntimeRelevant: false,
+  ffmpegHolbar: false,
+  jsRuntimeHolbar: false,
   activeJobs: [] as string[],
 };
 

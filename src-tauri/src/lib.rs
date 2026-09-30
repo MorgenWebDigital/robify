@@ -407,7 +407,7 @@ pub fn run() {
                 let _ = std::fs::create_dir_all(ordner);
             }
 
-            app.manage(AppState {
+            let state = AppState {
                 db: parking_lot::Mutex::new(conn),
                 db_path,
                 work_dir,
@@ -415,7 +415,9 @@ pub fn run() {
                 feste_orte,
                 player,
                 downloads: Arc::new(downloader::DownloadRegistry::default()),
-            });
+            };
+            downloader::werkzeuge_setzen(state.tools_dir());
+            app.manage(state);
 
             // in the background: reading tags takes time and the start is
             // not to wait for it. the state stands already, the thread finds

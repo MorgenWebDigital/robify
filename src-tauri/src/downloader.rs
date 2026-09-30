@@ -603,11 +603,12 @@ pub async fn ensure_ytdlp(configured: Option<&str>, tools_dir: &Path) -> Result<
         return Ok(PathBuf::from("eingebaut"));
     }
 
-    if let Some(path) = find_ytdlp(configured, tools_dir) {
-        return Ok(path);
-    }
-
-    eigenes_holen(tools_dir).await
+    let ytdlp = match find_ytdlp(configured, tools_dir) {
+        Some(path) => path,
+        None => eigenes_holen(tools_dir).await?,
+    };
+    helfer_holen(tools_dir).await;
+    Ok(ytdlp)
 }
 
 /// fetches the standalone build into the tools folder, come what may.
@@ -668,6 +669,199 @@ pub async fn eigenes_holen(tools_dir: &Path) -> Result<PathBuf> {
     }
 }
 
+// --- helpers of its own: ffmpeg and deno ---
+//
+// the linux packages bring ffmpeg as a dependency, the windows installer
+// brings nothing, and there neither ffmpeg nor a javascript runtime is
+// usually installed. every download then came with two warnings nobody at
+// windows could act on without a terminal. robify therefore fetches both into
+// its tools folder, like yt-dlp, on demand and only where the system has none.
+
+static WERKZEUGE: OnceLock<PathBuf> = OnceLock::new();
+
+/// names the tools folder once at startup. the lookups below need it and are
+/// called from places that know no state
+pub fn werkzeuge_setzen(tools_dir: PathBuf) {
+    let _ = WERKZEUGE.set(tools_dir);
+}
+
+fn programm(name: &str) -> String {
+    if cfg!(windows) {
+        format!("{name}.exe")
+    } else {
+        name.to_string()
+    }
+}
+
+/// the folder robify's own ffmpeg lies in, where there is one.
+/// ffprobe lies next to it, yt-dlp needs both
+fn eigenes_ffmpeg_verzeichnis() -> Option<PathBuf> {
+    let ordner = WERKZEUGE.get()?.join("ffmpeg");
+    ordner.join(programm("ffmpeg")).exists().then_some(ordner)
+}
+
+fn eigenes_deno() -> Option<PathBuf> {
+    let pfad = WERKZEUGE.get()?.join("deno").join(programm("deno"));
+    pfad.exists().then_some(pfad)
+}
+
+// the ffmpeg to call: the one of the system first, its own as fallback
+#[cfg(not(target_os = "android"))]
+fn ffmpeg_programm() -> PathBuf {
+    match which::which("ffmpeg") {
+        Ok(pfad) => pfad,
+        Err(_) => eigenes_ffmpeg_verzeichnis()
+            .map(|ordner| ordner.join(programm("ffmpeg")))
+            .unwrap_or_else(|| PathBuf::from("ffmpeg")),
+    }
+}
+
+// where the builds lie. only lgpl for ffmpeg: the gpl parts are video
+// encoders, and nothing here touches video. the shared variant is the small
+// one, 74 instead of 167 mb, the libraries lie next to the program.
+// for linux and macos none: linux gets ffmpeg through the package, and for
+// macos there is no build from a source that would stay put
+fn ffmpeg_quelle() -> Option<&'static str> {
+    if cfg!(all(windows, target_arch = "x86_64")) {
+        Some("https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl-shared.zip")
+    } else {
+        None
+    }
+}
+
+// deno is yt-dlp's default runtime and publishes one program per platform
+fn deno_quelle() -> Option<String> {
+    let ziel = if cfg!(all(windows, target_arch = "x86_64")) {
+        "x86_64-pc-windows-msvc"
+    } else if cfg!(all(windows, target_arch = "aarch64")) {
+        "aarch64-pc-windows-msvc"
+    } else if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        "aarch64-apple-darwin"
+    } else if cfg!(all(target_os = "macos", target_arch = "x86_64")) {
+        "x86_64-apple-darwin"
+    } else if cfg!(all(target_os = "linux", target_arch = "x86_64")) {
+        "x86_64-unknown-linux-gnu"
+    } else if cfg!(all(target_os = "linux", target_arch = "aarch64")) {
+        "aarch64-unknown-linux-gnu"
+    } else {
+        return None;
+    };
+    Some(format!(
+        "https://github.com/denoland/deno/releases/latest/download/deno-{ziel}.zip"
+    ))
+}
+
+/// whether robify can fetch ffmpeg itself where it is missing
+pub fn ffmpeg_holbar() -> bool {
+    !cfg!(target_os = "android") && ffmpeg_quelle().is_some()
+}
+
+/// whether robify can fetch a javascript runtime itself where it is missing
+pub fn js_runtime_holbar() -> bool {
+    !cfg!(target_os = "android") && deno_quelle().is_some()
+}
+
+/// fetches ffmpeg and deno where the system has none.
+///
+/// called before every search and every download, and returns at once where
+/// nothing is missing. a failure costs only what was missing before: the
+/// download runs on, and the page names what is lacking
+pub async fn helfer_holen(tools_dir: &Path) {
+    if cfg!(target_os = "android") {
+        return;
+    }
+    // two downloads started together would otherwise fetch everything twice
+    static HOLEN: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+    let _gesperrt = HOLEN.lock().await;
+
+    if !ffmpeg_available() {
+        if let Some(url) = ffmpeg_quelle() {
+            let behalten = |name: &str, pfad: &str| {
+                pfad.contains("/bin/")
+                    && (name.ends_with(".dll") || name == programm("ffmpeg") || name == programm("ffprobe"))
+            };
+            if let Err(fehler) = holen_und_entpacken(url, &tools_dir.join("ffmpeg"), "ffmpeg", behalten).await {
+                eprintln!("ffmpeg konnte nicht geladen werden: {fehler}");
+            }
+        }
+    }
+
+    if js_runtime().is_none() {
+        if let Some(url) = deno_quelle() {
+            let behalten = |name: &str, _: &str| name == programm("deno");
+            if let Err(fehler) = holen_und_entpacken(&url, &tools_dir.join("deno"), "deno", behalten).await {
+                eprintln!("deno konnte nicht geladen werden: {fehler}");
+            }
+        }
+    }
+}
+
+// downloads a zip, takes the files wanted out of it flat into `ziel` and runs
+// the program once as a probe. unpacked next to it first, then renamed: where
+// anything breaks off, no half a tool is left under the right name
+async fn holen_und_entpacken(
+    url: &str,
+    ziel: &Path,
+    programm_name: &str,
+    behalten: impl Fn(&str, &str) -> bool + Send + 'static,
+) -> Result<()> {
+    let daten = crate::online::client()
+        .get(url)
+        // up to 74 mb, far beyond the usual 20 seconds on slow lines
+        .timeout(Duration::from_secs(900))
+        .send()
+        .await
+        .and_then(|r| r.error_for_status())?
+        .bytes()
+        .await?;
+
+    let vorlaeufig = ziel.with_extension("teil");
+    let entpackt = vorlaeufig.clone();
+    tokio::task::spawn_blocking(move || -> Result<()> {
+        let _ = std::fs::remove_dir_all(&entpackt);
+        std::fs::create_dir_all(&entpackt)?;
+        let mut archiv = zip::ZipArchive::new(std::io::Cursor::new(daten))?;
+        for index in 0..archiv.len() {
+            let mut eintrag = archiv.by_index(index)?;
+            if eintrag.is_dir() {
+                continue;
+            }
+            let pfad = eintrag.name().replace('\\', "/");
+            let Some(name) = pfad.rsplit('/').next().map(str::to_string) else {
+                continue;
+            };
+            if name.is_empty() || !behalten(&name, &format!("/{pfad}")) {
+                continue;
+            }
+            let mut datei = std::fs::File::create(entpackt.join(&name))?;
+            std::io::copy(&mut eintrag, &mut datei)?;
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                std::fs::set_permissions(entpackt.join(&name), std::fs::Permissions::from_mode(0o755))?;
+            }
+        }
+        Ok(())
+    })
+    .await??;
+
+    let probe_pfad = vorlaeufig.join(programm(programm_name));
+    let mut probe = Command::new(&probe_pfad);
+    probe.arg(if programm_name == "deno" { "--version" } else { "-version" });
+    configure(&mut probe);
+    match probe.output().await {
+        Ok(out) if out.status.success() => {}
+        _ => {
+            let _ = std::fs::remove_dir_all(&vorlaeufig);
+            bail!("{programm_name} wurde geladen, ließ sich aber nicht ausführen");
+        }
+    }
+
+    let _ = std::fs::remove_dir_all(ziel);
+    std::fs::rename(&vorlaeufig, ziel)?;
+    Ok(())
+}
+
 pub fn ffmpeg_available() -> bool {
     // on android it comes along in the package and never stands in the search
     // path. it is a build of robify's own, without the gpl parts — those are
@@ -676,7 +870,7 @@ pub fn ffmpeg_available() -> bool {
     if cfg!(target_os = "android") {
         return true;
     }
-    which::which("ffmpeg").is_ok()
+    which::which("ffmpeg").is_ok() || eigenes_ffmpeg_verzeichnis().is_some()
 }
 
 /// whether a javascript runtime is available.
@@ -697,6 +891,7 @@ pub fn js_runtime() -> Option<&'static str> {
     ["deno", "node", "bun", "qjs"]
         .into_iter()
         .find(|runtime| which::which(runtime).is_ok())
+        .or_else(|| eigenes_deno().map(|_| "deno"))
 }
 
 // older yt-dlp versions do not know `--js-runtimes` yet. check once and
@@ -789,14 +984,32 @@ async fn supports_thumbnail_embedding(ytdlp: &Path) -> bool {
     *SUPPORTED.get_or_init(|| supported)
 }
 
-/// the runtime as an argument list, where present and supported
+/// the runtime as an argument list, where present and supported.
+///
+/// its own deno and ffmpeg stand in no search path, so yt-dlp is told where
+/// they lie. both only where the system has none of its own
 async fn js_runtime_args(ytdlp: &Path) -> Vec<String> {
+    let mut args = Vec::new();
+    if !cfg!(target_os = "android") && which::which("ffmpeg").is_err() {
+        if let Some(ordner) = eigenes_ffmpeg_verzeichnis() {
+            args.push("--ffmpeg-location".into());
+            args.push(ordner.to_string_lossy().into_owned());
+        }
+    }
     match js_runtime() {
         Some(runtime) if supports_js_runtimes(ytdlp).await => {
-            vec!["--js-runtimes".into(), runtime.to_string()]
+            let runtime = match eigenes_deno() {
+                Some(pfad) if which::which(runtime).is_err() => {
+                    format!("deno:{}", pfad.to_string_lossy())
+                }
+                _ => runtime.to_string(),
+            };
+            args.push("--js-runtimes".into());
+            args.push(runtime);
         }
-        _ => Vec::new(),
+        _ => {}
     }
+    args
 }
 
 // --- load brake ---
@@ -2689,7 +2902,7 @@ async fn ensure_playable<R: Runtime>(
 // folder
 #[cfg(not(target_os = "android"))]
 async fn ffmpeg_lassen(args: Vec<String>) -> Result<crate::ytdlp::Ausgabe> {
-    let mut cmd = Command::new("ffmpeg");
+    let mut cmd = Command::new(ffmpeg_programm());
     cmd.args(&args).stdout(Stdio::null()).stderr(Stdio::piped());
     configure(&mut cmd);
 

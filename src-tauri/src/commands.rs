@@ -1325,6 +1325,10 @@ pub struct DownloaderStatus {
     /// stays empty all the same — it looks for a program on the path, and
     /// there is none. a warning out of that would be wrong twice over.
     pub js_runtime_relevant: bool,
+    /// whether robify fetches the missing piece itself with the next
+    /// download. then there is nothing to install by hand
+    pub ffmpeg_holbar: bool,
+    pub js_runtime_holbar: bool,
     pub active_jobs: Vec<String>,
 }
 
@@ -1374,6 +1378,8 @@ pub async fn downloader_status(state: State<'_, AppState>) -> CmdResult<Download
         ffmpeg_available: downloader::ffmpeg_available(),
         js_runtime: downloader::js_runtime().map(str::to_string),
         js_runtime_relevant: !cfg!(target_os = "android"),
+        ffmpeg_holbar: downloader::ffmpeg_holbar(),
+        js_runtime_holbar: downloader::js_runtime_holbar(),
         active_jobs: state.downloads.active(),
     })
 }

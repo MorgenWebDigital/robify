@@ -18,6 +18,8 @@ vi.mock("../lib/api", () => ({
         ffmpegAvailable: true,
         jsRuntime: null,
         jsRuntimeRelevant: false,
+        ffmpegHolbar: false,
+        jsRuntimeHolbar: false,
         activeJobs: [],
       }),
     checkLibrary: () =>

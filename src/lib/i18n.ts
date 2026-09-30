@@ -3720,6 +3720,24 @@ const TEXTE: Record<string, Fassungen> = {
     ar: "أُضيف {0} إلى «{1}»",
     zh: "已向“{1}”补充 {0}",
   },
+  "Beim ersten Download holt sich Robify yt-dlp, ffmpeg und eine JavaScript-Laufzeit selbst, bis zu 150 MB, einmalig. Das dauert einen Moment länger als sonst.":
+    {
+      en: "On the first download Robify fetches yt-dlp, ffmpeg and a JavaScript runtime itself, up to 150 MB, once. That takes a moment longer than usual.",
+      es: "En la primera descarga Robify obtiene yt-dlp, ffmpeg y un entorno de JavaScript por su cuenta, hasta 150 MB, una sola vez. Eso tarda un momento más de lo habitual.",
+      fr: "Au premier téléchargement, Robify récupère lui-même yt-dlp, ffmpeg et un environnement JavaScript, jusqu'à 150 Mo, une seule fois. Cela prend un instant de plus que d'ordinaire.",
+      ru: "При первой загрузке Robify сам скачивает yt-dlp, ffmpeg и среду JavaScript, до 150 МБ, один раз. Это займёт немного больше времени, чем обычно.",
+      ar: "عند التنزيل الأول يجلب Robify بنفسه yt-dlp وffmpeg وبيئة تشغيل JavaScript، حتى 150 ميغابايت، مرة واحدة. يستغرق ذلك لحظة أطول من المعتاد.",
+      zh: "首次下载时 Robify 会自行获取 yt-dlp、ffmpeg 和一个 JavaScript 运行时，最多 150 MB，仅一次。这会比平常多花些时间。",
+    },
+  "Beim nächsten Download holt sich Robify ffmpeg und eine JavaScript-Laufzeit selbst, bis zu 120 MB, einmalig. Das dauert einen Moment länger als sonst.":
+    {
+      en: "On the next download Robify fetches ffmpeg and a JavaScript runtime itself, up to 120 MB, once. That takes a moment longer than usual.",
+      es: "En la próxima descarga Robify obtiene ffmpeg y un entorno de JavaScript por su cuenta, hasta 120 MB, una sola vez. Eso tarda un momento más de lo habitual.",
+      fr: "Au prochain téléchargement, Robify récupère lui-même ffmpeg et un environnement JavaScript, jusqu'à 120 Mo, une seule fois. Cela prend un instant de plus que d'ordinaire.",
+      ru: "При следующей загрузке Robify сам скачивает ffmpeg и среду JavaScript, до 120 МБ, один раз. Это займёт немного больше времени, чем обычно.",
+      ar: "عند التنزيل التالي يجلب Robify بنفسه ffmpeg وبيئة تشغيل JavaScript، حتى 120 ميغابايت، مرة واحدة. يستغرق ذلك لحظة أطول من المعتاد.",
+      zh: "下次下载时 Robify 会自行获取 ffmpeg 和一个 JavaScript 运行时，最多 120 MB，仅一次。这会比平常多花些时间。",
+    },
   "Beim ersten Download holt sich Robify yt-dlp selbst, rund 30 MB, einmalig. Das dauert einen Moment länger als sonst.":
     {
       en: "On the first download Robify fetches yt-dlp itself, about 30 MB, once. That takes a moment longer than usual.",

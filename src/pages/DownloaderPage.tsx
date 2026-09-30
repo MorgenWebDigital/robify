@@ -408,6 +408,11 @@ export function DownloaderPage() {
   };
 
   const missingTools = status !== null && !status.ytdlpPath;
+  // what robify fetches itself needs no warning, only a word that the first
+  // download takes longer
+  const jsHolbar = status !== null && !status.jsRuntime && status.jsRuntimeHolbar;
+  const ffmpegHolbar = status !== null && !status.ffmpegAvailable && status.ffmpegHolbar;
+  const holtHelfer = jsHolbar || ffmpegHolbar;
 
   return (
     <div>
@@ -421,13 +426,25 @@ export function DownloaderPage() {
 
       {missingTools && (
         <div className="mb-6 rounded-xl border border-ink-700 bg-ink-900/60 px-5 py-4 text-sm text-mute">
+          {holtHelfer
+            ? t(
+                "Beim ersten Download holt sich Robify yt-dlp, ffmpeg und eine JavaScript-Laufzeit selbst, bis zu 150 MB, einmalig. Das dauert einen Moment länger als sonst.",
+              )
+            : t(
+                "Beim ersten Download holt sich Robify yt-dlp selbst, rund 30 MB, einmalig. Das dauert einen Moment länger als sonst.",
+              )}
+        </div>
+      )}
+
+      {!missingTools && holtHelfer && (
+        <div className="mb-6 rounded-xl border border-ink-700 bg-ink-900/60 px-5 py-4 text-sm text-mute">
           {t(
-            "Beim ersten Download holt sich Robify yt-dlp selbst, rund 30 MB, einmalig. Das dauert einen Moment länger als sonst.",
+            "Beim nächsten Download holt sich Robify ffmpeg und eine JavaScript-Laufzeit selbst, bis zu 120 MB, einmalig. Das dauert einen Moment länger als sonst.",
           )}
         </div>
       )}
 
-      {status && !status.jsRuntime && status.jsRuntimeRelevant && (
+      {status && !status.jsRuntime && status.jsRuntimeRelevant && !jsHolbar && (
         <div className="mb-6 rounded-xl border border-warning/40 bg-warning-soft px-5 py-4 text-sm text-fg/80">
           {t(
             "Es wurde keine JavaScript-Laufzeit gefunden. Ohne sie lehnt YouTube jeden Download mit „403“ ab; die übrigen Quellen bleiben davon unberührt. Abhilfe: Node.js, Deno oder Bun installieren.",
@@ -435,7 +452,7 @@ export function DownloaderPage() {
         </div>
       )}
 
-      {status && !status.ffmpegAvailable && (
+      {status && !status.ffmpegAvailable && !ffmpegHolbar && (
         <div className="mb-6 rounded-xl border border-warning/40 bg-warning-soft px-5 py-4 text-sm text-fg/80">
           {t(
             "ffmpeg fehlt. Ohne ffmpeg ist nur das Originalformat („Original“) möglich.",
