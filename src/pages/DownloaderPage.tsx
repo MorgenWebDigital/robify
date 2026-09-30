@@ -410,8 +410,10 @@ export function DownloaderPage() {
   const missingTools = status !== null && !status.ytdlpPath;
   // what robify fetches itself needs no warning, only a word that the first
   // download takes longer
-  const jsHolbar = status !== null && !status.jsRuntime && status.jsRuntimeHolbar;
-  const ffmpegHolbar = status !== null && !status.ffmpegAvailable && status.ffmpegHolbar;
+  const jsHolbar =
+    status !== null && !status.jsRuntime && status.jsRuntimeHolbar;
+  const ffmpegHolbar =
+    status !== null && !status.ffmpegAvailable && status.ffmpegHolbar;
   const holtHelfer = jsHolbar || ffmpegHolbar;
 
   return (
