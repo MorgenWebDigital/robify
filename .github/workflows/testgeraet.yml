@@ -113,6 +113,10 @@ jobs:
 
       - name: Set up the Android SDK
         uses: android-actions/setup-android@v3
+        # the default also asks for `tools`, which google no longer
+        # publishes, and sdkmanager then fails the whole step
+        with:
+          packages: platform-tools
 
       - name: Install the NDK
         run: sdkmanager --install "ndk;27.0.12077973"
